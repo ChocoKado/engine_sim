@@ -368,30 +368,33 @@ export class SoundEngine {
 
   // Play an explosive overrun pop, gun-shot rev-limiter bang, or crisp shift crack
   playBackfirePop(intensity = 1.0, hasFlame = false, isLimiter = false, when, isShift = false) {
-    if (!this.ctx || !this.isStarted || !this.running || this.currentExhaust.id === 'oem'
+    if (!this.ctx || !this.isStarted || !this.running
+      || (this.currentExhaust.id === 'oem' && !isShift)
       || !Number.isFinite(intensity) || intensity <= 0) return;
 
     const t = Math.max(this.ctx.currentTime, when ?? this.ctx.currentTime);
+    const isOem = this.currentExhaust.id === 'oem';
 
-    // Sub-bass thump (35 - 85 Hz wavefront, tight punch on shift)
+    // Sub-bass thump (35 - 145 Hz wavefront, tight punch on shift)
     const subOsc = this.ctx.createOscillator();
     subOsc.type = 'sine';
-    subOsc.frequency.setValueAtTime(isShift ? 135 : isLimiter ? 120 : 90, t);
-    subOsc.frequency.exponentialRampToValueAtTime(35, t + (isShift ? 0.055 : 0.09));
+    subOsc.frequency.setValueAtTime(isShift ? 145 : isLimiter ? 120 : 90, t);
+    subOsc.frequency.exponentialRampToValueAtTime(32, t + (isShift ? 0.048 : 0.09));
 
     const subGain = this.ctx.createGain();
-    const decayTime = isShift ? Math.min(0.085, this.currentExhaust.popDecay * 0.7) : this.currentExhaust.popDecay;
-    const subVol = Math.min(0.85, (isShift ? 0.78 : isLimiter ? 0.5 : 0.6) * intensity * (hasFlame ? 1.15 : 1));
+    const decayTime = isShift ? Math.min(0.080, this.currentExhaust.popDecay * 0.65) : this.currentExhaust.popDecay;
+    const baseSubVol = (isShift ? 0.92 : isLimiter ? 0.5 : 0.6) * intensity * (hasFlame ? 1.15 : 1);
+    const subVol = Math.min(0.95, isOem ? baseSubVol * 0.72 : baseSubVol);
     subGain.gain.setValueAtTime(0.001, t);
-    subGain.gain.linearRampToValueAtTime(subVol, t + (isShift ? 0.0015 : 0.003));
+    subGain.gain.linearRampToValueAtTime(subVol, t + (isShift ? 0.0012 : 0.003));
     subGain.gain.exponentialRampToValueAtTime(0.001, t + decayTime);
 
-    // Warm organic crackle burst (bandpassed 550 - 1300 Hz, crisp metallic crack on shift)
-    const burstLen = Math.floor(this.ctx.sampleRate * decayTime * 0.8);
+    // Warm organic crackle burst (bandpassed 550 - 1600 Hz, crisp metallic crack on shift)
+    const burstLen = Math.floor(this.ctx.sampleRate * decayTime * 0.85);
     const burstBuf = this.ctx.createBuffer(1, burstLen, this.ctx.sampleRate);
     const data = burstBuf.getChannelData(0);
     for (let i = 0; i < burstLen; i++) {
-      const decay = Math.exp(-i / (burstLen * 0.20));
+      const decay = Math.exp(-i / (burstLen * 0.18));
       data[i] = (Math.random() * 2 - 1) * decay;
     }
 
@@ -400,13 +403,13 @@ export class SoundEngine {
 
     const burstFilter = this.ctx.createBiquadFilter();
     burstFilter.type = 'bandpass';
-    burstFilter.frequency.setValueAtTime(this.currentExhaust.popTone * (isShift ? 1.35 : isLimiter ? 1.15 : 1), t);
-    burstFilter.Q.setValueAtTime(isShift ? 2.6 : 2.0, t);
+    burstFilter.frequency.setValueAtTime(this.currentExhaust.popTone * (isShift ? 1.45 : isLimiter ? 1.15 : 1), t);
+    burstFilter.Q.setValueAtTime(isShift ? 2.8 : 2.0, t);
 
     const burstGain = this.ctx.createGain();
     burstGain.gain.setValueAtTime(0.001, t);
-    burstGain.gain.linearRampToValueAtTime(subVol * (isShift ? 0.85 : 0.6), t + 0.0015);
-    burstGain.gain.exponentialRampToValueAtTime(0.001, t + decayTime * 0.75);
+    burstGain.gain.linearRampToValueAtTime(subVol * (isShift ? 0.95 : 0.6), t + 0.0012);
+    burstGain.gain.exponentialRampToValueAtTime(0.001, t + decayTime * 0.70);
 
     subOsc.connect(subGain);
     subGain.connect(this.masterGain);
@@ -462,6 +465,10 @@ export class SoundEngine {
     if (cylinders === 1) {
       subBassFreq = cycleFreq; // Single cylinder slow heavy thump (10-60 Hz)
       camshaftFreq = cycleFreq * 2;
+    } else if (config.soundCharacter === 'radial_7') {
+      // 7-cylinder radial: Order 3.5 primary firing with order 1.75 camshaft/master-rod pulse
+      subBassFreq = cycleFreq * 3.5;
+      camshaftFreq = cycleFreq * 1.75;
     } else if (config.soundCharacter === 'v_twin' || config.soundCharacter === 'muscle_v8') {
       // Uneven firing pulses: strong camshaft half-order creates signature rumble!
       subBassFreq = cycleFreq * 2;
@@ -504,22 +511,32 @@ export class SoundEngine {
       }
     }
     const rawDrive = 0.55 + 1.25 * Math.pow(throttle, 1.3) + Math.min(0.25, blowdownBoost * 0.04);
-    const driveAmount = isShiftCut ? 0.20 : rawDrive;
-    this.saturationDriveGain.gain.setTargetAtTime(driveAmount, t, isShiftCut ? 0.006 : smoothTime);
+    const driveAmount = isShiftCut ? 0.03 : rawDrive;
+    this.saturationDriveGain.gain.setTargetAtTime(driveAmount, t, isShiftCut ? 0.003 : smoothTime);
+
+    // Primary combustion pulse instantly silences during ignition cut
+    const combustionVol = isShiftCut ? 0.025 : 0.55;
+    this.combustionGain.gain.setTargetAtTime(combustionVol, t, isShiftCut ? 0.003 : smoothTime);
+
+    // Sub-bass and camshaft orders also cut sharply during ignition cut
+    const baseSubBassVol = this.soundProfile === 'muscle' ? 0.65 : 0.50;
+    const baseCamVol = this.soundProfile === 'muscle' ? 0.55 : 0.40;
+    this.subBassGain.gain.setTargetAtTime(isShiftCut ? 0.03 : baseSubBassVol, t, isShiftCut ? 0.003 : smoothTime);
+    this.camshaftGain.gain.setTargetAtTime(isShiftCut ? 0.03 : baseCamVol, t, isShiftCut ? 0.003 : smoothTime);
 
     // -------------------------------------------------------------
     // 3. Dynamic Intake Induction Roar
     // -------------------------------------------------------------
     // Deep intake roar only manifests when throttle valve is open (cuts on shift)
     const intakeVol = isShiftCut ? 0 : Math.pow(throttle, 1.4) * 0.12;
-    this.intakeGain.gain.setTargetAtTime(intakeVol, t, isShiftCut ? 0.008 : 0.025);
+    this.intakeGain.gain.setTargetAtTime(intakeVol, t, isShiftCut ? 0.003 : 0.025);
     // Induction formant shifts upward with RPM
     const intakeCenterFreq = Math.max(100, Math.min(1800, 220 + (rpm / redline) * 260));
     this.intakeFilter.frequency.setTargetAtTime(intakeCenterFreq, t, smoothTime);
 
     // Harmonic Cut during shift cut
     if (isShiftCut) {
-      this.harmonicGain.gain.setTargetAtTime(0.04, t, 0.006);
+      this.harmonicGain.gain.setTargetAtTime(0.015, t, 0.003);
     } else {
       const baseHarmonic = this.soundProfile === 'muscle' ? 0.20 : this.soundProfile === 'screamer' ? 0.40 : 0.28;
       this.harmonicGain.gain.setTargetAtTime(baseHarmonic, t, smoothTime);

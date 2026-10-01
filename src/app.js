@@ -288,6 +288,19 @@ class App {
       });
     }
 
+    // Clean Animation Mode Toggle (Hide text annotations on canvas)
+    const btnToggleClean = document.getElementById('btn-toggle-clean');
+    if (btnToggleClean) {
+      if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        btnToggleClean.classList.add('active');
+        this.engineRenderer.setCleanMode(true);
+      }
+      btnToggleClean.addEventListener('click', () => {
+        const isClean = this.engineRenderer.toggleCleanMode();
+        btnToggleClean.classList.toggle('active', isClean);
+      });
+    }
+
     // Slow-Motion Speed Controls for Engine Mechanical View
     const slowmoBtns = document.querySelectorAll('.slowmo-btn');
     const slowmoSlider = document.getElementById('slowmo-slider');

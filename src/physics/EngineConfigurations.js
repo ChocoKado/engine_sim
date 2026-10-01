@@ -293,7 +293,35 @@ export const ENGINE_CONFIGS = {
     flywheelInertia: 0.015,
     revResponseSpeed: 2.4,
     engineBrakeFactor: 0.8,
-    soundCharacter: 'w16_beast',
-    description: 'Bugatti Chiron 8.0L 四渦輪 W16。雙 VR8 結合結構，16個氣缸連續轟炸，宛如噴射戰鬥機掠過的渾厚推力聲威。'
+  },
+
+  // 7-Cylinder Radial Aero Engine
+  'radial_7': {
+    id: 'radial_7',
+    name: '星型七缸航空引擎 (7-Cyl Radial Aero)',
+    shortName: 'Radial 7',
+    cylinders: 7,
+    layout: 'radial',
+    bankAngle: 51.43,
+    // 4-stroke radial firing order: 1 - 3 - 5 - 7 - 2 - 4 - 6
+    firingAngles: [
+      0,
+      Number((4 * 720 / 7).toFixed(2)), // 411.43
+      Number((1 * 720 / 7).toFixed(2)), // 102.86
+      Number((5 * 720 / 7).toFixed(2)), // 514.29
+      Number((2 * 720 / 7).toFixed(2)), // 205.71
+      Number((6 * 720 / 7).toFixed(2)), // 617.14
+      Number((3 * 720 / 7).toFixed(2))  // 308.57
+    ],
+    defaultDisplacement: 3600,
+    minDisplacement: 2200,
+    maxDisplacement: 6200,
+    defaultIdleRPM: 700,
+    defaultRedlineRPM: 4200,
+    flywheelInertia: 0.038,
+    revResponseSpeed: 1.6,
+    engineBrakeFactor: 1.5,
+    soundCharacter: 'radial_7',
+    description: '經典七缸航空星型發動機 (7-Cylinder Radial)。採用中央主連桿（Master Rod）與六根副連桿結構，圓周360度對稱排列。經典 1-3-5-7-2-4-6 隔缸點火循環，怠速如同重砲般深沉震撼，拉轉伴隨大排氣量螺旋槳的沉穩機械轟鳴。'
   }
 };

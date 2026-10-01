@@ -231,7 +231,7 @@ export class Drivetrain {
     const peak = e.dynoData.maxTorque;
     this.shiftElapsed += dt;
     this.shiftTimer = Math.max(0, this.shiftDuration - this.shiftElapsed);
-    const releaseTime = this.mode === 'at' ? 0.055 : 0.040;
+    const releaseTime = this.mode === 'at' ? 0.050 : 0.036;
     const release = smoothstep(clamp(this.shiftElapsed / releaseTime, 0, 1));
     const recovering = this.shiftRecovery > 0;
     const recovery = recovering ? smoothstep(clamp(this.shiftRecovery / 0.09, 0, 1)) : 0;
@@ -240,27 +240,29 @@ export class Drivetrain {
     const needsBlip = targetRPM > e.rpm + 40;
     const blip = clamp((targetRPM - e.rpm) * e.inertia / RPM_PER_RAD / 0.12
       / Math.max(1, e.torqueAtRPM(e.rpm)), 0, 1);
-    // Ignition cut on upshift: during shift, torque cuts sharply to create an audible cut & crisp drop
-    const commandedThrottle = recovering ? throttle : needsBlip ? blip : throttle * (1 - release);
-    e.prepareStep(dt, commandedThrottle, { torqueScale: recovering ? 0.25 + recovery * 0.75
-      : needsBlip ? 1 : Math.max(0, 1 - release * 0.98) });
+    // Ignition cut on upshift: instantaneous torque reduction creating an unmistakable cut breakpoint
+    const commandedThrottle = recovering ? throttle : needsBlip ? blip : 0;
+    const cutTorque = this.isUpshift ? 0 : Math.max(0, 1 - release);
+    e.prepareStep(dt, commandedThrottle, { torqueScale: recovering ? 0.35 + recovery * 0.65
+      : needsBlip ? 1 : cutTorque });
     let locked = false;
     if (this.shiftElapsed < releaseTime && this.previousGear !== 0) {
       locked = this.couple(dt, this.previousGear, peak * 2 * (1 - release));
     } else {
       this.currentGear = this.targetGear;
-      // Fast, athletic clutch engagement curve
-      const engagement = smoothstep(clamp((this.shiftElapsed - releaseTime) / 0.09, 0, 1));
+      // Aggressive racing clutch pull: rapid bite down to target gear with bounded pitch rate
+      const engagement = clamp((this.shiftElapsed - releaseTime) / 0.045, 0, 1);
       const antiStall = clamp((e.rpm - e.idleRPM * 0.7) / (e.idleRPM * 0.5), 0, 1);
-      // Higher clutch pull capacity so RPM drops cleanly and crisply into the new gear ratio
-      const capacity = peak * (this.mode === 'at' ? 2.0 : 2.5) * engagement * antiStall
-        * (needsBlip ? 0.3 : 1);
+      const maxSafeTorque = (e.redlineRPM * 0.022 * RPM_PER_RAD) * e.inertia / dt;
+      const nominalCapacity = peak * (this.mode === 'at' ? 3.0 : 4.5);
+      const capacity = Math.min(nominalCapacity, maxSafeTorque) * (0.35 + 0.65 * engagement)
+        * antiStall * (needsBlip ? 0.3 : 1);
       locked = this.couple(dt, this.currentGear, capacity);
       const atLowSpeed = targetRPM <= e.idleRPM * 1.1 && e.rpm < e.idleRPM * 1.2;
 
       // Trigger crisp shift pop right when the new gear catches
-      if (this.shiftPopPending && (locked || this.shiftElapsed >= releaseTime + 0.045)) {
-        e.createPop('shift', 1.35);
+      if (this.shiftPopPending && (locked || this.shiftElapsed >= releaseTime + 0.040)) {
+        e.createPop('shift', 1.45);
         this.shiftPopPending = false;
       }
 

@@ -21,9 +21,22 @@ export class EngineRenderer {
     this.sparkParticles = [];
     this.smokeParticles = [];
 
+    // Clean animation mode for mobile/compact screens or user choice
+    // When true, all overlapping cylinder text and canvas overlays are hidden, leaving pure mechanical animation
+    this.cleanMode = false;
+
     // Resize handling
     this.resize();
     window.addEventListener('resize', () => this.resize());
+  }
+
+  setCleanMode(clean) {
+    this.cleanMode = Boolean(clean);
+  }
+
+  toggleCleanMode() {
+    this.cleanMode = !this.cleanMode;
+    return this.cleanMode;
   }
 
   resize() {
@@ -79,40 +92,50 @@ export class EngineRenderer {
     const cylinders = engine.cylinderStates;
     const totalCyls = cylinders.length;
 
-    // Decide how many cylinders to draw
-    let displayCylinders = cylinders;
-    if (this.viewMode === 'focused') {
-      displayCylinders = [cylinders[this.focusedCylIndex % totalCyls]];
+    // Mobile / Narrow screen detection: automatically hide text clutter for pure animation
+    const isMobile = w < 650 || (typeof window !== 'undefined' && window.innerWidth < 768);
+    const hideText = this.cleanMode || isMobile;
+
+    if (config.layout === 'radial' && this.viewMode !== 'focused') {
+      this.drawRadialEngine(ctx, engine, w, h, hideText);
     } else {
-      if (totalCyls > 6) {
-        displayCylinders = cylinders.slice(0, 6);
+      // Decide how many cylinders to draw
+      let displayCylinders = cylinders;
+      if (this.viewMode === 'focused') {
+        displayCylinders = [cylinders[this.focusedCylIndex % totalCyls]];
+      } else {
+        if (totalCyls > 6) {
+          displayCylinders = cylinders.slice(0, 6);
+        }
       }
+
+      const numToDraw = displayCylinders.length;
+      const cylSpacing = w / (numToDraw + 1);
+
+      // Draw each cylinder unit using visualCrankAngle
+      displayCylinders.forEach((cyl, i) => {
+        const centerX = cylSpacing * (i + 1);
+        const isVEngine = config.layout === 'v' && config.bankAngle > 0;
+        const bankAngleDeg = isVEngine ? (cyl.index % 2 === 0 ? -config.bankAngle / 2 : config.bankAngle / 2) : 0;
+
+        ctx.save();
+        ctx.translate(centerX, h * 0.55);
+        if (bankAngleDeg !== 0) {
+          ctx.rotate((bankAngleDeg * Math.PI) / 180);
+        }
+
+        this.drawSingleCylinder(ctx, cyl, engine, numToDraw === 1 ? 1.3 : (numToDraw > 4 ? 0.75 : 0.95), this.visualCrankAngle, hideText);
+        ctx.restore();
+      });
     }
-
-    const numToDraw = displayCylinders.length;
-    const cylSpacing = w / (numToDraw + 1);
-
-    // Draw each cylinder unit using visualCrankAngle
-    displayCylinders.forEach((cyl, i) => {
-      const centerX = cylSpacing * (i + 1);
-      const isVEngine = config.layout === 'v' && config.bankAngle > 0;
-      const bankAngleDeg = isVEngine ? (cyl.index % 2 === 0 ? -config.bankAngle / 2 : config.bankAngle / 2) : 0;
-
-      ctx.save();
-      ctx.translate(centerX, h * 0.55);
-      if (bankAngleDeg !== 0) {
-        ctx.rotate((bankAngleDeg * Math.PI) / 180);
-      }
-
-      this.drawSingleCylinder(ctx, cyl, engine, numToDraw === 1 ? 1.3 : (numToDraw > 4 ? 0.75 : 0.95), this.visualCrankAngle);
-      ctx.restore();
-    });
 
     // Update and draw floating fire/spark particles
     this.renderParticles(ctx);
 
-    // Draw Telemetry Overlay inside canvas
-    this.drawCanvasOverlay(ctx, engine, drivetrain, w, h);
+    // Draw Telemetry Overlay inside canvas (clean animation hides text)
+    if (!hideText) {
+      this.drawCanvasOverlay(ctx, engine, drivetrain, w, h);
+    }
   }
 
   drawTechnicalGrid(ctx, w, h) {
@@ -135,8 +158,311 @@ export class EngineRenderer {
     ctx.restore();
   }
 
+  // Draw Radial Star Engine cross-section (7 cylinders radiating 360°)
+  drawRadialEngine(ctx, engine, w, h, hideText = false) {
+    const cylinders = engine.cylinderStates;
+    const numCyls = cylinders.length;
+    const cx = w * 0.5;
+    const cy = h * 0.52;
+
+    // Responsive scaling
+    const maxRadius = Math.min(w * 0.46, h * 0.45);
+    const scale = Math.max(0.6, Math.min(1.4, maxRadius / 175));
+
+    const crankRadius = 24 * scale;
+    const rodLength = 80 * scale;
+    const bore = 34 * scale;
+    const halfBore = bore / 2;
+    const pistonHeight = 26 * scale;
+    const outerCylDist = rodLength + crankRadius + 24 * scale;
+
+    // Crankpin location (Visual angle)
+    const crankAngleRad = (this.visualCrankAngle * Math.PI) / 180;
+    const pinX = cx + Math.sin(crankAngleRad) * crankRadius;
+    const pinY = cy - Math.cos(crankAngleRad) * crankRadius;
+
+    // 1. Draw Central Crankcase Base Housing
+    ctx.save();
+    ctx.fillStyle = '#0f172a';
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 3 * scale;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 46 * scale, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Crankcase perimeter stud bolts
+    for (let b = 0; b < 14; b++) {
+      const bAngle = (b / 14) * Math.PI * 2;
+      const bx = cx + Math.cos(bAngle) * 40 * scale;
+      const by = cy + Math.sin(bAngle) * 40 * scale;
+      ctx.fillStyle = '#64748b';
+      ctx.beginPath();
+      ctx.arc(bx, by, 2 * scale, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Crankshaft counterweight rotating opposite to the crankpin
+    const cwAngle = crankAngleRad + Math.PI;
+    ctx.fillStyle = '#1e293b';
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 38 * scale, cwAngle - 0.7, cwAngle + 0.7);
+    ctx.lineTo(cx + Math.cos(cwAngle) * 12 * scale, cy + Math.sin(cwAngle) * 12 * scale);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    // Calculate kinematic wristpin positions for each cylinder
+    const cylKinematics = [];
+    for (let i = 0; i < numCyls; i++) {
+      // Cylinders arranged evenly around 360°, cylinder 0 points straight UP (-90°)
+      const cylAngleRad = (i * (360 / numCyls) - 90) * (Math.PI / 180);
+      const ux = Math.cos(cylAngleRad);
+      const uy = Math.sin(cylAngleRad);
+
+      const dx = pinX - cx;
+      const dy = pinY - cy;
+      const proj = dx * ux + dy * uy;
+      const perpSq = (dx * dx + dy * dy) - proj * proj;
+      const dist = proj + Math.sqrt(Math.max(0, rodLength * rodLength - perpSq));
+
+      const wristX = cx + dist * ux;
+      const wristY = cy + dist * uy;
+
+      // Dynamic phase angle and stroke for this cylinder
+      const cyl = cylinders[i];
+      const visualAngle = (this.visualCrankAngle + cyl.firingOffset) % 720;
+      let stroke = 'intake';
+      if (visualAngle >= 180 && visualAngle < 360) stroke = 'compression';
+      else if (visualAngle >= 360 && visualAngle < 540) stroke = 'power';
+      else if (visualAngle >= 540) stroke = 'exhaust';
+
+      cylKinematics.push({
+        index: i,
+        cyl,
+        angleRad: cylAngleRad,
+        ux, uy,
+        dist,
+        wristX, wristY,
+        visualAngle,
+        stroke,
+        isFiring: stroke === 'power' && visualAngle < 430 && engine.isIgnitionOn
+      });
+    }
+
+    // 2. Draw Cylinder Barrels, Cooling Fins, Cylinder Heads & Combustion Fireballs
+    cylKinematics.forEach(k => {
+      ctx.save();
+      ctx.translate(cx, cy);
+      // Rotate so cylinder points along negative Y (upwards in local frame)
+      ctx.rotate(k.angleRad + Math.PI / 2);
+
+      const topY = -outerCylDist;
+      const wristLocalY = -k.dist;
+      const crownLocalY = wristLocalY - pistonHeight * 0.5;
+
+      // Air cooling fins on cylinder barrel
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 1.8 * scale;
+      const numFins = 6;
+      for (let f = 0; f < numFins; f++) {
+        const finY = topY + 16 * scale + f * (8.5 * scale);
+        const finWidth = bore + 18 * scale;
+        ctx.beginPath();
+        ctx.moveTo(-finWidth / 2, finY);
+        ctx.lineTo(finWidth / 2, finY);
+        ctx.stroke();
+      }
+
+      // Cylinder Barrel Sleeve Walls
+      ctx.fillStyle = '#1e293b';
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = 2 * scale;
+      ctx.fillRect(-halfBore, topY, bore, outerCylDist - 38 * scale);
+      ctx.strokeRect(-halfBore, topY, bore, outerCylDist - 38 * scale);
+
+      // Cylinder Head with Rocker Box
+      ctx.fillStyle = '#334155';
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 2 * scale;
+      ctx.beginPath();
+      ctx.roundRect(-halfBore - 6 * scale, topY - 14 * scale, bore + 12 * scale, 16 * scale, 4 * scale);
+      ctx.fill();
+      ctx.stroke();
+
+      // Spark Plug
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillRect(-2 * scale, topY - 22 * scale, 4 * scale, 9 * scale);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(-1.5 * scale, topY - 25 * scale, 3 * scale, 4 * scale);
+
+      // Combustion Fireball & Spark Arc
+      if (k.isFiring) {
+        const fireHeight = Math.max(8 * scale, crownLocalY - topY);
+        const fireGrad = ctx.createRadialGradient(0, topY + 4 * scale, 2, 0, topY + fireHeight * 0.5, fireHeight);
+        fireGrad.addColorStop(0, 'rgba(255, 255, 255, 0.98)');
+        fireGrad.addColorStop(0.25, 'rgba(255, 210, 60, 0.95)');
+        fireGrad.addColorStop(0.65, 'rgba(255, 75, 10, 0.85)');
+        fireGrad.addColorStop(1, 'rgba(200, 20, 0, 0.2)');
+
+        ctx.fillStyle = fireGrad;
+        ctx.fillRect(-halfBore + 2, topY, bore - 4, fireHeight);
+
+        // Electric Spark Arc
+        ctx.strokeStyle = '#00ffff';
+        ctx.lineWidth = 2;
+        ctx.shadowColor = '#00ffff';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.moveTo(0, topY);
+        ctx.lineTo((Math.random() - 0.5) * 6 * scale, topY + 6 * scale);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Spark particles
+        if (Math.random() < 0.4) {
+          this.sparkParticles.push({
+            x: k.wristX + (Math.random() - 0.5) * 10,
+            y: k.wristY + (Math.random() - 0.5) * 10,
+            vx: (Math.random() - 0.5) * 40,
+            vy: (Math.random() - 0.5) * 40,
+            life: 0.18,
+            color: '#fbbf24'
+          });
+        }
+      }
+
+      // Piston Assembly
+      ctx.fillStyle = '#cbd5e1';
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 1.5 * scale;
+      ctx.beginPath();
+      ctx.roundRect(-halfBore + 1.5, crownLocalY, bore - 3, pistonHeight, 2 * scale);
+      ctx.fill();
+      ctx.stroke();
+
+      // Piston Rings
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 1;
+      for (let r = 0; r < 2; r++) {
+        const ringY = crownLocalY + (4 + r * 3) * scale;
+        ctx.beginPath();
+        ctx.moveTo(-halfBore + 2, ringY);
+        ctx.lineTo(halfBore - 2, ringY);
+        ctx.stroke();
+      }
+
+      // Wristpin
+      ctx.fillStyle = '#64748b';
+      ctx.beginPath();
+      ctx.arc(0, wristLocalY, 4 * scale, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Text Badge (Only when !hideText)
+      if (!hideText) {
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.font = `700 ${8.5 * scale}px Rajdhani, sans-serif`;
+        ctx.fillStyle = k.stroke === 'power' ? '#f97316' : k.stroke === 'compression' ? '#a855f7' : k.stroke === 'exhaust' ? '#ef4444' : '#38bdf8';
+        ctx.fillText(`#${k.index + 1}`, 0, topY - 17 * scale);
+        ctx.restore();
+      }
+
+      ctx.restore();
+    });
+
+    // 3. Draw Connecting Rods (Master Rod for Cyl 0, Articulated Rods for Cyl 1..6)
+    const master = cylKinematics[0];
+
+    // Articulated Rods (Cylinders 1..6)
+    for (let i = 1; i < numCyls; i++) {
+      const k = cylKinematics[i];
+      // Knuckle pin offset on the master rod hub
+      const knuckleAngle = k.angleRad;
+      const knuckleRadius = 13 * scale;
+      const kx = pinX + Math.cos(knuckleAngle) * knuckleRadius;
+      const ky = pinY + Math.sin(knuckleAngle) * knuckleRadius;
+
+      // Draw Articulated Rod Beam
+      ctx.save();
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 5 * scale;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(kx, ky);
+      ctx.lineTo(k.wristX, k.wristY);
+      ctx.stroke();
+
+      // Rod center groove
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 2 * scale;
+      ctx.beginPath();
+      ctx.moveTo(kx, ky);
+      ctx.lineTo(k.wristX, k.wristY);
+      ctx.stroke();
+
+      // Knuckle Pin
+      ctx.fillStyle = '#cbd5e1';
+      ctx.beginPath();
+      ctx.arc(kx, ky, 3.5 * scale, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Master Rod (Cylinder 0)
+    ctx.save();
+    // Master Rod Big-End Hub Ring (houses the crankpin bearing + knuckle pins)
+    ctx.fillStyle = '#64748b';
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 2.5 * scale;
+    ctx.beginPath();
+    ctx.arc(pinX, pinY, 16 * scale, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Master Rod Beam to Cylinder 0 Wristpin
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 7 * scale;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(pinX, pinY);
+    ctx.lineTo(master.wristX, master.wristY);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 3 * scale;
+    ctx.beginPath();
+    ctx.moveTo(pinX, pinY);
+    ctx.lineTo(master.wristX, master.wristY);
+    ctx.stroke();
+
+    // Master Crankpin Cap
+    ctx.fillStyle = '#e2e8f0';
+    ctx.beginPath();
+    ctx.arc(pinX, pinY, 7 * scale, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Center Crankshaft Hub
+    ctx.fillStyle = '#475569';
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 2 * scale;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 14 * scale, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 6 * scale, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
   // Draw a single complete cylinder assembly
-  drawSingleCylinder(ctx, cyl, engine, scale = 1.0, visualCrankAngle = 0) {
+  drawSingleCylinder(ctx, cyl, engine, scale = 1.0, visualCrankAngle = 0, hideText = false) {
     // Mechanical Dimensions
     const bore = 70 * scale; // cylinder bore diameter
     const strokeHeight = 110 * scale;
@@ -227,8 +553,10 @@ export class EngineRenderer {
     // 7. Draw Crankshaft Web & Counterweight
     this.drawCrankshaft(ctx, 0, crankCenterY, crankPinX, crankPinY, crankRadius, scale);
 
-    // 8. Cylinder Label & Current 4-Stroke Cycle Badge
-    this.drawCylinderInfo(ctx, cylinderTopY - 45 * scale, visualCyl, scale);
+    // 8. Cylinder Label & Current 4-Stroke Cycle Badge (hidden in clean animation mode)
+    if (!hideText) {
+      this.drawCylinderInfo(ctx, cylinderTopY - 45 * scale, visualCyl, scale);
+    }
   }
 
   // Draw Cylinder Walls with Heat Glow

@@ -14,7 +14,8 @@ export const VEHICLE_PROFILES = {
   v8_flat: { mass: 1550, dragArea: 0.62 },
   v10: { mass: 1550, dragArea: 0.64 },
   v12: { mass: 1750, dragArea: 0.65 },
-  w16: { mass: 2050, dragArea: 0.76 }
+  w16: { mass: 2050, dragArea: 0.76 },
+  radial_7: { mass: 650, dragArea: 0.50 }
 };
 
 export function converterCharacteristics(speedRatio) {
