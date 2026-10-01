@@ -250,18 +250,19 @@ export class Drivetrain {
       locked = this.couple(dt, this.previousGear, peak * 2 * (1 - release));
     } else {
       this.currentGear = this.targetGear;
-      // Aggressive racing clutch pull: rapid bite down to target gear with bounded pitch rate
-      const engagement = clamp((this.shiftElapsed - releaseTime) / 0.045, 0, 1);
+      // Natural racing clutch bite: rapid progressive compliance curve into target gear
+      const biteProgress = clamp((this.shiftElapsed - releaseTime) / 0.040, 0, 1);
+      const biteCurve = 1 - Math.exp(-biteProgress * 4.0);
       const antiStall = clamp((e.rpm - e.idleRPM * 0.7) / (e.idleRPM * 0.5), 0, 1);
       const maxSafeTorque = (e.redlineRPM * 0.022 * RPM_PER_RAD) * e.inertia / dt;
       const nominalCapacity = peak * (this.mode === 'at' ? 3.0 : 4.5);
-      const capacity = Math.min(nominalCapacity, maxSafeTorque) * (0.35 + 0.65 * engagement)
+      const capacity = Math.min(nominalCapacity, maxSafeTorque) * (0.25 + 0.75 * biteCurve)
         * antiStall * (needsBlip ? 0.3 : 1);
       locked = this.couple(dt, this.currentGear, capacity);
       const atLowSpeed = targetRPM <= e.idleRPM * 1.1 && e.rpm < e.idleRPM * 1.2;
 
       // Trigger crisp shift pop right when the new gear catches
-      if (this.shiftPopPending && (locked || this.shiftElapsed >= releaseTime + 0.040)) {
+      if (this.shiftPopPending && (locked || this.shiftElapsed >= releaseTime + 0.038)) {
         e.createPop('shift', 1.45);
         this.shiftPopPending = false;
       }

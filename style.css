@@ -327,6 +327,14 @@ body {
   box-shadow: 0 0 12px var(--accent-cyan-glow);
 }
 
+/* Sticky Mobile Engine Viewport Wrapper */
+.sticky-engine-viewport {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+}
+
 /* Canvas Wrappers */
 .canvas-wrapper {
   width: 100%;
@@ -1437,34 +1445,86 @@ input[type="range"] {
     width: 75px;
   }
 
-  /* Visual Panel & Canvases */
-  .visual-panel {
-    padding: 14px 10px;
+  /* Simulator Grid on Mobile */
+  .sim-grid {
+    display: flex;
+    flex-direction: column;
+    position: relative;
     gap: 12px;
   }
 
-  .panel-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
+  /* Make visual-panel transparent so sticky-engine-viewport sticks across the whole mobile scroll */
+  .visual-panel {
+    display: contents;
   }
 
-  .view-controls {
+  /* Sticky Mobile Engine Viewport (Fixed at top ~35vh during scroll) */
+  .sticky-engine-viewport {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
     display: flex;
-    width: 100%;
-    gap: 4px;
+    flex-direction: column;
+    gap: 0;
+    background: rgba(11, 15, 23, 0.96);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border-glass);
+    border-bottom: 2px solid var(--accent-cyan);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85);
+    margin-bottom: 8px;
+    overflow: hidden;
   }
 
-  .view-btn {
-    flex: 1 1 0;
-    text-align: center;
-    padding: 6px 8px;
-    font-size: 0.78rem;
+  .sticky-engine-viewport .panel-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(15, 23, 42, 0.88);
+    gap: 6px;
+  }
+
+  .sticky-engine-viewport .panel-title-group h2 {
+    font-size: 0.80rem;
+    color: var(--accent-cyan);
+    margin: 0;
+  }
+
+  .sticky-engine-viewport .panel-tag {
+    display: none;
+  }
+
+  .sticky-engine-viewport .view-controls {
+    display: flex;
+    gap: 3px;
+    width: auto;
+  }
+
+  .sticky-engine-viewport .view-btn {
+    padding: 4px 7px;
+    font-size: 0.70rem;
+    flex: initial;
     white-space: nowrap;
   }
 
-  .engine-canvas-box {
-    height: 300px;
+  .sticky-engine-viewport .engine-canvas-box {
+    height: 34vh;
+    min-height: 210px;
+    max-height: 280px;
+    border-radius: 0;
+    border: none;
+  }
+
+  .slowmo-control-bar,
+  .exhaust-stage-card,
+  .dyno-telemetry-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-glass);
+    border-radius: 12px;
+    padding: 12px;
   }
 
   .lower-visual-row {

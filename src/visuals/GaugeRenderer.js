@@ -85,7 +85,7 @@ export class GaugeRenderer {
       this.exhaustId = engine.exhaust.id;
     }
     this.consumePopEvents(popEvents);
-    this.renderTachometer(engine, drivetrain);
+    this.renderTachometer(engine, drivetrain, dt);
     this.renderExhaustPipe(engine, dt);
   }
 
@@ -98,13 +98,33 @@ export class GaugeRenderer {
   }
 
   // Render Racing Tachometer
-  renderTachometer(engine, drivetrain) {
+  renderTachometer(engine, drivetrain, dt = 1 / 60) {
     if (!this.tachoCtx) return;
     const ctx = this.tachoCtx;
     const s = this.tachoSize;
     const cx = s / 2;
     const cy = s / 2;
     const radius = s * 0.42;
+
+    // Physical stepper motor needle tracking:
+    // Natural frequency omega_n = 46 rad/s, damping ratio zeta = 0.84
+    // Gives immediate, razor-fast response with authentic mechanical settling on rapid RPM drops
+    if (this.needleRPM === undefined) {
+      this.needleRPM = engine.rpm;
+      this.needleVelocity = 0;
+    }
+    const targetRPM = engine.isIgnitionOn ? engine.rpm : 0;
+    const stepDt = Math.max(0.001, Math.min(0.05, Number(dt) || 0.016));
+    const omega = 46;
+    const zeta = 0.84;
+    const delta = targetRPM - this.needleRPM;
+    const accel = omega * omega * delta - 2 * zeta * omega * this.needleVelocity;
+    this.needleVelocity += accel * stepDt;
+    this.needleRPM += this.needleVelocity * stepDt;
+    if (!Number.isFinite(this.needleRPM) || Math.abs(this.needleRPM - targetRPM) > 18000) {
+      this.needleRPM = targetRPM;
+      this.needleVelocity = 0;
+    }
 
     ctx.clearRect(0, 0, s, s);
 
@@ -210,8 +230,8 @@ export class GaugeRenderer {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
     ctx.fillText('RPM x1000', cx, cy - innerRadius * 0.22);
 
-    // Dynamic Needle (sweeping cleanly across tick marks)
-    const currentRpmRatio = Math.min(1.05, engine.rpm / maxRPM);
+    // Dynamic Needle (sweeping cleanly across tick marks with physical stepper inertia)
+    const currentRpmRatio = Math.min(1.05, Math.max(0, this.needleRPM / maxRPM));
     const needleAngle = startAngle + currentRpmRatio * totalAngle;
 
     ctx.save();

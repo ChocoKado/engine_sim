@@ -64,16 +64,24 @@
     <main class="sim-grid">
       <!-- Left Column: Visual Engine Cutaway + Exhaust Tailpipe + Telemetry -->
       <section class="visual-panel glass-card">
-        <!-- Engine View Header -->
-        <div class="panel-header">
-          <div class="panel-title-group">
-            <span class="panel-tag">INTERNAL COMBUSTION DYNAMICS</span>
-            <h2>四行程引擎剖面動態模擬 (Mechanical Cutaway)</h2>
+        <!-- Sticky Engine Viewport (Sticky on Mobile, normal on Desktop) -->
+        <div class="sticky-engine-viewport">
+          <!-- Engine View Header -->
+          <div class="panel-header">
+            <div class="panel-title-group">
+              <span class="panel-tag">INTERNAL COMBUSTION DYNAMICS</span>
+              <h2>四行程引擎剖面動態模擬 (Mechanical Cutaway)</h2>
+            </div>
+            <div class="view-controls">
+              <button id="btn-view-multi" class="view-btn active" title="所有汽缸排列全景">多缸全景</button>
+              <button id="btn-view-focus" class="view-btn" title="單缸細部衝程放大切換">單缸特寫</button>
+              <button id="btn-toggle-clean" class="view-btn" title="切換純機械動畫 / 文字標籤">純動畫模式</button>
+            </div>
           </div>
-          <div class="view-controls">
-            <button id="btn-view-multi" class="view-btn active" title="所有汽缸排列全景">多缸全景</button>
-            <button id="btn-view-focus" class="view-btn" title="單缸細部衝程放大切換">單缸特寫</button>
-            <button id="btn-toggle-clean" class="view-btn" title="切換純機械動畫 / 文字標籤">純動畫模式</button>
+
+          <!-- Engine Mechanical Canvas -->
+          <div class="canvas-wrapper engine-canvas-box">
+            <canvas id="engine-canvas"></canvas>
           </div>
         </div>
 
@@ -96,11 +104,6 @@
             </div>
             <input type="range" id="slowmo-slider" min="5" max="100" value="100" title="自訂機械動畫播放速度 (5% ~ 100%)">
           </div>
-        </div>
-
-        <!-- Engine Mechanical Canvas -->
-        <div class="canvas-wrapper engine-canvas-box">
-          <canvas id="engine-canvas"></canvas>
         </div>
 
         <!-- Lower Section: Exhaust Tailpipe & Flame Spit + Dyno Telemetry -->
