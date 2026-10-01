@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HYPERENGINE // 擬真引擎與排氣聲浪模擬系統</title>
+  <meta name="description" content="全能真實引擎與排氣聲浪模擬網站。支援1缸至16缸、直列/V型/W型架構、可調排氣量與紅線轉速，搭配原廠、SC-Project、蠍子管及直通管真實物理聲學合成與機械動態模擬。">
+  <!-- Google Fonts: Orbitron, Rajdhani, Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;700;800;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Navigation / Cockpit Header -->
+    <header class="app-header">
+      <div class="logo-group">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#00f0ff" stroke-width="2">
+            <circle cx="12" cy="12" r="9"/>
+            <path d="M12 6v6l4 2"/>
+            <circle cx="12" cy="12" r="2" fill="#00f0ff"/>
+          </svg>
+        </div>
+        <div class="logo-text">
+          <h1 class="brand-title">HYPER<span>ENGINE</span></h1>
+          <span class="brand-sub">ACOUSTIC & MECHANICAL SIMULATOR // 擬真聲浪與機械動態</span>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <div id="engine-status-badge" class="status-badge standby">STANDBY</div>
+        <button id="btn-start-engine" class="engine-start-btn" title="啟動引擎 / 熄火 (快捷鍵: X)">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
+          </svg>
+          <span>啟動引擎 (START)</span>
+        </button>
+      </div>
+
+      <div class="header-right">
+        <!-- Audio Volume Control -->
+        <div class="volume-control">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+          </svg>
+          <input type="range" id="master-volume" min="0" max="100" value="80" title="主音量">
+        </div>
+
+        <!-- Custom Keybindings Button -->
+        <button id="btn-open-keybinds" class="icon-action-btn" title="自訂鍵位控制">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="4" width="20" height="16" rx="2"/>
+            <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"/>
+          </svg>
+          <span>自訂鍵位</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Simulator Grid Layout -->
+    <main class="sim-grid">
+      <!-- Left Column: Visual Engine Cutaway + Exhaust Tailpipe + Telemetry -->
+      <section class="visual-panel glass-card">
+        <!-- Engine View Header -->
+        <div class="panel-header">
+          <div class="panel-title-group">
+            <span class="panel-tag">INTERNAL COMBUSTION DYNAMICS</span>
+            <h2>四行程引擎剖面動態模擬 (Mechanical Cutaway)</h2>
+          </div>
+          <div class="view-controls">
+            <button id="btn-view-multi" class="view-btn active" title="所有汽缸排列全景">多缸全景</button>
+            <button id="btn-view-focus" class="view-btn" title="單缸細部衝程放大切換">單缸特寫</button>
+          </div>
+        </div>
+
+        <!-- Slow-Motion Speed Control Bar for Visual Engine -->
+        <div class="slowmo-control-bar">
+          <div class="slowmo-label-group">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--accent-cyan)" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+            <span class="slowmo-title">機械動作慢速觀察:</span>
+            <span id="slowmo-badge" class="slowmo-badge">1.0x (即時速度)</span>
+          </div>
+
+          <div class="slowmo-actions-group">
+            <div class="slowmo-presets">
+              <button class="slowmo-btn" data-speed="0.10">0.1x (超慢速)</button>
+              <button class="slowmo-btn" data-speed="0.25">0.25x</button>
+              <button class="slowmo-btn" data-speed="0.50">0.5x</button>
+              <button class="slowmo-btn active" data-speed="1.00">1.0x (即時)</button>
+            </div>
+            <input type="range" id="slowmo-slider" min="5" max="100" value="100" title="自訂機械動畫播放速度 (5% ~ 100%)">
+          </div>
+        </div>
+
+        <!-- Engine Mechanical Canvas -->
+        <div class="canvas-wrapper engine-canvas-box">
+          <canvas id="engine-canvas"></canvas>
+        </div>
+
+        <!-- Lower Section: Exhaust Tailpipe & Flame Spit + Dyno Telemetry -->
+        <div class="lower-visual-row">
+          <!-- Exhaust Tailpipe Visualizer -->
+          <div class="exhaust-stage-card">
+            <div class="sub-header">
+              <span class="dot-live"></span>
+              <h3>排氣管尾段即時回火噴火 (Exhaust & Overrun Flame)</h3>
+            </div>
+            <div class="canvas-wrapper exhaust-canvas-box">
+              <canvas id="exhaust-canvas"></canvas>
+            </div>
+          </div>
+
+          <!-- Live Dyno Telemetry Card -->
+          <div class="dyno-telemetry-card">
+            <div class="sub-header">
+              <span class="dot-telemetry"></span>
+              <h3>即時輸出動力 (Dyno Telemetry)</h3>
+            </div>
+            <div class="dyno-gauges-grid">
+              <div class="telemetry-gauge">
+                <span class="telemetry-label">即時馬力 HORSEPOWER</span>
+                <div id="live-hp-val" class="telemetry-number cyan-glow">0 HP</div>
+                <div class="telemetry-peak">最大馬力: <strong id="spec-peak-hp">-- HP</strong></div>
+              </div>
+
+              <div class="telemetry-gauge">
+                <span class="telemetry-label">即時扭力 TORQUE</span>
+                <div id="live-torque-val" class="telemetry-number amber-glow">0 Nm</div>
+                <div class="telemetry-peak">最大扭力: <strong id="spec-peak-torque">-- Nm</strong></div>
+              </div>
+
+              <div class="telemetry-gauge">
+                <span class="telemetry-label">燃燒峰值壓力 CYL PRESSURE</span>
+                <div id="live-pressure-val" class="telemetry-number magenta-glow">1.0 bar</div>
+                <div class="telemetry-peak">歧管壓力: <strong id="spec-map-val">1.00 bar</strong></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: Cockpit Tachometer, Controls & Tuning Panel -->
+      <aside class="control-panel">
+        <!-- Racing Cockpit Cluster Card -->
+        <div class="cluster-card glass-card">
+          <div class="cluster-header">
+            <span class="cluster-title">COCKPIT INSTRUMENTS // 賽車儀表</span>
+            <div id="hud-gear-display" class="gear-badge neutral">N</div>
+          </div>
+
+          <!-- Dedicated Virtual Cockpit Digital HUD (Unobstructed by Needle!) -->
+          <div class="cockpit-hud-screen">
+            <div class="hud-box hud-speed-box">
+              <span class="hud-label">SPEED 時速</span>
+              <div class="hud-digits-row">
+                <span id="hud-digital-speed" class="hud-speed-digits">0</span>
+                <span class="hud-speed-unit">KM/H</span>
+              </div>
+            </div>
+
+            <div class="hud-divider"></div>
+
+            <div class="hud-box hud-rpm-box">
+              <span class="hud-label">ENGINE SPEED 引擎轉速</span>
+              <div class="hud-digits-row">
+                <span id="hud-digital-rpm" class="hud-rpm-digits">1100</span>
+                <span class="hud-rpm-unit">RPM</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tachometer Canvas -->
+          <div class="tacho-wrapper">
+            <canvas id="tachometer-canvas"></canvas>
+          </div>
+
+          <!-- Transmission Controls -->
+          <div class="trans-section">
+            <div class="trans-mode-bar">
+              <button class="trans-btn active" data-mode="at">全自排 (AT Auto)</button>
+              <button class="trans-btn" data-mode="amt">自手排 (AMT Manual)</button>
+            </div>
+
+            <!-- AT Selector (P-R-N-D) -->
+            <div id="at-controls" class="shifter-group at-shifter">
+              <button class="at-btn" data-pos="P">P (駐車)</button>
+              <button class="at-btn" data-pos="R">R (倒檔)</button>
+              <button class="at-btn active" data-pos="N">N (空檔)</button>
+              <button class="at-btn" data-pos="D">D (自動換檔)</button>
+            </div>
+
+            <!-- AMT Mode Controls (Paddles + Gear Buttons) -->
+            <div id="amt-controls" class="amt-container" style="display: none;">
+              <!-- Paddle Shifters -->
+              <div class="paddle-shifter-box">
+                <button id="paddle-left" class="paddle-btn paddle-down" title="退檔 / 撥片降檔 (Q)">
+                  <span class="paddle-symbol">−</span>
+                  <span class="paddle-sub">DOWN (Q)</span>
+                </button>
+                <div class="seq-info">AMT 換檔撥片</div>
+                <button id="paddle-right" class="paddle-btn paddle-up" title="升檔 / 撥片升檔 (E)">
+                  <span class="paddle-symbol">+</span>
+                  <span class="paddle-sub">UP (E)</span>
+                </button>
+              </div>
+
+              <!-- AMT Direct Gear Buttons (R, N, 1-6) -->
+              <div class="shifter-group amt-shifter">
+                <button class="amt-gear-btn" data-gear="-1">R</button>
+                <button class="amt-gear-btn active" data-gear="0">N</button>
+                <button class="amt-gear-btn" data-gear="1">1</button>
+                <button class="amt-gear-btn" data-gear="2">2</button>
+                <button class="amt-gear-btn" data-gear="3">3</button>
+                <button class="amt-gear-btn" data-gear="4">4</button>
+                <button class="amt-gear-btn" data-gear="5">5</button>
+                <button class="amt-gear-btn" data-gear="6">6</button>
+              </div>
+            </div>
+          </div>
+
+          <p id="shift-message" class="meta-desc" role="status" aria-live="polite"></p>
+
+          <!-- Interactive Pedals & Throttle Slider -->
+          <div class="pedals-control-box">
+            <div class="pedals-row">
+              <!-- Brake Pedal (Red) -->
+              <div id="pedal-brake" class="pedal-unit brake-pedal" title="按住煞車 (S / ↓)">
+                <div class="pedal-tread">
+                  <div class="tread-line"></div>
+                  <div class="tread-line"></div>
+                  <div class="tread-line"></div>
+                </div>
+                <span class="pedal-text">BRAKE (煞車)</span>
+                <span class="pedal-key-hint">按住 [S] 減速降轉</span>
+              </div>
+
+              <!-- Gas / Accelerator Pedal (Cyan) -->
+              <div id="pedal-gas" class="pedal-unit gas-pedal" title="按住補油門 (W / ↑)">
+                <div class="pedal-tread">
+                  <div class="tread-line"></div>
+                  <div class="tread-line"></div>
+                  <div class="tread-line"></div>
+                  <div class="tread-line"></div>
+                </div>
+                <span class="pedal-text">GAS (油門)</span>
+                <span class="pedal-key-hint">按住 [W] 拉轉加速</span>
+              </div>
+            </div>
+
+            <!-- Continuous Throttle Slider -->
+            <div class="continuous-throttle-row">
+              <div class="slider-label-group">
+                <span>持續開度油門 (Continuous Throttle)</span>
+                <span id="throttle-val">0%</span>
+              </div>
+              <input type="range" id="throttle-slider" min="0" max="100" value="0">
+            </div>
+          </div>
+        </div>
+
+        <!-- Engine & Exhaust Configuration Panel -->
+        <div class="tuning-card glass-card">
+          <div class="tuning-header">
+            <span class="tuning-title">SPECIFICATIONS & TUNING // 引擎與排氣配置</span>
+          </div>
+
+          <!-- Engine Type Selection -->
+          <div class="config-field">
+            <label for="engine-select">汽缸排列與引擎型號 (Engine Architecture)</label>
+            <div class="select-wrapper">
+              <select id="engine-select">
+                <!-- Dynamically populated from ENGINE_CONFIGS -->
+              </select>
+            </div>
+          </div>
+
+          <!-- Engine Description Specs Tag -->
+          <div class="engine-meta-card">
+            <div class="meta-tags">
+              <span id="tag-cylinders" class="meta-tag">4 汽缸</span>
+              <span id="tag-layout" class="meta-tag">INLINE 架構</span>
+              <span id="tag-sound" class="meta-tag">聲浪風格: screamer_4</span>
+            </div>
+            <p id="engine-desc-text" class="meta-desc"></p>
+          </div>
+
+          <!-- Sliders: Displacement & Redline -->
+          <div class="sliders-grid">
+            <div class="slider-group">
+              <div class="slider-label-group">
+                <span>排氣量 (Displacement)</span>
+                <span id="displacement-val">1000 cc</span>
+              </div>
+              <input type="range" id="displacement-slider" min="125" max="8000" step="25" value="1000">
+            </div>
+
+            <div class="slider-group">
+              <div class="slider-label-group">
+                <span>最高紅線轉速 (Redline RPM)</span>
+                <span id="redline-val">14500 RPM</span>
+              </div>
+              <input type="range" id="redline-slider" min="5000" max="18000" step="250" value="14500">
+            </div>
+          </div>
+
+          <!-- Sound Character & Acoustic Warmth Tuning -->
+          <div class="config-field">
+            <div class="slider-label-group">
+              <label for="vehicle-mass-slider">車輛總重（含駕駛）</label>
+              <span id="vehicle-mass-val">285 kg</span>
+            </div>
+            <input type="range" id="vehicle-mass-slider" min="180" max="3000" step="5" value="285">
+            <p class="meta-desc">切換引擎會套用對應的模擬車重；可自行加重，體驗負載對起步與拉轉的影響。</p>
+          </div>
+
+          <div class="config-field">
+            <label>聲浪音質核心與濾波 (Acoustic Tone & Anti-Harshness)</label>
+            <div class="sound-profiles-grid">
+              <button class="sound-profile-btn active" data-profile="deep">
+                <span class="profile-name">純淨深沉物理聲浪 (Deep Pulse)</span>
+                <span class="profile-sub">低頻飽滿、溫潤無刺耳雜音 (推薦)</span>
+              </button>
+              <button class="sound-profile-btn" data-profile="screamer">
+                <span class="profile-name">賽道高亢狂嚎 (Sport Screamer)</span>
+                <span class="profile-sub">高轉共鳴更開闊、柔化高頻</span>
+              </button>
+              <button class="sound-profile-btn" data-profile="muscle">
+                <span class="profile-name">美式渾厚重低音 (Muscle Low-End)</span>
+                <span class="profile-sub">次低頻重砲打擊、胸腔共振</span>
+              </button>
+            </div>
+
+            <div class="slider-group" style="margin-top: 8px;">
+              <div class="slider-label-group">
+                <span>音色溫潤度 / 消除高頻尖銳 (Acoustic Warmth / Low-Pass Filter)</span>
+                <span id="warmth-val">85% (深沉溫潤)</span>
+              </div>
+              <input type="range" id="warmth-slider" min="0" max="100" value="85" title="向右提高溫潤度，徹底消除刺耳高頻雜音">
+            </div>
+          </div>
+
+          <!-- Exhaust System Selector -->
+          <div class="config-field">
+            <label>排氣管系統配置 (Exhaust System Selection)</label>
+            <div class="exhaust-cards-grid">
+              <!-- OEM -->
+              <div class="exhaust-card" data-exhaust="oem">
+                <div class="exhaust-card-header">
+                  <span class="exhaust-badge oem">OEM 原廠</span>
+                  <span class="exhaust-sound-tag">低調渾厚 / 無回火</span>
+                </div>
+                <div class="exhaust-name">原廠多腔回壓管</div>
+                <div class="exhaust-desc">阻尼高、低頻飽滿、高頻抑制、巡航靜音。</div>
+              </div>
+
+              <!-- SC-Project -->
+              <div class="exhaust-card" data-exhaust="sc_project">
+                <div class="exhaust-card-header">
+                  <span class="exhaust-badge sc">SC-PROJECT</span>
+                  <span class="exhaust-sound-tag">狂暴炸裂 / 強烈回火</span>
+                </div>
+                <div class="exhaust-name">CR-T 賽道大口徑短尾</div>
+                <div class="exhaust-desc">MotoGP 激進金屬撕裂音，收油密集啪啪放炮！</div>
+              </div>
+
+              <!-- Akrapovič -->
+              <div class="exhaust-card selected" data-exhaust="akrapovic">
+                <div class="exhaust-card-header">
+                  <span class="exhaust-badge akra">AKRAPOVIČ 蠍子</span>
+                  <span class="exhaust-sound-tag">鈦合金純淨天籟</span>
+                </div>
+                <div class="exhaust-name">Titanium Evolution 蠍管</div>
+                <div class="exhaust-desc">標誌性深沉中低音、綿密純粹高轉、尊榮低鳴。</div>
+              </div>
+
+              <!-- Straight Pipe -->
+              <div class="exhaust-card" data-exhaust="straight">
+                <div class="exhaust-card-header">
+                  <span class="exhaust-badge straight">直通賽車管</span>
+                  <span class="exhaust-sound-tag">零阻力 / 槍聲放炮噴火</span>
+                </div>
+                <div class="exhaust-name">Full Straight Race 直通</div>
+                <div class="exhaust-desc">完全無消音直衝大氣，斷油狂暴噴火與槍響回震！</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <!-- Keybindings Modal -->
+    <div id="keybinds-modal" class="modal-overlay">
+      <div class="modal-dialog glass-card">
+        <div class="modal-header">
+          <h3>自訂鍵盤操作按鍵 (Custom Keybindings)</h3>
+          <button id="btn-close-keybinds" class="modal-close-btn">&times;</button>
+        </div>
+        <p class="modal-subtitle">點擊任一動作對應的按鍵標籤後，在鍵盤上按下您想設定的按鍵即可綁定。</p>
+
+        <div id="keybindings-list" class="keybindings-list">
+          <!-- Dynamically populated -->
+        </div>
+
+        <div class="modal-footer">
+          <button id="btn-reset-keybinds" class="btn-secondary">恢復預設按鍵</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>

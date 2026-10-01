@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-TW">
+<meta charset="utf-8">
+<title>HYPERENGINE 音效回歸檢查</title>
+<style>body{font:16px system-ui;background:#101722;color:#e2e8f0;padding:32px}pre{white-space:pre-wrap;line-height:1.6}</style>
+<h1>Web Audio 音效回歸檢查</h1>
+<p>使用瀏覽器離線合成實際音訊，不播放聲音。</p>
+<pre id="results">檢查中…</pre>
+<script type="module">
+import { SoundEngine } from '../src/audio/SoundEngine.js';
+import { ENGINE_CONFIGS } from '../src/physics/EngineConfigurations.js';
+import { EXHAUST_MODELS } from '../src/audio/ExhaustModels.js';
+
+const output = document.getElementById('results');
+const lines = [];
+const rms = (data, from, to) => {
+  const samples = data.slice(Math.round(from * 48000), Math.round(to * 48000));
+  return Math.sqrt(samples.reduce((sum, value) => sum + value * value, 0) / samples.length);
+};
+async function render({ mode = 'at', muted = false, stopped = false, config = ENGINE_CONFIGS.i4_flat } = {}) {
+  const context = new OfflineAudioContext(1, 57600, 48000);
+  const sound = new SoundEngine(() => context);
+  sound.setVolume(muted ? 0 : 0.5);
+  sound.setEngineConfig(config);
+  await sound.init();
+  sound.setRunning(true);
+  const state = { rpm: 6000, redlineRPM: 14500, manifoldThrottle: 0.7, isRevLimiting: false };
+  sound.update(state, config, { mode, currentGear: 1, gearRatio: 3.5 });
+  const suspended = context.suspend(0.45);
+  const rendering = context.startRendering();
+  await suspended;
+  if (stopped) sound.setRunning(false);
+  if (muted || stopped) sound.setExhaustModel(EXHAUST_MODELS.straight);
+  sound.update({ ...state, rpm: 3800 }, config, { mode, currentGear: 2, gearRatio: 2.15, shiftEnvelope: 1 });
+  await context.resume();
+  return (await rendering).getChannelData(0);
+}
+async function renderPop(exhaust, muted = false) {
+  const context = new OfflineAudioContext(1, 24000, 48000);
+  const sound = new SoundEngine(() => context);
+  sound.setVolume(muted ? 0 : 0.5);
+  sound.setExhaustModel(exhaust);
+  await sound.init();
+  sound.setRunning(true);
+  // Isolate the burst from the continuous engine layers for comparison.
+  for (const name of ['combustionGain', 'harmonicGain', 'subBassGain', 'camshaftGain', 'gearWhineGain', 'intakeGain']) {
+    sound[name].gain.cancelScheduledValues(0);
+    sound[name].gain.setValueAtTime(0, 0);
+  }
+  sound.playBackfirePop(exhaust.popIntensity, true, false, 0.15);
+  return (await context.startRendering()).getChannelData(0);
+}
+const check = (label, okay, detail) => {
+  lines.push((okay ? 'PASS ' : 'FAIL ') + label + ': ' + detail);
+  output.textContent = lines.join('\n');
+  if (!okay) throw new Error(label);
+};
+try {
+  for (const mode of ['at', 'amt']) {
+    const data = await render({ mode });
+    const before = rms(data, 0.3, 0.4);
+    let minimum = Infinity;
+    for (let t = 0.48; t < 0.8; t += 0.02) minimum = Math.min(minimum, rms(data, t, t + 0.02));
+    check(mode.toUpperCase() + ' 換檔沒有斷聲', before > 0.005 && minimum / before > 0.3,
+      '最低短窗 RMS / 換檔前 RMS = ' + (minimum / before).toFixed(3));
+  }
+  const muted = await render({ muted: true });
+  check('靜音後更換排氣管仍保持靜音', rms(muted, 0, 1.2) === 0, 'RMS = ' + rms(muted, 0, 1.2));
+  const stopped = await render({ stopped: true });
+  check('熄火後更換排氣管不會恢復聲音', rms(stopped, 1, 1.15) < 0.00001,
+    'RMS = ' + rms(stopped, 1, 1.15).toExponential(3));
+  const flat = await render();
+  const cross = await render({ config: ENGINE_CONFIGS.i4_cross });
+  const difference = flat.map((value, index) => value - cross[index]);
+  check('I4 與 CP4 點火相位產生不同音訊', rms(difference, 0.2, 0.4) > 0.01,
+    '差異 RMS = ' + rms(difference, 0.2, 0.4).toFixed(4));
+  const burstLevels = [];
+  for (const id of ['oem', 'akrapovic', 'sc_project', 'straight']) {
+    const burst = await renderPop(EXHAUST_MODELS[id]);
+    burstLevels.push(rms(burst, 0.15, 0.4));
+    check(id + ' 回火無削波', burst.every(value => Number.isFinite(value) && Math.abs(value) < 1),
+      'RMS = ' + burstLevels.at(-1).toFixed(4));
+  }
+  check('回火聲能依排氣管遞增', burstLevels[0] === 0 && burstLevels.every((level, i) => i === 0 || level > burstLevels[i - 1]),
+    'OEM < 蠍管 < SC < 直通');
+  const mutedBurst = await renderPop(EXHAUST_MODELS.straight, true);
+  check('強烈回火仍遵守靜音', rms(mutedBurst, 0, 0.5) === 0, 'RMS = ' + rms(mutedBurst, 0, 0.5));
+  lines.push('全部 11 項音訊渲染檢查通過');
+  output.textContent = lines.join('\n');
+  document.body.dataset.result = 'passed';
+} catch (error) {
+  output.textContent = lines.join('\n') + '\nERROR: ' + error.stack;
+  document.body.dataset.result = 'failed';
+}
+</script>
+</html>
