@@ -14,7 +14,7 @@ export class Drivetrain {
     this.gearRatios = { '-1': -3.2, 0: 0, 1: 3.5, 2: 2.15, 3: 1.5, 4: 1.15, 5: 0.9, 6: 0.74 };
     this.finalDrive = 3.65;
     this.tireRadius = 0.33;
-    this.tireCircumference = 2 * Math.PI * this.tireRadius;
+    this.gearingMode = this.engine.config.id === 'i4_cross' ? 'racing_close' : 'standard';
     this.configureVehicle();
     this.speedKmh = 0; // Signed road velocity: reverse is negative.
     this.brakeInput = 0;
@@ -24,10 +24,27 @@ export class Drivetrain {
     this.resetShift();
   }
 
+  setGearingMode(mode) {
+    if (['standard', 'racing_close'].includes(mode)) {
+      this.gearingMode = mode;
+      this.configureVehicle();
+    }
+  }
+
   configureVehicle() {
-    const profile = VEHICLE_PROFILES[this.engine.config.id];
+    const profile = VEHICLE_PROFILES[this.engine.config.id] || VEHICLE_PROFILES.i4_flat;
     this.vehicleMass = profile.mass;
     this.dragArea = profile.dragArea;
+    this.tireRadius = profile.tireRadius || 0.33;
+    this.finalDrive = profile.finalDrive || 3.65;
+    this.gearRatios = { ...profile.gearRatios };
+
+    if (this.gearingMode === 'racing_close' && this.engine.config.id !== 'i4_cross') {
+      this.tireRadius = 0.315;
+      this.finalDrive = 4.188;
+      this.gearRatios = { '-1': -2.5, 0: 0, 1: 2.600, 2: 2.176, 3: 1.842, 4: 1.579, 5: 1.381, 6: 1.250 };
+    }
+    this.tireCircumference = 2 * Math.PI * this.tireRadius;
   }
 
   setVehicleMass(value) {
@@ -201,7 +218,10 @@ export class Drivetrain {
     const wheelRPM = this.calcRPMFromSpeed(gear, this.speedKmh);
     const slip = (e.rpm - wheelRPM) / RPM_PER_RAD;
     const roadTorque = this.roadResistance() * this.tireRadius / ratio;
-    const gripTorque = this.vehicleMass * 9.81 * 0.95 * this.tireRadius / ratio;
+    const velocity = Math.abs(this.speedKmh) / 3.6;
+    const downforce = 0.5 * 1.225 * (this.dragArea * 0.5) * velocity * velocity;
+    const maxTireForce = this.vehicleMass * 8.95 + downforce;
+    const gripTorque = maxTireForce * this.tireRadius / ratio;
     // Simplified traction control: reduce source torque rather than clipping
     // vehicle speed or adding energy after the clutch locks.
     if (e.netTorque > gripTorque) {
@@ -214,13 +234,15 @@ export class Drivetrain {
     const syncTime = Math.abs(slip * RPM_PER_RAD) < 0.5 ? dt : Math.max(dt, 0.045);
     const required = (slip / syncTime + (e.netTorque - pump) / e.inertia
       - (turbine - roadTorque) / reflectedInertia) / (1 / e.inertia + 1 / reflectedInertia);
-    const torque = clamp(required, -capacity, Math.min(capacity, Math.max(0, gripTorque - turbine)));
+    const maxTractiveTorque = Math.max(0, gripTorque - turbine);
+    const torque = clamp(required, -capacity, Math.min(capacity, maxTractiveTorque));
     this.transmittedTorque = torque + turbine;
     this.moveVehicle(dt, this.transmittedTorque * ratio / this.tireRadius * direction, mass);
     e.advanceStep(dt, { loadTorque: torque + pump });
     this.clutchEngagement = capacity ? Math.min(1, Math.abs(torque) / (e.dynoData.maxTorque * 1.8)) : 0;
     const matching = this.calcRPMFromSpeed(gear, this.speedKmh);
-    const locked = capacity > 0 && matching > e.idleRPM * 1.08 && Math.abs(e.rpm - matching) < 0.01;
+    const lockedTolerance = this.shiftState === 'locked' ? 0.35 : 0.015;
+    const locked = capacity > 0 && matching > e.idleRPM * 1.08 && Math.abs(e.rpm - matching) < lockedTolerance;
     // Only remove floating point round-off after the torque solver synchronizes.
     if (locked) e.rpm = matching;
     return locked;
@@ -357,6 +379,7 @@ export class Drivetrain {
       speedKmh: Math.round(Math.abs(this.speedKmh)), signedSpeedKmh: this.speedKmh,
       gearRatio: Math.abs(this.gearRatios[this.currentGear]), shiftEnvelope: this.shiftEnvelope,
       isShifting: this.shiftState === 'shifting', isUpshift: this.isUpshift, message: this.lastShiftMessage,
+      vehicleMass: this.vehicleMass,
       engine: this.engine.snapshot(pops) };
   }
 }

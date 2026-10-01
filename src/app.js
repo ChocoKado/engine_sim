@@ -227,6 +227,72 @@ class App {
     }
     this.updateVehicleLoad();
 
+    // Forced Induction Selection (NA, Turbo, Supercharger)
+    const inductionBtns = document.querySelectorAll('.induction-btn');
+    const turboPanel = document.getElementById('turbo-controls-panel');
+    const boostBadge = document.getElementById('boost-status-badge');
+
+    inductionBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        inductionBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const indType = btn.dataset.induction;
+        this.engine.setForcedInduction(indType);
+        if (turboPanel) {
+          turboPanel.style.display = indType === 'turbo' ? 'block' : 'none';
+        }
+        if (boostBadge) {
+          boostBadge.textContent = indType === 'turbo'
+            ? `TURBO (+${this.engine.maxBoost.toFixed(1)} bar)`
+            : indType === 'supercharger'
+            ? `SUPERCHARGER (+${this.engine.maxBoost.toFixed(1)} bar)`
+            : '自然進氣 (NA)';
+        }
+        this.updateDynoOverview();
+      });
+    });
+
+    // BOV Type Selection (Vent Pshhh vs Flutter 貓叫聲)
+    const bovBtns = document.querySelectorAll('.bov-btn');
+    bovBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        bovBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.engine.setBovType(btn.dataset.bov);
+      });
+    });
+
+    // Boost Pressure Slider
+    const boostSlider = document.getElementById('boost-slider');
+    const boostVal = document.getElementById('boost-val');
+    if (boostSlider && boostVal) {
+      boostSlider.addEventListener('input', (e) => {
+        const bar = Number(e.target.value) / 100;
+        this.engine.setMaxBoost(bar);
+        boostVal.textContent = `+${bar.toFixed(2)} bar`;
+        if (boostBadge && this.engine.forcedInduction === 'turbo') {
+          boostBadge.textContent = `TURBO (+${bar.toFixed(1)} bar)`;
+        }
+        this.updateDynoOverview();
+      });
+    }
+
+    // Gearing Mode Selector (R1 Racing Close-Ratio vs Standard Street)
+    const gearRacingBtn = document.getElementById('btn-gear-racing');
+    const gearStandardBtn = document.getElementById('btn-gear-standard');
+    if (gearRacingBtn && gearStandardBtn) {
+      gearRacingBtn.addEventListener('click', () => {
+        gearRacingBtn.classList.add('active');
+        gearStandardBtn.classList.remove('active');
+        this.drivetrain.setGearingMode('racing_close');
+      });
+      gearStandardBtn.addEventListener('click', () => {
+        gearStandardBtn.classList.add('active');
+        gearRacingBtn.classList.remove('active');
+        this.drivetrain.setGearingMode('standard');
+      });
+    }
+
     // Throttle Slider (continuous hold)
     const throttleSlider = document.getElementById('throttle-slider');
     const throttleVal = document.getElementById('throttle-val');
@@ -382,6 +448,19 @@ class App {
       redlineSlider.value = this.engine.redlineRPM;
       redlineVal.textContent = `${this.engine.redlineRPM} RPM`;
     }
+
+    // Sync gearing buttons state
+    const gearRacingBtn = document.getElementById('btn-gear-racing');
+    const gearStandardBtn = document.getElementById('btn-gear-standard');
+    if (gearRacingBtn && gearStandardBtn) {
+      if (this.drivetrain.gearingMode === 'racing_close') {
+        gearRacingBtn.classList.add('active');
+        gearStandardBtn.classList.remove('active');
+      } else {
+        gearStandardBtn.classList.add('active');
+        gearRacingBtn.classList.remove('active');
+      }
+    }
   }
 
   selectExhaust(exhaustId) {
@@ -536,7 +615,18 @@ class App {
         for (const pop of engineStatus.popEvents) {
           const when = this.sound.ctx.currentTime + Math.max(0, 0.02 - (this.engine.time - pop.timestamp));
           const isShift = pop.kind === 'shift';
-          this.sound.playBackfirePop(pop.intensity, pop.hasFlame, pop.isLimiterPop, when, isShift);
+          this.sound.playBackfirePop(pop.intensity, pop.hasFlame, pop.isLimiterPop, when, isShift, this.engine.displacement);
+        }
+      }
+
+      // Play Blow-off valve (BOV) or compressor surge flutter sounds
+      if (engineStatus.bovEvents && engineStatus.bovEvents.length > 0) {
+        for (const bov of engineStatus.bovEvents) {
+          if (bov.type === 'flutter') {
+            this.sound.playFlutterSound(bov.intensity);
+          } else {
+            this.sound.playBovSound(bov.intensity);
+          }
         }
       }
 
@@ -567,6 +657,30 @@ class App {
       else digitalRpm.classList.remove('rev-limiting');
     }
 
+    // Sticky In-Viewport Telemetry HUD (Always visible on mobile & desktop sticky canvas)
+    const stickySpeed = document.getElementById('sticky-hud-speed');
+    const stickyRpm = document.getElementById('sticky-hud-rpm');
+    const stickyGear = document.getElementById('sticky-hud-gear');
+    const stickyRevFill = document.getElementById('sticky-rev-fill');
+
+    if (stickySpeed) stickySpeed.textContent = `${drivetrainStatus.speedKmh}`;
+    if (stickyRpm) {
+      stickyRpm.textContent = `${Math.round(engineStatus.rpm)}`;
+      if (engineStatus.isRevLimiting) stickyRpm.classList.add('rev-limiting');
+      else stickyRpm.classList.remove('rev-limiting');
+    }
+    if (stickyGear) {
+      stickyGear.textContent = drivetrainStatus.gearDisplay;
+      stickyGear.className = `sticky-hud-val gear-badge ${drivetrainStatus.currentGear === 0 ? 'neutral' : 'in-gear'}`;
+    }
+    if (stickyRevFill) {
+      const redline = engineStatus.redlineRPM || 10000;
+      const ratio = Math.max(0, Math.min(1, engineStatus.rpm / redline));
+      stickyRevFill.style.width = `${(ratio * 100).toFixed(1)}%`;
+      if (ratio >= 0.90) stickyRevFill.classList.add('redline-flash');
+      else stickyRevFill.classList.remove('redline-flash');
+    }
+
     // Current Realtime HP, Torque & Cylinder Pressure
     const liveHpEl = document.getElementById('live-hp-val');
     const liveTorqueEl = document.getElementById('live-torque-val');
@@ -582,6 +696,24 @@ class App {
     }
     if (specMapEl) {
       specMapEl.textContent = `${engineStatus.manifoldPressure || '1.00'} bar`;
+    }
+
+    // Boost & Turbo Spool Telemetry
+    const liveBoostEl = document.getElementById('live-boost-val');
+    const liveSpoolEl = document.getElementById('live-spool-val');
+    if (liveBoostEl) {
+      if (engineStatus.forcedInduction === 'na') {
+        liveBoostEl.textContent = 'NA (0.00 bar)';
+      } else {
+        liveBoostEl.textContent = `+${(engineStatus.boostPressure || 0).toFixed(2)} bar`;
+      }
+    }
+    if (liveSpoolEl) {
+      if (engineStatus.forcedInduction === 'na') {
+        liveSpoolEl.textContent = '0%';
+      } else {
+        liveSpoolEl.textContent = `${Math.round((engineStatus.turboSpool || 0) * 100)}%`;
+      }
     }
 
     // Active Gear Display

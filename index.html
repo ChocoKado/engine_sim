@@ -79,6 +79,32 @@
             </div>
           </div>
 
+          <!-- Integrated In-Viewport Telemetry HUD: Always visible while controlling throttle on mobile -->
+          <div class="sticky-hud-bar">
+            <div class="sticky-hud-item gear-hud">
+              <span class="sticky-hud-sub">GEAR</span>
+              <span id="sticky-hud-gear" class="sticky-hud-val gear-badge neutral">N</span>
+            </div>
+            <div class="sticky-hud-item speed-hud">
+              <span class="sticky-hud-sub">SPEED 時速</span>
+              <div class="sticky-hud-val-row">
+                <span id="sticky-hud-speed" class="sticky-hud-digits cyan-glow">0</span>
+                <span class="sticky-hud-unit">KM/H</span>
+              </div>
+            </div>
+            <div class="sticky-hud-item rpm-hud">
+              <span class="sticky-hud-sub">RPM 轉速</span>
+              <div class="sticky-hud-val-row">
+                <span id="sticky-hud-rpm" class="sticky-hud-digits amber-glow">1100</span>
+                <span class="sticky-hud-unit">RPM</span>
+              </div>
+            </div>
+            <!-- Dynamic Realtime Rev LED Sweep Bar -->
+            <div class="sticky-rev-meter" title="即時轉速光條">
+              <div id="sticky-rev-fill" class="sticky-rev-fill"></div>
+            </div>
+          </div>
+
           <!-- Engine Mechanical Canvas -->
           <div class="canvas-wrapper engine-canvas-box">
             <canvas id="engine-canvas"></canvas>
@@ -143,6 +169,12 @@
                 <div id="live-pressure-val" class="telemetry-number magenta-glow">1.0 bar</div>
                 <div class="telemetry-peak">歧管壓力: <strong id="spec-map-val">1.00 bar</strong></div>
               </div>
+
+              <div class="telemetry-gauge">
+                <span class="telemetry-label">增壓狀態 BOOST LEVEL</span>
+                <div id="live-boost-val" class="telemetry-number cyan-glow">NA (0.0 bar)</div>
+                <div class="telemetry-peak">渦輪轉速: <strong id="live-spool-val">0%</strong></div>
+              </div>
             </div>
           </div>
         </div>
@@ -188,6 +220,12 @@
             <div class="trans-mode-bar">
               <button class="trans-btn active" data-mode="at">全自排 (AT Auto)</button>
               <button class="trans-btn" data-mode="amt">自手排 (AMT Manual)</button>
+            </div>
+
+            <!-- Gearing Profile Selector (R1 Racing Close-Ratio vs Standard) -->
+            <div class="gearing-mode-bar">
+              <button id="btn-gear-racing" class="gearing-btn active" title="R1 賽道密齒比：1檔153km/h、6檔尾速318km/h，換檔不掉轉">R1 密齒比 (6檔尾速318+)</button>
+              <button id="btn-gear-standard" class="gearing-btn" title="標準巡航齒比">標準街道齒比</button>
             </div>
 
             <!-- AT Selector (P-R-N-D) -->
@@ -320,6 +358,51 @@
             </div>
             <input type="range" id="vehicle-mass-slider" min="180" max="3000" step="5" value="285">
             <p class="meta-desc">切換引擎會套用對應的模擬車重；可自行加重，體驗負載對起步與拉轉的影響。</p>
+          </div>
+
+          <!-- Forced Induction System (NA, Turbo, Supercharger) -->
+          <div class="config-field">
+            <div class="slider-label-group">
+              <label>進氣增壓動力系統 (Forced Induction System)</label>
+              <span id="boost-status-badge" class="meta-tag cyan-glow">自然進氣 (NA)</span>
+            </div>
+            <div class="induction-grid">
+              <button class="induction-btn active" data-induction="na">
+                <span class="ind-name">NA 自然吸氣</span>
+                <span class="ind-sub">線性動力、純粹吸氣聲</span>
+              </button>
+              <button class="induction-btn" data-induction="turbo">
+                <span class="ind-name">TURBO 渦輪增壓</span>
+                <span class="ind-sub">渦輪遲滯、高轉狂暴加壓</span>
+              </button>
+              <button class="induction-btn" data-induction="supercharger">
+                <span class="ind-name">SUPERCHARGER 機械增壓</span>
+                <span class="ind-sub">零遲滯、地獄貓尖叫聲</span>
+              </button>
+            </div>
+
+            <!-- Turbo specific settings (BOV vs Flutter / Boost level) -->
+            <div id="turbo-controls-panel" class="turbo-subpanel" style="display: none;">
+              <div class="bov-selection-row">
+                <span class="bov-label">收油洩壓聲浪:</span>
+                <div class="bov-btn-group">
+                  <button class="bov-btn active" data-bov="flutter" title="無卸壓閥/渦輪反串流：經典 JDM 貓叫聲 / 鳥叫咻咻聲">
+                    🐱 貓叫反串流 (Stututu)
+                  </button>
+                  <button class="bov-btn" data-bov="bov" title="有卸壓閥：激進大氣外洩放氣聲">
+                    💨 卸壓閥 (BOV Pshhh)
+                  </button>
+                </div>
+              </div>
+
+              <div class="slider-group" style="margin-top: 8px;">
+                <div class="slider-label-group">
+                  <span>渦輪最大增壓值 (Max Boost)</span>
+                  <span id="boost-val">+1.40 bar</span>
+                </div>
+                <input type="range" id="boost-slider" min="40" max="250" step="5" value="140" title="自訂最大增壓值 (0.4 ~ 2.5 bar)">
+              </div>
+            </div>
           </div>
 
           <div class="config-field">

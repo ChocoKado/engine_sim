@@ -58,7 +58,42 @@ export class EngineModel {
       isFiring: false, sparkTimer: 0, intakeValve: 0, exhaustValve: 0,
       gasPressure: 1.0, blowdownPulse: 0, gasTorque: 0
     }));
+
+    // Forced Induction (NA, Turbo, Supercharger)
+    this.forcedInduction = 'na'; // 'na', 'turbo', 'supercharger'
+    this.maxBoost = 1.3; // target max boost in bar
+    this.boostPressure = 0; // current gauge boost pressure in bar
+    this.turboSpool = 0; // 0 to 1
+    this.superchargerSpool = 0;
+    this.bovType = 'flutter'; // 'bov' (Pshhh) or 'flutter' (Stututu 貓叫聲)
+    this.bovEvents = [];
+
     this.dynoData = this.calculateDynoCurve();
+  }
+
+  setForcedInduction(type) {
+    if (['na', 'turbo', 'supercharger'].includes(type)) {
+      this.forcedInduction = type;
+      if (type === 'na') {
+        this.boostPressure = 0;
+        this.turboSpool = 0;
+        this.superchargerSpool = 0;
+      }
+      this.dynoData = this.calculateDynoCurve();
+    }
+  }
+
+  setMaxBoost(val) {
+    if (Number.isFinite(Number(val))) {
+      this.maxBoost = clamp(Number(val), 0.3, 3.0);
+      this.dynoData = this.calculateDynoCurve();
+    }
+  }
+
+  setBovType(type) {
+    if (['bov', 'flutter'].includes(type)) {
+      this.bovType = type;
+    }
   }
 
   setExhaust(id) {
@@ -81,15 +116,20 @@ export class EngineModel {
   }
 
   get inertia() {
-    // Crank, flywheel and connected accessories, in kg m². Throttle response
-    // changes manifold filling, not the physical inertia of the crankshaft.
-    return this.config.flywheelInertia + 0.025 + this.displacement / 1000 * 0.045;
+    // Crank, flywheel and connected accessories, in kg m².
+    // Small displacement engines have lightweight reciprocating mass and snap up quickly.
+    // Large displacement engines have heavy pistons, massive counterweights, and heavy flywheels.
+    const liters = this.displacement / 1000;
+    return this.config.flywheelInertia + 0.012 + Math.pow(liters, 1.15) * 0.065;
   }
 
   torqueAtRPM(rpm) {
-    const peak = this.displacement / 1000 * 102 * this.exhaust.backpressureTorqueMod;
+    const specificTorque = (this.config && this.config.specificTorque) || 108;
+    const peak = (this.displacement / 1000) * specificTorque * this.exhaust.backpressureTorqueMod;
     const fraction = Math.max(0, rpm) / this.redlineRPM;
-    const breathing = 0.56 + 0.44 * Math.exp(-0.5 * ((fraction - 0.65) / 0.32) ** 2);
+    const peakRatio = (this.config && this.config.peakTorqueRpmRatio) || 0.65;
+    const spread = (this.config && this.config.torqueSpread) || 0.32;
+    const breathing = 0.56 + 0.44 * Math.exp(-0.5 * ((fraction - peakRatio) / spread) ** 2);
     // Blend exhaust tuning continuously; a threshold here used to make torque
     // jump as the engine crossed 65% of redline.
     const blend = clamp((fraction - 0.45) / 0.35, 0, 1);
@@ -99,8 +139,9 @@ export class EngineModel {
 
   calculateDynoCurve() {
     const points = [];
+    const boostMultiplier = 1 + (this.forcedInduction !== 'na' ? this.maxBoost * 0.88 : 0);
     for (let rpm = 500; rpm <= this.redlineRPM; rpm += 250) {
-      const torque = this.torqueAtRPM(rpm);
+      const torque = this.torqueAtRPM(rpm) * boostMultiplier;
       points.push({ rpm, torque, hp: torque * rpm / 7127 });
     }
     const torquePeak = points.reduce((a, b) => b.torque > a.torque ? b : a);
@@ -175,7 +216,42 @@ export class EngineModel {
     this.currentEngineDrag = liters * (friction + pumping)
       * this.config.engineBrakeFactor * Math.min(1, this.rpm / 300);
     const drag = this.currentEngineDrag;
-    const available = this.torqueAtRPM(this.rpm);
+
+    // Forced Induction (Turbo / Supercharger) Dynamics
+    this.bovEvents = [];
+    if (this.forcedInduction === 'turbo') {
+      const flow = Math.pow(Math.max(0, this.rpm) / this.redlineRPM, 1.25) * (0.15 + 0.85 * this.manifoldThrottle) * Math.sqrt(liters);
+      const targetSpool = this.isIgnitionOn ? clamp(flow * 1.5, 0, 1) : 0;
+      // Turbo lag: physical turbine spool inertia
+      const spoolRate = targetSpool > this.turboSpool ? 0.30 : 0.60;
+      this.turboSpool += (targetSpool - this.turboSpool) * (1 - Math.exp(-dt / spoolRate));
+      const targetBoost = Math.pow(this.turboSpool, 1.45) * this.maxBoost * clamp(this.manifoldThrottle * 1.15, 0, 1);
+      this.boostPressure += (targetBoost - this.boostPressure) * (1 - Math.exp(-dt * 16));
+
+      // Trigger Blow-Off Valve (BOV) or Compressor Surge (Flutter / 貓叫聲)
+      const throttleDrop = this.prevThrottle - this.throttle;
+      if (this.isIgnitionOn && (throttleDrop > 0.20 || (this.isRevLimitingCut && this.throttle > 0.6)) && this.boostPressure > 0.18) {
+        this.bovEvents.push({
+          type: this.bovType,
+          intensity: clamp(this.boostPressure / this.maxBoost, 0.4, 1.5),
+          timestamp: this.time
+        });
+        this.boostPressure *= 0.15;
+        this.turboSpool = Math.max(0, this.turboSpool - 0.28);
+      }
+    } else if (this.forcedInduction === 'supercharger') {
+      // Crankshaft direct belt drive (Zero lag)
+      this.superchargerSpool = this.isIgnitionOn ? clamp((this.rpm / this.redlineRPM) * 1.05, 0, 1) : 0;
+      this.turboSpool = this.superchargerSpool;
+      this.boostPressure = this.superchargerSpool * this.maxBoost * this.manifoldThrottle;
+    } else {
+      this.boostPressure = 0;
+      this.turboSpool = 0;
+      this.superchargerSpool = 0;
+    }
+
+    const boostTorqueMult = 1 + this.boostPressure * 0.88;
+    const available = this.torqueAtRPM(this.rpm) * boostTorqueMult;
     this.combustionTorque = this.isIgnitionOn && !this.isRevLimitingCut
       ? (available + drag) * this.manifoldThrottle * torqueScale : 0;
     let idleTorque = 0;
@@ -199,7 +275,7 @@ export class EngineModel {
     let maxP = 1.0;
     const rc = 10.5;
     const Vc = 1 / (rc - 1);
-    const manifoldP = 0.25 + 0.75 * this.manifoldThrottle;
+    const manifoldP = (0.25 + 0.75 * this.manifoldThrottle) * (1 + this.boostPressure);
     this.manifoldPressure = manifoldP.toFixed(2);
 
     for (const cyl of this.cylinderStates) {
@@ -251,6 +327,12 @@ export class EngineModel {
 
   snapshot(popEvents = this.popEvents) {
     return { rpm: this.rpm, redlineRPM: this.redlineRPM, idleRPM: this.idleRPM,
+      displacement: this.displacement,
+      forcedInduction: this.forcedInduction,
+      boostPressure: Number(this.boostPressure.toFixed(2)),
+      turboSpool: Number(this.turboSpool.toFixed(2)),
+      bovType: this.bovType,
+      bovEvents: this.bovEvents,
       isIgnitionOn: this.isIgnitionOn, crankAngle: this.crankAngle, throttle: this.throttle,
       manifoldThrottle: this.manifoldThrottle, dyno: this.getCurrentDynoOutput(),
       cylinderStates: this.cylinderStates, isRevLimiting: this.isRevLimiting,

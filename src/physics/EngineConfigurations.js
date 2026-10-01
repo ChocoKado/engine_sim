@@ -8,18 +8,21 @@ export const ENGINE_CONFIGS = {
     name: '單缸 (Single Cylinder)',
     shortName: 'I1',
     cylinders: 1,
-    layout: 'inline', // inline, v, w, boxer
+    layout: 'inline',
     bankAngle: 0,
     firingAngles: [0],
-    defaultDisplacement: 450, // cc
-    minDisplacement: 125,
+    defaultDisplacement: 690, // cc (KTM 690 Duke)
+    minDisplacement: 250,
     maxDisplacement: 800,
-    defaultIdleRPM: 1300,
-    defaultRedlineRPM: 9500,
-    flywheelInertia: 0.045, // Heavy flywheel, slow rev-up, heavy thumping
-    revResponseSpeed: 1.0, // Multiplier on throttle response
-    engineBrakeFactor: 2.2, // Heavy single-cylinder engine braking
-    soundCharacter: 'thumpy', // Big thumps, distinctive pulse gap
+    defaultIdleRPM: 1350,
+    defaultRedlineRPM: 9000,
+    flywheelInertia: 0.045,
+    revResponseSpeed: 1.0,
+    engineBrakeFactor: 2.2,
+    specificTorque: 108,
+    peakTorqueRpmRatio: 0.68,
+    torqueSpread: 0.30,
+    soundCharacter: 'thumpy',
     description: '經典大單缸重機配置（如 KTM 690 / Yamaha SR400）。活塞質量大、慣性重、拉轉沉穩有力、節奏分明的重砲排氣聲浪。'
   },
 
@@ -40,6 +43,9 @@ export const ENGINE_CONFIGS = {
     flywheelInertia: 0.032,
     revResponseSpeed: 1.4,
     engineBrakeFactor: 1.8,
+    specificTorque: 105,
+    peakTorqueRpmRatio: 0.72,
+    torqueSpread: 0.28,
     soundCharacter: 'twin_180',
     description: '經典雙缸仿賽配置（如 Ninja 400）。高轉延伸性佳、聲音偏清脆的高頻雙缸脈衝。'
   },
@@ -52,7 +58,7 @@ export const ENGINE_CONFIGS = {
     cylinders: 2,
     layout: 'inline',
     bankAngle: 0,
-    firingAngles: [0, 270], // Uneven 270°-450° interval, mimics 90° V-Twin
+    firingAngles: [0, 270],
     defaultDisplacement: 700,
     minDisplacement: 500,
     maxDisplacement: 1200,
@@ -61,6 +67,9 @@ export const ENGINE_CONFIGS = {
     flywheelInertia: 0.028,
     revResponseSpeed: 1.5,
     engineBrakeFactor: 1.9,
+    specificTorque: 110,
+    peakTorqueRpmRatio: 0.65,
+    torqueSpread: 0.32,
     soundCharacter: 'v_twin',
     description: 'Yamaha MT-07 / R7 (CP2 引擎) 標誌性配置。不對稱點火間隔營造出飽滿熱血的 V-Twin 咆哮聲與充沛低轉扭力。'
   },
@@ -74,16 +83,19 @@ export const ENGINE_CONFIGS = {
     layout: 'v',
     bankAngle: 90,
     firingAngles: [0, 270],
-    defaultDisplacement: 950,
+    defaultDisplacement: 955,
     minDisplacement: 600,
     maxDisplacement: 1300,
     defaultIdleRPM: 1200,
-    defaultRedlineRPM: 11000,
+    defaultRedlineRPM: 11500,
     flywheelInertia: 0.026,
     revResponseSpeed: 1.6,
     engineBrakeFactor: 1.9,
+    specificTorque: 116,
+    peakTorqueRpmRatio: 0.74,
+    torqueSpread: 0.28,
     soundCharacter: 'v_twin',
-    description: 'Ducati 跑車的靈魂架構。90度夾角兼具完美的一階平衡與猛烈的爆發聲，聲浪鏗鏘有力。'
+    description: 'Ducati Panigale V2 靈魂架構。90度夾角兼具完美的一階平衡與猛烈的爆發聲，聲浪鏗鏘有力。'
   },
 
   // 3-Cylinder 120° (Triple)
@@ -103,6 +115,9 @@ export const ENGINE_CONFIGS = {
     flywheelInertia: 0.022,
     revResponseSpeed: 1.8,
     engineBrakeFactor: 1.5,
+    specificTorque: 112,
+    peakTorqueRpmRatio: 0.70,
+    torqueSpread: 0.30,
     soundCharacter: 'triple',
     description: 'Triumph Daytona 675 / Yamaha MT-09 CP3。融合雙缸低扭與四缸高轉，排氣帶有獨特金屬哨音與低吼。'
   },
@@ -115,7 +130,6 @@ export const ENGINE_CONFIGS = {
     cylinders: 4,
     layout: 'inline',
     bankAngle: 0,
-    // Firing order 1-3-4-2
     firingAngles: [0, 180, 540, 360],
     defaultDisplacement: 1000,
     minDisplacement: 600,
@@ -125,6 +139,9 @@ export const ENGINE_CONFIGS = {
     flywheelInertia: 0.016,
     revResponseSpeed: 2.2,
     engineBrakeFactor: 1.3,
+    specificTorque: 115,
+    peakTorqueRpmRatio: 0.78,
+    torqueSpread: 0.25,
     soundCharacter: 'screamer_4',
     description: '經典公升級日系四缸跑車（CBR1000RR / ZX-10R / S1000RR）。高轉萬轉尖叫、聲音綿密極致、拉轉飛快。'
   },
@@ -139,13 +156,16 @@ export const ENGINE_CONFIGS = {
     bankAngle: 0,
     firingAngles: [0, 270, 450, 540],
     defaultDisplacement: 1000,
-    minDisplacement: 1000,
+    minDisplacement: 998,
     maxDisplacement: 1300,
     defaultIdleRPM: 1200,
     defaultRedlineRPM: 14000,
     flywheelInertia: 0.017,
     revResponseSpeed: 2.1,
     engineBrakeFactor: 1.5,
+    specificTorque: 118,
+    peakTorqueRpmRatio: 0.76,
+    torqueSpread: 0.26,
     soundCharacter: 'crossplane_4',
     description: 'Yamaha MotoGP YZR-M1 與 YZF-R1 傳奇十字曲軸。非對稱點火消除了慣性扭矩，聲浪如狂暴野獸怒吼。'
   },
@@ -163,10 +183,13 @@ export const ENGINE_CONFIGS = {
     minDisplacement: 2500,
     maxDisplacement: 4000,
     defaultIdleRPM: 850,
-    defaultRedlineRPM: 8000,
+    defaultRedlineRPM: 7600,
     flywheelInertia: 0.018,
     revResponseSpeed: 2.0,
     engineBrakeFactor: 1.2,
+    specificTorque: 112,
+    peakTorqueRpmRatio: 0.65,
+    torqueSpread: 0.32,
     soundCharacter: 'smooth_i6',
     description: '經典直列六缸（BMW S58 / Supra 2JZ）。一階與二階振動完全抵消，聲浪絲滑優雅、高轉渾厚天籟。'
   },
@@ -184,10 +207,13 @@ export const ENGINE_CONFIGS = {
     minDisplacement: 2900,
     maxDisplacement: 4200,
     defaultIdleRPM: 850,
-    defaultRedlineRPM: 7800,
+    defaultRedlineRPM: 7500,
     flywheelInertia: 0.019,
     revResponseSpeed: 2.0,
     engineBrakeFactor: 1.2,
+    specificTorque: 115,
+    peakTorqueRpmRatio: 0.65,
+    torqueSpread: 0.32,
     soundCharacter: 'v6_roar',
     description: '東瀛戰神 GT-R VR38DETT 與現代性能跑車最愛。充滿金屬顆粒感的低喉與極富侵略性的高轉咆哮。'
   },
@@ -209,6 +235,9 @@ export const ENGINE_CONFIGS = {
     flywheelInertia: 0.022,
     revResponseSpeed: 1.9,
     engineBrakeFactor: 1.1,
+    specificTorque: 110,
+    peakTorqueRpmRatio: 0.62,
+    torqueSpread: 0.35,
     soundCharacter: 'muscle_v8',
     description: '美式肌肉車靈魂（Mustang 5.0 / Corvette / HEMI）。怠速獨特低沉「咕嚕咕嚕」碎震，全油門宛如雷霆萬鈞。'
   },
@@ -230,6 +259,9 @@ export const ENGINE_CONFIGS = {
     flywheelInertia: 0.014,
     revResponseSpeed: 2.6,
     engineBrakeFactor: 1.1,
+    specificTorque: 120,
+    peakTorqueRpmRatio: 0.74,
+    torqueSpread: 0.28,
     soundCharacter: 'ferrari_v8',
     description: '法拉利 458 Italia / 488 招牌平面曲軸 V8。拉轉如同雙聯四缸極限尖叫，高頻聲浪穿透力無與倫比。'
   },
@@ -251,6 +283,9 @@ export const ENGINE_CONFIGS = {
     flywheelInertia: 0.011,
     revResponseSpeed: 2.9,
     engineBrakeFactor: 1.0,
+    specificTorque: 114,
+    peakTorqueRpmRatio: 0.75,
+    torqueSpread: 0.28,
     soundCharacter: 'v10_howl',
     description: '車壇封神音浪（Lexus LFA 1LR-GUE / 藍寶堅尼 V10）。高頻交響樂般的天籟高歌，響應速度快若閃電。'
   },
@@ -268,10 +303,13 @@ export const ENGINE_CONFIGS = {
     minDisplacement: 5500,
     maxDisplacement: 7500,
     defaultIdleRPM: 900,
-    defaultRedlineRPM: 9200,
+    defaultRedlineRPM: 8500,
     flywheelInertia: 0.010,
     revResponseSpeed: 3.0,
     engineBrakeFactor: 0.9,
+    specificTorque: 116,
+    peakTorqueRpmRatio: 0.72,
+    torqueSpread: 0.30,
     soundCharacter: 'v12_flagship',
     description: '頂級旗艦王者（Lamborghini Aventador / Ferrari 812）。每轉6次爆發的超高密度燃燒，震撼人心的頂級超跑狂嚎。'
   },
@@ -293,6 +331,10 @@ export const ENGINE_CONFIGS = {
     flywheelInertia: 0.015,
     revResponseSpeed: 2.4,
     engineBrakeFactor: 0.8,
+    specificTorque: 195,
+    peakTorqueRpmRatio: 0.58,
+    torqueSpread: 0.40,
+    description: '地表極速怪獸（Bugatti Chiron 四渦輪 W16）。高達 1500+ 匹馬力與 1600 Nm 狂暴扭力，頂級奢華與極致工藝的結晶。'
   },
 
   // 7-Cylinder Radial Aero Engine
@@ -316,11 +358,14 @@ export const ENGINE_CONFIGS = {
     defaultDisplacement: 3600,
     minDisplacement: 2200,
     maxDisplacement: 6200,
-    defaultIdleRPM: 700,
-    defaultRedlineRPM: 4200,
+    defaultIdleRPM: 650,
+    defaultRedlineRPM: 3200,
     flywheelInertia: 0.038,
     revResponseSpeed: 1.6,
     engineBrakeFactor: 1.5,
+    specificTorque: 125,
+    peakTorqueRpmRatio: 0.65,
+    torqueSpread: 0.36,
     soundCharacter: 'radial_7',
     description: '經典七缸航空星型發動機 (7-Cylinder Radial)。採用中央主連桿（Master Rod）與六根副連桿結構，圓周360度對稱排列。經典 1-3-5-7-2-4-6 隔缸點火循環，怠速如同重砲般深沉震撼，拉轉伴隨大排氣量螺旋槳的沉穩機械轟鳴。'
   }
