@@ -75,6 +75,17 @@ test('CC improves a power-limited car launch, and longer gearing lets a tuned CP
   assert.ok(longer.speed > r1.gearing);
 });
 
+test('holding AMT first gear at redline explains the limiter instead of claiming continued acceleration', () => {
+  const e = new EngineModel('i4_cross', 'oem'), d = new Drivetrain(e);
+  e.setRunning(true); d.setMode('amt'); d.setAmtGear(1);
+  for (let frame = 0; frame < 12 * 60; frame++) d.update(1 / 60, 1, 0);
+  assert.equal(d.currentGear, 1);
+  assert.ok(e.rpm > e.redlineRPM - e.revLimitControlRange * 1.3);
+  const result = performanceAssessment(e, d);
+  assert.equal(result.reason, 'limiter');
+  assert.match(result.text, /AMT.*升檔/);
+});
+
 test('full-throttle AT shifts at a traction crossover instead of a universal redline fraction', () => {
   const e = new EngineModel('i2_180', 'oem'), d = new Drivetrain(e);
   e.setRunning(true); d.setAtSelector('D'); d.currentGear = 5; d.shiftState = 'locked'; d.atShiftCooldown = 0;

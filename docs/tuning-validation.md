@@ -38,7 +38,7 @@ R1 原廠與擴缸的 AT 0–100 相同，並不是排氣量失效：這段已�
 
 ## 其他驗證與手機操作
 
-`npm test` 707／707 通過，包含終傳修改保護、設定快照、性能取消、CC 出力、CP4 六檔限速與 Ninja 400 相鄰輪上推力換檔。另有 [354 組 SC 3 bar 驗證](supercharger-validation.md) 及 [200 組動態報告](../reports/dynamics-current.json)。
+最新 `npm test` 752／752 通過，包含終傳修改保護、設定快照、性能取消、CC 出力、CP4 六檔限速與 Ninja 400 相鄰輪上推力換檔。另有 [354 組 SC 3 bar 驗證](supercharger-validation.md)、重新產生的 [200 組動態報告](../reports/dynamics-current.json) 與 [一檔反應修復](launch-response-validation.md)。AMT 中段接合改變，原始 120 組改裝比較也已重新量測；本表 AT 數據維持不變。
 
 瀏覽器重新驗證 CP4／AMT／SC 3 bar：起步可完成 0–100，持續油門不熄火；更改最低／最高紅線與硬切 32 Hz／逐缸 8 Hz，再按「回到起點並準備」仍可起步。AT／AMT 全引擎矩陣另外涵蓋高檔再起步與測試重設。
 

@@ -62,6 +62,7 @@ export class Drivetrain {
     this.shiftEnvelope = 0;
     this.shiftPopPending = false;
     this.clutchCapacity = 0;
+    this.launchClutchProgress = 0;
     this.lockup = 0;
     this.pumpTorque = 0;
     this.transmittedTorque = 0;
@@ -401,12 +402,28 @@ export class Drivetrain {
         // Release part of the clutch load while the engine is below its useful
         // torque band. The old capacity curve could balance torque at idle
         // indefinitely, making full-throttle starts crawl for several seconds.
-        const speedRatio = clamp(wheelRPM / Math.max(1, e.rpm), 0, 1);
         const idleBite = Math.min(peak * 0.12 * clamp(throttle / 0.25, 0, 1), e.availableCrankTorque * 0.65);
-        const torqueBudget = Math.max(idleBite, Math.max(0, e.netTorque) * (0.68 + 0.42 * speedRatio ** 2));
-        const flareGuard = peak * 1.8 * clamp((e.rpm - e.config.defaultRedlineRPM * 0.52)
-          / (e.config.defaultRedlineRPM * 0.25), 0, 1);
-        const driveCapacity = throttle < 0.02 ? peak * 1.8 : Math.max(torqueBudget, flareGuard);
+        // Close the automatic clutch progressively, rather than increasing
+        // its load at one fixed fraction of every engine's redline. That RPM
+        // rule held the crank at a synthetic midrange balance until the wheels
+        // caught up, even on engines without traction intervention.
+        if (!engaged || this.brakeInput >= 0.1) this.launchClutchProgress = 0;
+        else this.launchClutchProgress = Math.min(1, this.launchClutchProgress + dt / 0.35 * clamp(e.netTorque / peak, 0, 1));
+        const ratio = Math.abs(this.gearRatios[this.currentGear] * this.finalDrive * this.primaryRatio);
+        const reflectedInertia = this.vehicleMass * 1.035 * (this.tireRadius / ratio) ** 2 / this.driveEfficiency;
+        const roadTorque = this.roadResistance() * this.tireRadius / ratio / this.driveEfficiency;
+        const gripTorque = this.tireForceLimit() * this.tireRadius / ratio / this.driveEfficiency;
+        const sourceTorque = Math.min(Math.max(0, e.netTorque), gripTorque);
+        // During slip, reserve crank acceleration at one quarter of the wheel's
+        // equivalent acceleration. Both speeds rise while the wheels catch up;
+        // cap == net torque would instead hold RPM until synchronization.
+        // Solve T = net - I_engine * 0.25 * (T - road) / I_vehicle.
+        const inertiaWeight = 0.25 * e.inertia / reflectedInertia;
+        const sharedCapacity = Math.max(0, (sourceTorque + inertiaWeight * roadTorque) / (1 + inertiaWeight));
+        const biteCapacity = Math.max(idleBite, sourceTorque * 0.68);
+        const progressiveCapacity = biteCapacity + (Math.max(idleBite, sharedCapacity) - biteCapacity)
+          * smoothstep(this.launchClutchProgress);
+        const driveCapacity = throttle < 0.02 ? peak * 1.8 : progressiveCapacity;
         const antiStall = clamp((e.rpm - e.idleRPM * 0.65) / (e.idleRPM * 0.35), 0, 1);
         const requested = engaged && this.brakeInput < 0.1 ? Math.min(peak * 1.8, driveCapacity) * antiStall : 0;
         const maxChange = peak * 6 * dt;

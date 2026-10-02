@@ -15,9 +15,11 @@ npm run build
 
 使用符合專案 Vite 版本要求的 Node.js。建置結果位於 `dist/`；可用 `npm run preview` 預覽正式建置。
 
-2026-10-03 的 `npm test` **707／707 項通過**，涵蓋原廠資料、引擎／傳動、程序音效、VTEC／ECU、性能計時、輸入、介面狀態及機械動畫。SC 3 bar 起步／再起步矩陣 **354／354 組通過**；200 組動態檢查已重新產生並通過。開發伺服器的 `/tests/audio-browser.html` 可執行真正 Web Audio 離線渲染，不會自動播放聲音；本輪重新執行 **56／56 項通過**。`/tests/responsive-browser.html` 的 320×568、390×844、667×375、844×390 iframe 重驗均無橫向溢出，W16 的 HUD／動畫／油門可同屏操作，320px 七檔表也在畫面內；[本輪手機視窗截圖](reports/screenshots/mobile-w16.jpg)。實際手機觸控、手勢與音訊仍需實機測試。
+2026-10-03 的最新 `npm test` **752／752 項通過**，涵蓋原廠資料、引擎／傳動、程序音效、VTEC／ECU、性能計時、輸入、介面狀態及機械動畫，包含新增 44 項一檔中段反應回歸與低檔限轉提示。SC 3 bar 起步／再起步矩陣 **354／354 組通過**；200 組動態檢查與 120 組改裝比較已重新產生並通過。前輪 Web Audio 離線渲染 **56／56 項通過**；本次沒有修改音效程式。`/tests/responsive-browser.html` 的 320×568、390×844、667×375、844×390 iframe 前輪重驗均無橫向溢出，W16 的 HUD／動畫／油門可同屏操作，320px 七檔表也在畫面內；[手機視窗截圖](reports/screenshots/mobile-w16.jpg)。實際手機觸控、手勢與音訊仍需實機測試。
 
 再起步問題的發現過程見 [轉子與重啟驗證](docs/rotary-restart-validation.md)，確認的高 SC 根因及修復見 [機械增壓驗證](docs/supercharger-validation.md)。機構與點火相位見 [動畫驗證](docs/animation-validation.md)；120 組原廠／擴缸／終傳同條件比較見 [改裝與性能驗證](docs/tuning-validation.md)。新增架構的討論見 [擴充選項](docs/engine-expansion-options.md)。
+
+AMT 原本在預設紅線約 52% 後額外增加離合負載，可能形成數秒中段持轉。已改成依實際扭力、輪胎限制及兩端慣量漸進分配，使曲軸持續升轉、輪速追上後接合；AT 的變矩器／抓地短暫持轉保留。120 組一檔診斷與修正前後比較見 [一檔反應驗證](docs/launch-response-validation.md)。
 
 Vercel 部署已由專案使用者完成，綁定 GitHub 的 `main` 分支。推送修正後，請確認 Vercel 對應提交的部署成功，再以手機開啟既有正式網址；本機建置成功不等於線上部署已完成。
 
