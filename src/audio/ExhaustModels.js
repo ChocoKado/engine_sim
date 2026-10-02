@@ -7,7 +7,7 @@ export const EXHAUST_MODELS = {
     name: '原廠排氣管 (Stock OEM)',
     brand: 'OEM Factory',
     badgeColor: '#6c757d',
-    description: '標準多重迷宮回壓消音室設計。有效抑制高頻雜音與爆震，提供低調厚實、溫和綿密的巡航排氣聲浪，完全無刺耳雜音。',
+    description: '以原廠消音室為聲音基準：較低音量與高頻衰減，保留巡航低頻。原廠功率基準不額外加成，未模擬改裝回火調校。',
     // Audio filter parameters (Warm, deep acoustic chamber)
     filterLowpassCutoff: 980, // Hz - warm, muffled, zero harshness
     filterLowpassQ: 1.1,
@@ -21,8 +21,8 @@ export const EXHAUST_MODELS = {
     flameSpitChance: 0.0,
     flameScale: 0, flameDuration: 0, overrunDuration: 0, crackleRate: 0,
     popTone: 500, popDecay: 0.07,
-    backpressureHpMod: 0.94,
-    backpressureTorqueMod: 1.04
+    backpressureHpMod: 1.0,
+    backpressureTorqueMod: 1.0
   },
 
   'akrapovic': {
@@ -30,7 +30,7 @@ export const EXHAUST_MODELS = {
     name: 'Akrapovič 蠍子管 (Titanium Evolution)',
     brand: 'Akrapovič',
     badgeColor: '#ffb703',
-    description: '頂級斯洛維尼亞鈦合金賽事排氣！深沉厚實中低頻共振、天籟般純淨渾厚音質，降低排氣背壓 (+5% 馬力)，極具質感與磁性。',
+    description: '鈦合金長管聲音風格：較厚的中低頻與適度回火。高轉增益採保守估算，非此品牌於各車型的實測數據。',
     // Audio filter parameters (Warm titanium cavity resonance)
     filterLowpassCutoff: 1950, // Warm, rich acoustic body
     filterLowpassQ: 1.8,
@@ -44,8 +44,8 @@ export const EXHAUST_MODELS = {
     flameSpitChance: 0.35,
     flameScale: 0.8, flameDuration: 0.22, overrunDuration: 0.45, crackleRate: 8,
     popTone: 650, popDecay: 0.09,
-    backpressureHpMod: 1.05,
-    backpressureTorqueMod: 1.01
+    backpressureHpMod: 1.035,
+    backpressureTorqueMod: 1.005
   },
 
   'sc_project': {
@@ -53,7 +53,7 @@ export const EXHAUST_MODELS = {
     name: 'SC-Project 賽道狂暴管 (CR-T / SC)',
     brand: 'SC-Project',
     badgeColor: '#e63946',
-    description: 'Moto2 / WSBK 賽道大口徑短尾段！極低背壓大幅釋放高轉馬力 (+9% 馬力)，激進金屬共鳴，收油伴隨狂暴密集的斷油放炮。',
+    description: '短管賽道聲音風格：較明顯的金屬共鳴、密集回火與較長火焰。估算高轉增益，同時保留低轉扭力可能下降的效果。',
     // Audio filter parameters (Throaty race rasp without piercing screech)
     filterLowpassCutoff: 2500, // Clean acoustic cutoff, no piercing buzz
     filterLowpassQ: 2.2,
@@ -67,8 +67,8 @@ export const EXHAUST_MODELS = {
     flameSpitChance: 0.7,
     flameScale: 1.2, flameDuration: 0.32, overrunDuration: 0.7, crackleRate: 14,
     popTone: 1100, popDecay: 0.12,
-    backpressureHpMod: 1.09,
-    backpressureTorqueMod: 0.98
+    backpressureHpMod: 1.045,
+    backpressureTorqueMod: 0.99
   },
 
   'straight': {
@@ -76,7 +76,7 @@ export const EXHAUST_MODELS = {
     name: '直通賽車管 (Straight Pipe Race)',
     brand: 'Full Straight Race',
     badgeColor: '#d62828',
-    description: '完全無阻力賽車直通鋼管！零背壓徹底解放引擎極限動力 (+14% 馬力)，超高轉斷油伴隨震撼槍響與狂暴噴火！',
+    description: '直通管聲音風格：衰減較少、強烈回火與噴火。管路仍有阻力；高轉增益和低轉扭力損失為估算，回火亦假設對應的供油調校。',
     // Audio filter parameters
     filterLowpassCutoff: 3000, // Natural pipe air dissipation
     filterLowpassQ: 2.5,
@@ -90,7 +90,7 @@ export const EXHAUST_MODELS = {
     flameSpitChance: 0.9,
     flameScale: 1.45, flameDuration: 0.4, overrunDuration: 0.9, crackleRate: 17,
     popTone: 850, popDecay: 0.15,
-    backpressureHpMod: 1.14,
-    backpressureTorqueMod: 0.95
+    backpressureHpMod: 1.05,
+    backpressureTorqueMod: 0.97
   }
 };

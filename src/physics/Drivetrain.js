@@ -29,7 +29,11 @@ export class Drivetrain {
     this.dragArea = profile.dragArea;
     this.tireRadius = profile.tireRadius || 0.33;
     this.finalDrive = profile.finalDrive || 3.65;
+    this.primaryRatio = profile.primaryRatio || 1;
+    this.driveEfficiency = profile.driveEfficiency || (this.engine.config.layout === "radial" ? 0.94 : profile.mass < 500 ? 0.965 : 0.94);
+    this.vehicleProfile = profile;
     this.gearRatios = { ...profile.gearRatios };
+    this.maxGear = Math.max(...Object.keys(this.gearRatios).map(Number).filter(g => g > 0));
     this.tireCircumference = 2 * Math.PI * this.tireRadius;
   }
 
@@ -51,6 +55,9 @@ export class Drivetrain {
     this.transmittedTorque = 0;
     this.shiftElapsed = 0;
     this.shiftRecovery = 0;
+    this.shiftPhase = "idle";
+    this.cutAmount = 0;
+    this.isUpshift = false;
   }
 
   reject(message) {
@@ -59,12 +66,12 @@ export class Drivetrain {
   }
 
   calcRPMFromSpeed(gear, speedKmh) {
-    const ratio = Math.abs(this.gearRatios[gear] * this.finalDrive);
+    const ratio = Math.abs(this.gearRatios[gear] * this.finalDrive * this.primaryRatio);
     return Math.abs(speedKmh) / 3.6 / this.tireCircumference * 60 * ratio;
   }
 
   calcSpeedFromRPM(gear, rpm) {
-    const ratio = Math.abs(this.gearRatios[gear] * this.finalDrive);
+    const ratio = Math.abs(this.gearRatios[gear] * this.finalDrive * this.primaryRatio);
     return ratio ? rpm / ratio * this.tireCircumference / 60 * 3.6 : 0;
   }
 
@@ -80,8 +87,9 @@ export class Drivetrain {
   }
 
   canSelectGear(gear) {
-    if (!Number.isInteger(gear) || gear < -1 || gear > 6) return this.reject('無效檔位');
+    if (!Number.isInteger(gear) || gear < -1 || gear > this.maxGear) return this.reject('無效檔位');
     if (gear === 0) return true;
+    if (!this.gearRatios[gear]) return this.reject('此車型沒有倒檔');
     if ((gear < 0 && this.speedKmh > 1) || (gear > 0 && this.speedKmh < -1)) {
       return this.reject('請先煞停，再切換前進／倒檔');
     }
@@ -97,7 +105,7 @@ export class Drivetrain {
     if (position === 'P' && Math.abs(this.speedKmh) > 0.5) return this.reject('請先煞停，再切入 P 檔');
     let gear = position === 'R' ? -1 : position === 'D' ? 1 : 0;
     if (position === 'D') {
-      while (gear < 6 && this.calcRPMFromSpeed(gear, this.speedKmh) > this.engine.redlineRPM * 0.85) gear++;
+      while (gear < this.maxGear && this.calcRPMFromSpeed(gear, this.speedKmh) > this.engine.redlineRPM * 0.85) gear++;
     }
     if (!this.startShift(gear)) return false;
     this.atSelector = position;
@@ -126,7 +134,7 @@ export class Drivetrain {
     this.targetGear = gear;
     this.previousGear = this.currentGear;
     this.isUpshift = Math.abs(gear) > Math.abs(this.currentGear);
-    this.shiftDuration = this.mode === 'at' ? 0.32 : 0.24;
+    this.shiftDuration = this.mode === 'at' ? 0.30 : 0.16;
     this.shiftTimer = this.shiftDuration;
     this.shiftElapsed = 0;
     this.shiftRecovery = 0;
@@ -140,7 +148,7 @@ export class Drivetrain {
 
   shiftUp() {
     if (this.mode === 'at' && this.atSelector !== 'D') return false;
-    if (this.currentGear >= 6) return false;
+    if (this.currentGear >= this.maxGear) return false;
     const result = this.startShift(this.currentGear + 1);
     if (result) this.atShiftCooldown = 1.2;
     return result;
@@ -166,7 +174,7 @@ export class Drivetrain {
     const rpm = this.engine.rpm;
     const redline = this.engine.redlineRPM;
     let gear = this.currentGear;
-    if (this.shiftState === 'locked' && rpm >= redline * (0.42 + 0.48 * throttle ** 1.4) && gear < 6) gear++;
+    if (this.shiftState === 'locked' && rpm >= this.engine.idleRPM + (redline - this.engine.idleRPM) * (0.32 + 0.64 * throttle ** 1.4) && gear < this.maxGear) gear++;
     else if (gear > 1 && (rpm < redline * 0.26 || Math.abs(this.speedKmh) < 8
       || (throttle > 0.88 && rpm < redline * 0.48))) gear--;
     if (gear !== this.currentGear && this.startShift(gear)) this.atShiftCooldown = 0.7;
@@ -197,33 +205,42 @@ export class Drivetrain {
   // the crank. Hydraulic pump/turbine torques can differ during AT launch.
   couple(dt, gear, capacity, pump = 0, turbine = 0) {
     const e = this.engine;
-    const ratio = Math.abs(this.gearRatios[gear] * this.finalDrive);
+    const ratio = Math.abs(this.gearRatios[gear] * this.finalDrive * this.primaryRatio);
     const direction = Math.sign(gear);
     const mass = this.vehicleMass * 1.035;
-    const reflectedInertia = mass * (this.tireRadius / ratio) ** 2;
+    const reflectedInertia = mass * (this.tireRadius / ratio) ** 2 / this.driveEfficiency;
     const wheelRPM = this.calcRPMFromSpeed(gear, this.speedKmh);
     const slip = (e.rpm - wheelRPM) / RPM_PER_RAD;
-    const roadTorque = this.roadResistance() * this.tireRadius / ratio;
+    const roadTorque = this.roadResistance() * this.tireRadius / ratio / this.driveEfficiency;
     const velocity = Math.abs(this.speedKmh) / 3.6;
     const downforce = 0.5 * 1.225 * (this.dragArea * 0.5) * velocity * velocity;
     const maxTireForce = this.vehicleMass * 8.95 + downforce;
-    const gripTorque = maxTireForce * this.tireRadius / ratio;
+    const gripTorque = maxTireForce * this.tireRadius / ratio / this.driveEfficiency;
     // Simplified traction control: reduce source torque rather than clipping
     // vehicle speed or adding energy after the clutch locks.
-    if (e.netTorque > gripTorque) {
-      e.combustionTorque -= e.netTorque - gripTorque;
-      e.netTorque = gripTorque;
+    // Converter multiplication consumes part of the tyre torque allowance.
+    // Ignoring turbine - pump let a boosted engine keep flaring at redline
+    // after the converter had already reached the grip limit.
+    const sourceGripTorque = Math.max(0, gripTorque - Math.max(0, turbine - pump));
+    if (e.netTorque > sourceGripTorque) {
+      e.combustionTorque -= e.netTorque - sourceGripTorque;
+      e.netTorque = sourceGripTorque;
     }
     // Resolve the last part of slip over a short compliance interval. This
     // tapers the synchronizing torque before lock-up instead of dropping from
     // peak friction to holding torque in one frame.
-    const syncTime = Math.abs(slip * RPM_PER_RAD) < 0.5 ? dt : Math.max(dt, 0.045);
+    const shifting = this.shiftState === 'shifting';
+    const compliance = shifting ? (this.mode === 'amt' ? 0.014 : 0.026) : 0.045;
+    // At the end of a shift, solve the last few RPM as an actual clutch impulse
+    // instead of waiting through a long exponential tail of tiny slip. Torque
+    // remains capacity-limited and its reaction still acts on both inertias.
+    const syncTime = Math.abs(slip * RPM_PER_RAD) < (shifting ? 5 : 0.5) ? dt : Math.max(dt, compliance);
     const required = (slip / syncTime + (e.netTorque - pump) / e.inertia
       - (turbine - roadTorque) / reflectedInertia) / (1 / e.inertia + 1 / reflectedInertia);
     const maxTractiveTorque = Math.max(0, gripTorque - turbine);
     const torque = clamp(required, -capacity, Math.min(capacity, maxTractiveTorque));
     this.transmittedTorque = torque + turbine;
-    this.moveVehicle(dt, this.transmittedTorque * ratio / this.tireRadius * direction, mass);
+    this.moveVehicle(dt, this.transmittedTorque * ratio / this.tireRadius * direction * this.driveEfficiency, mass);
     e.advanceStep(dt, { loadTorque: torque + pump });
     this.clutchEngagement = capacity ? Math.min(1, Math.abs(torque) / (e.dynoData.maxTorque * 1.8)) : 0;
     const matching = this.calcRPMFromSpeed(gear, this.speedKmh);
@@ -239,19 +256,24 @@ export class Drivetrain {
     const peak = e.dynoData.maxTorque;
     this.shiftElapsed += dt;
     this.shiftTimer = Math.max(0, this.shiftDuration - this.shiftElapsed);
-    const releaseTime = this.mode === 'at' ? 0.050 : 0.036;
+    const releaseTime = this.mode === 'at' ? 0.045 : 0.018;
+    const recoveryTime = this.mode === 'at' ? 0.09 : 0.07;
     const release = smoothstep(clamp(this.shiftElapsed / releaseTime, 0, 1));
     const recovering = this.shiftRecovery > 0;
-    const recovery = recovering ? smoothstep(clamp(this.shiftRecovery / 0.09, 0, 1)) : 0;
+    const recovery = recovering ? smoothstep(clamp(this.shiftRecovery / recoveryTime, 0, 1)) : 0;
     this.shiftEnvelope = release * (1 - recovery);
     const targetRPM = Math.max(e.idleRPM, this.calcRPMFromSpeed(this.targetGear, this.speedKmh));
     const needsBlip = targetRPM > e.rpm + 40;
     const blip = clamp((targetRPM - e.rpm) * e.inertia / RPM_PER_RAD / 0.12
       / Math.max(1, e.torqueAtRPM(e.rpm)), 0, 1);
     // Ignition cut on upshift: instantaneous torque reduction creating an unmistakable cut breakpoint
-    const commandedThrottle = recovering ? throttle : needsBlip ? blip : 0;
-    const cutTorque = this.isUpshift ? 0 : Math.max(0, 1 - release);
-    e.prepareStep(dt, commandedThrottle, { torqueScale: recovering ? 0.35 + recovery * 0.65
+    // Ignition/torque intervention does not require closing the throttle.
+    // Keep charge air and shaft sound continuous through a clutchless upshift.
+    const commandedThrottle = needsBlip ? Math.max(throttle, blip) : throttle;
+    const cutTorque = this.isUpshift ? (this.mode === 'amt' ? 0.06 : 0.40) : Math.max(0.25, 1 - release);
+    this.shiftPhase = recovering ? 'recover' : this.shiftElapsed < releaseTime ? 'release' : 'synchronize';
+    this.cutAmount = recovering ? (1 - recovery) * (1 - cutTorque) : 1 - cutTorque;
+    e.prepareStep(dt, commandedThrottle, { torqueScale: recovering ? cutTorque + recovery * (1 - cutTorque)
       : needsBlip ? 1 : cutTorque });
     let locked = false;
     if (this.shiftElapsed < releaseTime && this.previousGear !== 0) {
@@ -262,8 +284,8 @@ export class Drivetrain {
       const biteProgress = clamp((this.shiftElapsed - releaseTime) / 0.040, 0, 1);
       const biteCurve = 1 - Math.exp(-biteProgress * 4.0);
       const antiStall = clamp((e.rpm - e.idleRPM * 0.7) / (e.idleRPM * 0.5), 0, 1);
-      const maxSafeTorque = (e.redlineRPM * 0.022 * RPM_PER_RAD) * e.inertia / dt;
-      const nominalCapacity = peak * (this.mode === 'at' ? 3.0 : 4.5);
+      const maxSafeTorque = (e.redlineRPM * 0.022 / RPM_PER_RAD) * e.inertia / dt;
+      const nominalCapacity = peak * (this.mode === 'at' ? 3.0 : 4.0);
       const capacity = Math.min(nominalCapacity, maxSafeTorque) * (0.25 + 0.75 * biteCurve)
         * antiStall * (needsBlip ? 0.3 : 1);
       locked = this.couple(dt, this.currentGear, capacity);
@@ -271,19 +293,19 @@ export class Drivetrain {
 
       // Trigger crisp shift pop right when the new gear catches
       if (this.shiftPopPending && (locked || this.shiftElapsed >= releaseTime + 0.038)) {
-        e.createPop('shift', 1.45);
+        e.createPop('shift', this.mode === 'amt' ? 1.35 : 0.65);
         this.shiftPopPending = false;
       }
 
       if (!recovering && (locked || atLowSpeed || this.shiftElapsed > 0.8)) this.shiftRecovery = dt;
     }
     if (recovering) this.shiftRecovery += dt;
-    if (this.shiftRecovery >= 0.09) {
+    if (this.shiftRecovery >= recoveryTime) {
       this.shiftState = locked ? 'locked' : 'launching';
       this.clutchCapacity = peak * 1.8;
       this.lockup = locked ? 1 : 0;
       if (this.shiftPopPending) {
-        e.createPop('shift', 1.35);
+        e.createPop('shift', this.mode === 'amt' ? 1.15 : 0.55);
         this.shiftPopPending = false;
       }
       this.shiftEnvelope = 0;
@@ -299,7 +321,10 @@ export class Drivetrain {
       return;
     }
     this.shiftEnvelope = 0;
-    e.prepareStep(dt, throttle, { idleLoad: this.mode === 'at' ? this.pumpTorque : 0 });
+    this.shiftPhase = "idle";
+    this.cutAmount = 0;
+    e.prepareStep(dt, throttle, { idleLoad: this.mode === 'at' ? this.pumpTorque
+      : this.shiftState === 'launching' ? Math.max(0, this.transmittedTorque) : 0 });
     if (!e.isIgnitionOn || this.currentGear === 0) {
       if (!e.isIgnitionOn) this.resetShift();
       this.clutchEngagement = 0;
@@ -324,22 +349,35 @@ export class Drivetrain {
         const speedRatio = wheelRPM / Math.max(1, e.rpm);
         const wantLock = speedRatio > 0.86 && e.rpm > e.idleRPM * 1.4;
         this.lockup = clamp(this.lockup + (wantLock ? dt / 0.35 : -dt / 0.18), 0, 1);
-        const stallRPM = Math.max(e.idleRPM * 1.9, e.redlineRPM * 0.24);
+        const stallRPM = Math.max(e.idleRPM * 1.9,
+          (e.config.ratedTorqueRPM || e.config.defaultRedlineRPM * 0.65) * 0.50);
         const map = converterCharacteristics(speedRatio);
         const creepScale = throttle < 0.02 ? clamp((6 - Math.abs(this.speedKmh)) / 3, 0, 1) : 1;
         pump = e.torqueAtRPM(stallRPM) * (e.rpm / stallRPM) ** 2 * map.capacity
           * (1 - this.lockup) * creepScale;
-        const ratio = Math.abs(this.gearRatios[this.currentGear] * this.finalDrive);
-        const gripTorque = this.vehicleMass * 9.81 * 0.95 * this.tireRadius / ratio;
+        const ratio = Math.abs(this.gearRatios[this.currentGear] * this.finalDrive * this.primaryRatio);
+        const gripTorque = this.vehicleMass * 9.81 * 0.95 * this.tireRadius / ratio / this.driveEfficiency;
         pump = Math.min(pump, gripTorque / map.torqueRatio);
         turbine = pump * map.torqueRatio;
         capacity = peak * 2 * this.lockup;
       } else {
-        const antiStall = clamp((e.rpm - e.idleRPM * 0.7) / (e.redlineRPM * 0.24), 0, 1);
         const engaged = throttle > 0.02 || wheelRPM > e.idleRPM * 1.2;
-        const requested = engaged && this.brakeInput < 0.1 ? peak * 1.8 * antiStall : 0;
+        // Release part of the clutch load while the engine is below its useful
+        // torque band. The old capacity curve could balance torque at idle
+        // indefinitely, making full-throttle starts crawl for several seconds.
+        const speedRatio = clamp(wheelRPM / Math.max(1, e.rpm), 0, 1);
+        const idleBite = peak * 0.12 * clamp(throttle / 0.25, 0, 1);
+        const torqueBudget = Math.max(idleBite, Math.max(0, e.netTorque) * (0.68 + 0.42 * speedRatio ** 2));
+        const flareGuard = peak * 1.8 * clamp((e.rpm - e.config.defaultRedlineRPM * 0.52)
+          / (e.config.defaultRedlineRPM * 0.25), 0, 1);
+        const driveCapacity = throttle < 0.02 ? peak * 1.8 : Math.max(torqueBudget, flareGuard);
+        const antiStall = clamp((e.rpm - e.idleRPM * 0.65) / (e.idleRPM * 0.35), 0, 1);
+        const requested = engaged && this.brakeInput < 0.1 ? Math.min(peak * 1.8, driveCapacity) * antiStall : 0;
         const maxChange = peak * 6 * dt;
         this.clutchCapacity += clamp(requested - this.clutchCapacity, -maxChange, maxChange);
+        // Anti-stall also limits residual capacity during pedal release. A
+        // latched high capacity could drag the crank to zero while braking.
+        this.clutchCapacity = Math.min(this.clutchCapacity, peak * 1.8 * antiStall);
         capacity = this.clutchCapacity;
       }
       this.pumpTorque = pump;
@@ -357,8 +395,14 @@ export class Drivetrain {
     this.accumulator += clamp(Number(dt) || 0, 0, 0.25);
     const pops = [];
     const bovs = [];
+    let frameCut = 0;
+    let frameUpshift = false;
     while (this.accumulator + 1e-10 >= PHYSICS_STEP) {
       this.step(PHYSICS_STEP, throttle);
+      if (this.shiftState === 'shifting' || this.cutAmount > 0) {
+        frameCut = Math.max(frameCut, this.cutAmount);
+        frameUpshift ||= this.isUpshift;
+      }
       pops.push(...this.engine.popEvents);
       bovs.push(...this.engine.bovEvents);
       this.accumulator -= PHYSICS_STEP;
@@ -366,8 +410,11 @@ export class Drivetrain {
     return { mode: this.mode, gearDisplay: this.getGearDisplay(), currentGear: this.currentGear,
       speedKmh: Math.round(Math.abs(this.speedKmh)), signedSpeedKmh: this.speedKmh,
       gearRatio: Math.abs(this.gearRatios[this.currentGear]), shiftEnvelope: this.shiftEnvelope,
-      isShifting: this.shiftState === 'shifting', isUpshift: this.isUpshift, message: this.lastShiftMessage,
-      vehicleMass: this.vehicleMass,
+      isShifting: this.shiftState === 'shifting' || frameCut > 0,
+      isUpshift: this.isUpshift || frameUpshift, message: this.lastShiftMessage,
+      vehicleMass: this.vehicleMass, maxGear: this.maxGear,
+      shiftPhase: this.shiftPhase, cutAmount: Math.max(this.cutAmount, frameCut),
+      shiftProgress: this.shiftState === "shifting" ? Math.min(1, this.shiftElapsed / Math.max(0.001, this.shiftDuration)) : 0,
       engine: this.engine.snapshot(pops, bovs) };
   }
 }

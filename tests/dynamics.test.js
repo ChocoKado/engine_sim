@@ -32,7 +32,12 @@ for (const id of Object.keys(ENGINE_CONFIGS)) {
             assert.ok(Math.abs(acceleration - previousAcceleration) < 0.8,
               `no acceleration step at lock-up: ${acceleration - previousAcceleration}`);
           }
-          if (frame === 239) assert.ok(drive.speedKmh > (throttle === 1 ? 8 : 1), 'respond within the first second');
+          if (frame === 239) {
+            // OEM Ninja 400 power and the experimental aircraft load rig must
+            // not inherit the earlier 60 HP/vehicle acceleration benchmark.
+            const minimum = throttle === 1 ? (['i2_180', 'radial_7'].includes(id) ? 5 : 8) : 1;
+            assert.ok(drive.speedKmh > minimum, 'respond within the first second');
+          }
           previousAcceleration = acceleration;
         }
       }

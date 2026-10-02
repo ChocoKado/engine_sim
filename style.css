@@ -805,7 +805,7 @@ body {
 
 .trans-mode-bar {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
 
@@ -1309,6 +1309,7 @@ input[type="range"] {
 
 /* Keybindings Modal */
 .modal-overlay {
+  visibility: hidden;
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.75);
@@ -1323,6 +1324,7 @@ input[type="range"] {
 }
 
 .modal-overlay.visible {
+  visibility: visible;
   opacity: 1;
   pointer-events: auto;
 }
@@ -2002,4 +2004,138 @@ input[type="range"] {
   border-color: #ec4899;
   color: #ffffff;
   box-shadow: 0 0 12px rgba(236, 72, 153, 0.35);
+}
+
+/* Keep controls usable while the mechanical view remains in sight. */
+.sim-grid > *, .control-panel > *, .visual-panel > * { min-width: 0; }
+.lower-visual-row > *, .sub-header, .sub-header h3 { min-width: 0; }
+.sub-header h3 { overflow-wrap: anywhere; }
+.pedal-unit { color: var(--text-main); font: inherit; touch-action: none; user-select: none; }
+.reference-model-header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.reference-model-header strong { font-size: 0.95rem; color: var(--text-main); }
+.model-details { font-size: 0.85rem; line-height: 1.5; }
+.model-details summary { cursor: pointer; color: var(--text-muted); }
+.model-details p { margin: 8px 0; }
+.model-details a { color: var(--accent-cyan); }
+.turbo-size-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+.turbo-size-btn { padding: 10px; border-radius: 8px; background: #1e293b; color: #cbd5e1; border: 1px solid #475569; cursor: pointer; }
+.turbo-size-btn.active { background: rgba(0, 240, 255, 0.13); color: #fff; border-color: var(--accent-cyan); }
+.bov-btn-group { flex-wrap: wrap; }
+.amt-shifter { display: grid; grid-template-columns: repeat(auto-fit, minmax(28px, 1fr)); gap: 5px; width: 100%; }
+button:focus-visible, [role="button"]:focus-visible, summary:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 2px solid var(--accent-cyan); outline-offset: 3px;
+}
+.sticky-hud-digits, .hud-speed-digits, .hud-rpm-digits { font-variant-numeric: tabular-nums; }
+.telemetry-gauge { min-width: 0; }
+.telemetry-number, .telemetry-peak, #boost-status-badge { overflow-wrap: anywhere; }
+.slider-label-group { flex-wrap: wrap; }
+.slider-label-group label { min-width: 0; }
+.transmission-context-note { margin: 4px 0 8px; font-size: 0.72rem; }
+
+@media (max-width: 768px) {
+  .sim-grid { gap: 8px; align-items: stretch; }
+  .control-panel { display: contents; }
+  /* The driving view fits above the pedals. Let it scroll with its controls:
+     a globally sticky canvas could cover the brake when focusing the slider. */
+  .sticky-engine-viewport { order: 1; position: relative; top: auto; z-index: 1; margin-bottom: 0; }
+  .cluster-card { order: 2; gap: 8px; padding: 12px; }
+  .cluster-header, .cluster-card .transmission-context-note, .pedal-key-hint, .pedal-tread { display: none; }
+  .slowmo-control-bar { order: 3; }
+  .lower-visual-row { order: 4; }
+  .tuning-card { order: 5; }
+  .cluster-card .cockpit-hud-screen, .cluster-card .tacho-wrapper { display: none; }
+  .sticky-engine-viewport .engine-canvas-box {
+    height: clamp(110px, 23svh, 180px); min-height: 0; max-height: none;
+  }
+  .sticky-engine-viewport .sticky-hud-digits { font-size: clamp(1.25rem, 5vw, 1.65rem); }
+  .sticky-engine-viewport .sticky-hud-sub { font-size: 0.65rem; }
+  .sticky-engine-viewport .sticky-hud-unit { font-size: 0.65rem; }
+  .sticky-engine-viewport .sticky-hud-item.gear-hud .gear-badge { font-size: 1.1rem; min-width: 32px; }
+  .sticky-engine-viewport .panel-header { flex-wrap: wrap; }
+  .sticky-engine-viewport .panel-title-group h2 { font-size: 0; }
+  .sticky-engine-viewport .panel-title-group h2::before { content: '引擎動態'; font-size: 0.8rem; }
+  .sticky-engine-viewport .view-btn { min-height: 36px; padding: 6px 8px; }
+  .at-shifter .at-btn, .amt-shifter .amt-gear-btn, .trans-btn, .bov-btn, .turbo-size-btn { min-height: 44px; }
+  .trans-mode-bar, .shifter-group, .amt-container { gap: 6px; }
+  .trans-section { padding: 8px; gap: 8px; }
+  .trans-btn, .at-shifter .at-btn { font-size: 0.75rem; padding: 6px 2px; }
+  .amt-shifter { grid-template-columns: repeat(auto-fit, minmax(24px, 1fr)); gap: 3px; }
+  .pedals-control-box { gap: 8px; }
+  .pedal-unit { height: 72px; }
+  .continuous-throttle-row { padding: 8px 10px; }
+  .continuous-throttle-row .slider-label-group { font-size: 0.7rem; }
+  .pedal-unit, #throttle-slider, .paddle-btn {
+    /* Native focus / scrollIntoView keeps the animation above the control. */
+    scroll-margin-top: min(80svh, 480px);
+  }
+  .paddle-shifter-box { padding: 0; gap: 8px; }
+  .paddle-btn { min-height: 44px; padding: 4px; }
+  .paddle-symbol { font-size: 1rem; }
+  .paddle-sub { font-size: 0.65rem; }
+  .seq-info { display: none; }
+  #shift-message:empty { display: none; }
+  .dyno-gauges-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .telemetry-number { font-size: 1.2rem; }
+  .telemetry-label { font-size: 0.7rem; }
+  .telemetry-peak { font-size: 0.72rem; }
+  .induction-grid { gap: 5px; }
+  .ind-name { font-size: 0.7rem; letter-spacing: 0; }
+  .ind-sub { font-size: 0.65rem; }
+  .brand-sub { overflow-wrap: anywhere; }
+}
+
+@media (max-width: 360px) and (orientation: portrait) {
+  .sticky-engine-viewport .panel-title-group { display: none; }
+  .sticky-engine-viewport .panel-header { padding: 8px; }
+  .sticky-engine-viewport .view-controls { width: 100%; justify-content: center; }
+  .sticky-engine-viewport .engine-canvas-box { height: 110px; }
+}
+
+/* Short landscape phones: animation and pedals share a row instead of stacking. */
+@media (max-width: 950px) and (max-height: 500px) and (orientation: landscape) {
+  .app-container { padding: 8px; gap: 8px; }
+  .app-header { flex-direction: row; padding: 8px 10px; gap: 10px; }
+  .brand-title { font-size: 1rem; }
+  .brand-sub, .status-badge, .icon-action-btn span { display: none; }
+  .header-center, .header-right { width: auto; flex: 1; }
+  .engine-start-btn { padding: 8px; font-size: 0.7rem; min-height: 42px; white-space: nowrap; }
+  .engine-start-btn svg { width: 18px; }
+  .header-right { flex: 0 1 auto; gap: 6px; }
+  .volume-control input[type="range"] { width: 48px; }
+  .sim-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 8px; }
+  .visual-panel, .control-panel { display: contents; }
+  .sticky-engine-viewport { grid-column: 1; grid-row: 1; position: relative; top: auto; gap: 0; z-index: 1; margin: 0; }
+  .sticky-engine-viewport .sticky-hud-bar { margin: 0; }
+  .sticky-engine-viewport .engine-canvas-box { height: clamp(110px, calc(100svh - 195px), 260px); min-height: 0; max-height: none; }
+  .sticky-engine-viewport .panel-header { padding: 4px; }
+  .sticky-engine-viewport .panel-title-group { display: none; }
+  .sticky-engine-viewport .view-controls { width: 100%; justify-content: center; }
+  .sticky-engine-viewport .view-btn { min-height: 32px; padding: 4px 6px; font-size: 0.65rem; }
+  .sticky-engine-viewport .sticky-hud-digits { font-size: 1.2rem; }
+  .sticky-engine-viewport .sticky-hud-unit { font-size: 0.6rem; }
+  .cluster-card { grid-column: 2; grid-row: 1; padding: 8px; gap: 8px; }
+  .cluster-header, .cluster-card .cockpit-hud-screen, .cluster-card .tacho-wrapper, .pedal-key-hint, .pedal-tread { display: none; }
+  .trans-mode-bar { gap: 4px; }
+  .trans-btn { font-size: 0.7rem; padding: 6px 2px; min-height: 36px; }
+  .at-shifter .at-btn, .amt-shifter .amt-gear-btn { min-height: 36px; padding: 6px 0; font-size: 0.72rem; }
+  .shifter-group { gap: 4px; }
+  .amt-container { gap: 4px; }
+  .paddle-shifter-box { gap: 6px; padding: 0; }
+  .paddle-btn { padding: 4px; min-height: 44px; }
+  .paddle-symbol { font-size: 1rem; }
+  .paddle-sub { font-size: 0.6rem; }
+  .seq-info { display: none; }
+  .pedals-control-box { gap: 6px; }
+  .pedal-unit { height: 64px; }
+  .pedal-text { font-size: 0.72rem; letter-spacing: 0; }
+  .continuous-throttle-row .slider-label-group { font-size: 0.7rem; }
+  #shift-message:empty { display: none; }
+  #shift-message { font-size: 0.7rem; }
+  .slowmo-control-bar { grid-column: 1 / -1; grid-row: 2; }
+  .lower-visual-row { grid-column: 1 / -1; grid-row: 3; }
+  .tuning-card { grid-column: 1 / -1; grid-row: 4; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-ring, .dot-live, .redline-flash, .sticky-rev-fill.redline-flash { animation: none; }
 }

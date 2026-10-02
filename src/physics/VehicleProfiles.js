@@ -1,81 +1,105 @@
-// Illustrative chassis + driver loads. These are not manufacturer performance
-// claims. Motorcycle engines must not inherit the mass of a passenger car.
+// Published transmission ratios are kept separate: crankshaft -> primary /
+// counter reduction -> selected gear -> final drive -> rolling tyre radius.
+// Chassis load includes a 75 kg driver. Cd*A and effective rolling radius are
+// simulation estimates, not manufacturer acceleration or top-speed claims.
+// Full data provenance and the aviation demonstrator exception:
+// docs/engine-reference.md.
+const DRIVER_MASS = 75;
+const rollingRadius = (widthMM, aspectPercent, rimInches) =>
+  ((rimInches * 25.4 / 2 + widthMM * aspectPercent / 100) / 1000) * 0.98;
+const ratios = (forward, reverse = 0) => Object.fromEntries([
+  [-1, -reverse], [0, 0], ...forward.map((ratio, i) => [i + 1, ratio]),
+]);
+const vehicle = (curbMass, data) => ({
+  curbMass, driverMass: DRIVER_MASS, mass: curbMass + DRIVER_MASS,
+  referenceKind: 'vehicle', primaryRatio: 1, ...data,
+  gearCount: Object.keys(data.gearRatios).filter(gear => Number(gear) > 0).length,
+});
+const chironRadius = rollingRadius(355, 25, 21);
+// Bugatti publishes per-gear speed at 6700 rpm, rather than tooth ratios.
+// These are equivalent overall reductions with finalDrive normalized to 1.
+const chironRatios = [90, 150, 200, 260, 320, 390, 420].map(speedKMH =>
+  6700 * 2 * Math.PI * chironRadius / 60 / (speedKMH / 3.6));
+
 export const VEHICLE_PROFILES = {
-  i1: {
-    // KTM 690 Duke Single (1st: 65 km/h, 6th: 185 km/h)
-    mass: 210, dragArea: 0.42, tireRadius: 0.315, finalDrive: 4.00,
-    gearRatios: { '-1': -2.8, 0: 0, 1: 2.50, 2: 1.85, 3: 1.45, 4: 1.20, 5: 1.02, 6: 0.88 }
-  },
-  i2_180: {
-    // Ninja 400 Parallel Twin (1st: 58 km/h, 6th: 195 km/h)
-    mass: 240, dragArea: 0.40, tireRadius: 0.315, finalDrive: 4.40,
-    gearRatios: { '-1': -2.8, 0: 0, 1: 2.90, 2: 2.10, 3: 1.65, 4: 1.38, 5: 1.18, 6: 1.02 }
-  },
-  i2_270: {
-    // Yamaha MT-07 / R7 CP2 Twin (1st: 68 km/h, 6th: 220 km/h)
-    mass: 265, dragArea: 0.39, tireRadius: 0.315, finalDrive: 4.10,
-    gearRatios: { '-1': -2.8, 0: 0, 1: 2.84, 2: 2.12, 3: 1.63, 4: 1.30, 5: 1.09, 6: 0.94 }
-  },
-  v2_90: {
-    // Ducati Panigale V2 Superquadro (1st: 91 km/h, 6th: 278 km/h)
-    mass: 275, dragArea: 0.36, tireRadius: 0.315, finalDrive: 4.15,
-    gearRatios: { '-1': -2.6, 0: 0, 1: 2.47, 2: 1.88, 3: 1.52, 4: 1.28, 5: 1.11, 6: 0.96 }
-  },
-  i3: {
-    // Yamaha MT-09 CP3 / Triumph Daytona (1st: 87 km/h, 6th: 260 km/h)
-    mass: 275, dragArea: 0.38, tireRadius: 0.315, finalDrive: 3.95,
-    gearRatios: { '-1': -2.6, 0: 0, 1: 2.67, 2: 2.00, 3: 1.60, 4: 1.33, 5: 1.13, 6: 0.97 }
-  },
-  i4_flat: {
-    // Inline 4 Screamer (Standard Ratios preserving test suite benchmarks)
-    mass: 285, dragArea: 0.36, tireRadius: 0.33, finalDrive: 3.65,
-    gearRatios: { '-1': -3.2, 0: 0, 1: 3.5, 2: 2.15, 3: 1.5, 4: 1.15, 5: 0.9, 6: 0.74 }
-  },
-  i4_cross: {
-    // Authentic Yamaha YZF-R1 Factory Close-Ratio (1st: 153, 2nd: 183, 3rd: 216, 4th: 252, 5th: 288, 6th: 318 km/h)
-    mass: 280, dragArea: 0.35, tireRadius: 0.315, finalDrive: 4.188,
-    gearRatios: { '-1': -2.5, 0: 0, 1: 2.600, 2: 2.176, 3: 1.842, 4: 1.579, 5: 1.381, 6: 1.250 }
-  },
-  i6: {
-    // Toyota Supra 2JZ / BMW M3 (1st: 68 km/h, 6th: 310 km/h)
-    mass: 1600, dragArea: 0.65, tireRadius: 0.335, finalDrive: 3.15,
-    gearRatios: { '-1': -3.5, 0: 0, 1: 3.82, 2: 2.36, 3: 1.69, 4: 1.27, 5: 1.00, 6: 0.84 }
-  },
-  v6: {
-    // Nissan GT-R VR38DETT Twin-Turbo (1st: 63 km/h, 6th: 328 km/h)
-    mass: 1750, dragArea: 0.68, tireRadius: 0.335, finalDrive: 3.70,
-    gearRatios: { '-1': -3.4, 0: 0, 1: 3.70, 2: 2.30, 3: 1.62, 4: 1.25, 5: 1.00, 6: 0.78 }
-  },
-  v8_cross: {
-    // American Muscle V8 Mustang GT 5.0 (1st: 69 km/h, 6th: 302 km/h)
-    mass: 1720, dragArea: 0.70, tireRadius: 0.340, finalDrive: 3.55,
-    gearRatios: { '-1': -3.4, 0: 0, 1: 3.66, 2: 2.43, 3: 1.69, 4: 1.32, 5: 1.00, 6: 0.82 }
-  },
-  v8_flat: {
-    // Ferrari 458 Italia Flatplane V8 (1st: 82 km/h, 6th: 330 km/h)
-    mass: 1485, dragArea: 0.62, tireRadius: 0.335, finalDrive: 4.10,
-    gearRatios: { '-1': -3.2, 0: 0, 1: 3.08, 2: 2.20, 3: 1.65, 4: 1.30, 5: 1.06, 6: 0.86 }
-  },
-  v10: {
-    // Lexus LFA V10 Screamer (1st: 87 km/h, 6th: 335 km/h)
-    mass: 1520, dragArea: 0.63, tireRadius: 0.335, finalDrive: 3.90,
-    gearRatios: { '-1': -3.2, 0: 0, 1: 3.10, 2: 2.18, 3: 1.64, 4: 1.30, 5: 1.05, 6: 0.85 }
-  },
-  v12: {
-    // Lamborghini Aventador V12 (1st: 88 km/h, 6th: 355 km/h)
-    mass: 1675, dragArea: 0.65, tireRadius: 0.345, finalDrive: 2.87,
-    gearRatios: { '-1': -3.6, 0: 0, 1: 3.91, 2: 2.44, 3: 1.81, 4: 1.46, 5: 1.16, 6: 0.96 }
-  },
-  w16: {
-    // Bugatti Chiron Quad-Turbo W16 (1st: 105 km/h, 6th: 422 km/h)
-    mass: 1995, dragArea: 0.70, tireRadius: 0.355, finalDrive: 2.70,
-    gearRatios: { '-1': -3.2, 0: 0, 1: 3.15, 2: 2.10, 3: 1.55, 4: 1.20, 5: 0.95, 6: 0.78 }
-  },
-  radial_7: {
-    // 7-Cylinder Radial Aero Engine (1st: 62 km/h, 6th: 210 km/h)
-    mass: 650, dragArea: 0.50, tireRadius: 0.350, finalDrive: 2.40,
-    gearRatios: { '-1': -2.4, 0: 0, 1: 2.40, 2: 1.85, 3: 1.45, 4: 1.15, 5: 0.95, 6: 0.75 }
-  }
+  i1: vehicle(163, {
+    dragArea: 0.43, tireRadius: rollingRadius(160, 60, 17), primaryRatio: 79 / 36, finalDrive: 40 / 16,
+    gearRatios: ratios([35 / 14, 28 / 16, 28 / 21, 23 / 21, 22 / 23, 20 / 23]), transmissionKind: 'manual',
+    gearingKind: 'published', referenceSource: 'https://manualzz.com/doc/59289224/ktm-690-duke-2016-owner-manual',
+  }),
+  i2_180: vehicle(168, {
+    dragArea: 0.36, tireRadius: rollingRadius(150, 60, 17), primaryRatio: 71 / 32, finalDrive: 41 / 14,
+    gearRatios: ratios([41 / 14, 37 / 18, 34 / 21, 32 / 24, 30 / 26, 28 / 27]), transmissionKind: 'manual',
+    gearingKind: 'published', referenceSource: 'https://www.kawasaki.cz/cs/products/Supersport___Sport/2019/Ninja_400/specifications?Uid=08AEXlgLWV5bDA0LWlFeXA1RXVBQXQoLUQ0LUApdX1xQClA',
+  }),
+  i2_270: vehicle(188, {
+    dragArea: 0.36, tireRadius: rollingRadius(180, 55, 17), primaryRatio: 77 / 40, finalDrive: 42 / 16,
+    gearRatios: ratios([2.846, 2.125, 1.631, 1.300, 1.090, 0.964]), transmissionKind: 'manual',
+    gearingKind: 'published', referenceSource: 'https://www.yamaha-motor.co.jp/mc/lineup/pdf/Catalog_yzf-r7_WGP60th_2021.pdf',
+  }),
+  v2_90: vehicle(200, {
+    dragArea: 0.35, tireRadius: rollingRadius(180, 60, 17), primaryRatio: 1.77, finalDrive: 43 / 15,
+    gearRatios: ratios([37 / 15, 30 / 16, 27 / 18, 25 / 20, 24 / 22, 23 / 24]), transmissionKind: 'manual',
+    gearingKind: 'published', referenceSource: 'https://www.ducati.com/th/th/bikes/panigale-v2-2020',
+  }),
+  i3: vehicle(189, {
+    dragArea: 0.44, tireRadius: rollingRadius(180, 55, 17), primaryRatio: 79 / 47, finalDrive: 45 / 16,
+    gearRatios: ratios([2.571, 1.947, 1.619, 1.380, 1.190, 1.037]), transmissionKind: 'manual',
+    gearingKind: 'published', referenceSource: 'https://global.yamaha-motor.com/jp/news/2021/0622/mt-09.html',
+  }),
+  i4_flat: vehicle(196, {
+    dragArea: 0.34, tireRadius: rollingRadius(190, 50, 17), primaryRatio: 1.717, finalDrive: 43 / 16,
+    gearRatios: ratios([2.285, 1.777, 1.500, 1.333, 1.214, 1.137]), transmissionKind: 'manual',
+    gearingKind: 'published', referenceSource: 'https://global.honda/jp/news/2017/2170316-cbr1000rr.html',
+  }),
+  i4_cross: vehicle(201, {
+    dragArea: 0.35, tireRadius: rollingRadius(190, 55, 17), primaryRatio: 67 / 41, finalDrive: 41 / 16,
+    gearRatios: ratios([39 / 15, 37 / 17, 35 / 19, 30 / 19, 29 / 21, 30 / 24]), transmissionKind: 'manual',
+    gearingKind: 'published', referenceSource: 'https://www.yamaha-motor.co.jp/mc/lineup/pdf/Catalog_YZF-R1_WGP60th_2021.pdf',
+  }),
+  i6: vehicle(1549, {
+    dragArea: 0.64, tireRadius: rollingRadius(255, 40, 17), finalDrive: 3.133,
+    gearRatios: ratios([3.827, 2.360, 1.685, 1.312, 1.000, 0.793], 3.280), transmissionKind: 'manual',
+    gearingKind: 'published', referenceSource: 'https://supra.vanderwaal.eu/manual/New%20Car%20Features.pdf',
+  }),
+  v6: vehicle(3929 * 0.45359237, {
+    dragArea: 0.64, tireRadius: rollingRadius(285, 35, 20), finalDrive: 3.700,
+    gearRatios: ratios([4.056, 2.301, 1.595, 1.248, 1.001, 0.796], 3.383), transmissionKind: 'dct',
+    gearingKind: 'published', referenceSource: 'https://usa.nissannews.com/en-US/releases/us-2017-nissan-gt-r-press-kit',
+  }),
+  v8_cross: vehicle(1681, {
+    dragArea: 0.72, tireRadius: rollingRadius(275, 40, 19), finalDrive: 3.55,
+    gearRatios: ratios([3.237, 2.104, 1.422, 1.000, 0.814, 0.622], 3.32), transmissionKind: 'manual',
+    gearingKind: 'published', referenceSource: 'https://media.ford.com/content/dam/fordmedia/North%20America/US/product/2020/mustang/2020-Mustang-Tech_Specs.pdf',
+  }),
+  v8_flat: vehicle(1485, {
+    dragArea: 0.62, tireRadius: rollingRadius(295, 35, 20), finalDrive: 5.143,
+    gearRatios: ratios([3.077, 2.185, 1.626, 1.286, 1.028, 0.839, 0.693], 2.791), transmissionKind: 'dct',
+    gearingKind: 'published', referenceSource: 'https://www.manualslib.com/manual/900232/Ferrari-458-Italia.html?page=27',
+  }),
+  v10: vehicle(1480, {
+    dragArea: 0.61, tireRadius: rollingRadius(305, 30, 20), primaryRatio: 1.259, finalDrive: 3.417,
+    gearRatios: ratios([3.231, 2.188, 1.609, 1.233, 0.970, 0.795], 3.587), transmissionKind: 'amt',
+    gearingKind: 'published', referenceSource: 'https://media.lexus.co.uk/lexus-lfa/',
+  }),
+  v12: vehicle(1675, {
+    dragArea: 0.68, tireRadius: rollingRadius(335, 30, 20), primaryRatio: 47 / 38, finalDrive: 43 / 15,
+    gearRatios: ratios([43 / 11, 39 / 16, 38 / 21, 35 / 24, 32 / 27, 29 / 30, 27 / 32], 41 / 14), transmissionKind: 'amt',
+    gearingKind: 'published', referenceSource: 'https://www.dana.com/globalassets/resource-library/light-vehicle/spec-sheets/dana-specsheet-longitudinaltransmission.pdf',
+  }),
+  w16: vehicle(1995, {
+    dragArea: 0.78, tireRadius: chironRadius, finalDrive: 1,
+    gearRatios: ratios(chironRatios, chironRatios[0]), transmissionKind: 'dct',
+    gearingKind: 'derived-from-published-speeds',
+    referenceSource: 'https://bugatti-newsroom.imgix.net/66703700d9bf8f4b7ce9211c/211122_BU_Chiron%20ENG.pdf',
+  }),
+  radial_7: vehicle(575, {
+    // Aviation engine in an experimental ground-load demonstrator. These road
+    // ratios are intentionally not labelled a Rotec propeller drivetrain.
+    referenceKind: 'experimental', dragArea: 0.50, tireRadius: 0.35, finalDrive: 2.4,
+    gearRatios: ratios([2.40, 1.85, 1.45, 1.15, 0.95, 0.75]), transmissionKind: 'manual',
+    gearingKind: 'experimental', referenceSource: 'https://www.rotecaerosport.com/r2800',
+  }),
 };
 
 export function converterCharacteristics(speedRatio) {

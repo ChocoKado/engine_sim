@@ -1,15 +1,10 @@
 // SoundEngine.js
-// Next-Generation Physically-Informed Engine & Exhaust Acoustic Synthesizer
-// Inspired by AngeTheGreat engine-sim principles and Antonio-R1 physical modeling:
-// 1. Multi-cylinder firing order harmonics & syncopated pulse trains (Crossplane V8 rumble, V10 howl, CP4 rasp, Single-cylinder thump)
-// 2. Dynamic load-dependent WaveShaper non-linear saturation (snarl & growl on full throttle, warm purr on decel)
-// 3. Multi-stage acoustic cavity formants (Helmholtz sub-bass, manifold collector body, tailpipe metallic rasp)
-// 4. Throttle intake induction roar (instant induction bark on throttle press)
-// 5. Racing transmission straight-cut gear whine
-// 6. Staccato fuel-cut rev limiter bounce & violent overrun backfire pops
+// Sample-rate cylinder pressure pulses, separate intake acoustics and bounded
+// exhaust resonators. This procedural model does not replace vehicle recordings.
 
 import { EXHAUST_MODELS } from './ExhaustModels.js';
 import { ENGINE_CONFIGS } from '../physics/EngineConfigurations.js';
+import { combustionWorkletSource, inductionEventShape } from './CombustionDSP.js';
 
 export class SoundEngine {
   constructor(contextFactory = null) {
@@ -63,6 +58,10 @@ export class SoundEngine {
 
     // Engine jitter & phase
     this.jitterPhase = 0;
+    this.pressureNode = null;
+    this.pressureGain = null;
+    this.activeBursts = new Set();
+    this.acousticBackend = 'oscillator-fallback';
   }
 
   // Initialize Web Audio graph upon user gesture
@@ -96,7 +95,16 @@ export class SoundEngine {
 
     this.masterGain.connect(this.outputGain);
     this.outputGain.connect(this.compressor);
-    this.compressor.connect(this.ctx.destination);
+    // A final bounded transfer stage catches transient overshoot after the
+    // compressor without allowing pops or valve noises to clip the DAC.
+    this.safetyClip = this.ctx.createWaveShaper();
+    this.safetyClip.curve = Float32Array.from({ length: 1025 }, (_, i) => {
+      const x = i * 2 / 1024 - 1;
+      return 0.98 * Math.tanh(x / 0.98);
+    });
+    this.safetyClip.oversample = '2x';
+    this.compressor.connect(this.safetyClip);
+    this.safetyClip.connect(this.ctx.destination);
 
     // 2. Rev-Limiter Staccato Gate
     this.limiterGate = this.ctx.createGain();
@@ -120,11 +128,67 @@ export class SoundEngine {
 
     // 5. Build Acoustic Oscillators and Sound Generators
     this.setupAcousticGenerators();
+    await this.setupPressureGenerator();
 
     this.isStarted = true;
     this.setSoundProfile(this.soundProfile);
     this.setExhaustModel(this.currentExhaust);
+    // Never expose the generators' default 440 Hz tones on the first start.
+    this.update({ rpm: this.engineConfig.defaultIdleRPM, displacement: this.engineConfig.defaultDisplacement,
+      manifoldThrottle: 0.045, forcedInduction: 'na' }, this.engineConfig, {});
     this.setRunning(this.running);
+  }
+
+  async setupPressureGenerator() {
+    // Web Audio Worklet preserves individual firing phases between UI frames.
+    // Older browsers / test contexts retain the bounded periodic-wave fallback.
+    if (!this.ctx.audioWorklet || typeof globalThis.AudioWorkletNode !== 'function') return;
+    let url;
+    try {
+      url = URL.createObjectURL(new Blob([combustionWorkletSource()], { type: 'text/javascript' }));
+      await this.ctx.audioWorklet.addModule(url);
+      this.pressureNode = new AudioWorkletNode(this.ctx, 'combustion-pressure', {
+        numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [1],
+        processorOptions: { config: { ...this.engineConfig, profile: this.soundProfile } },
+      });
+      const failed = error => {
+        this.workletError = String(error || 'Combustion processor stopped');
+        this.pressureNode?.disconnect();
+        this.pressureNode = null;
+        this.acousticBackend = 'oscillator-fallback';
+        this.combustionGain.gain.setTargetAtTime(0.55, this.ctx.currentTime, 0.005);
+      };
+      this.pressureNode.onprocessorerror = () => failed();
+      this.pressureNode.port.onmessage = ({ data }) => { if (data.error) failed(data.error); };
+      this.pressureGain = this.ctx.createGain();
+      this.pressureGain.gain.setValueAtTime(1.25, this.ctx.currentTime);
+      this.pressureNode.connect(this.pressureGain);
+      this.pressureGain.connect(this.saturationDriveGain);
+      this.combustionGain.gain.setValueAtTime(0, this.ctx.currentTime);
+      this.acousticBackend = 'pressure-worklet';
+    } catch (error) {
+      this.pressureNode = null;
+      this.acousticBackend = 'oscillator-fallback';
+      // Restricted audio policies may disallow a worklet; fallback stays usable.
+      this.workletError = String(error.message || error);
+    } finally {
+      if (url) URL.revokeObjectURL(url);
+    }
+  }
+
+  configurePressureGenerator(displacement = this.engineConfig.defaultDisplacement) {
+    this.pressureNode?.port.postMessage({ config: {
+      ...this.engineConfig, displacement, profile: this.soundProfile,
+    } });
+    this.pressureConfigurationKey = `${this.engineConfig.id}:${displacement}:${this.soundProfile}`;
+  }
+
+  trackBurst(source, nodes) {
+    this.activeBursts.add(source);
+    source.onended = () => {
+      this.activeBursts.delete(source);
+      for (const node of nodes) node.disconnect();
+    };
   }
 
   // Generate asymmetric non-linear transfer curve for cylinder combustion pressure spikes
@@ -156,7 +220,12 @@ export class SoundEngine {
     this.saturationDriveGain.gain.setValueAtTime(1.0, this.ctx.currentTime);
 
     this.saturationDriveGain.connect(this.waveShaperNode);
-    this.waveShaperNode.connect(this.helmholtzFilter);
+    this.exhaustHighpass = this.ctx.createBiquadFilter();
+    this.exhaustHighpass.type = 'highpass';
+    this.exhaustHighpass.frequency.setValueAtTime(22, this.ctx.currentTime);
+    this.exhaustHighpass.Q.setValueAtTime(0.6, this.ctx.currentTime);
+    this.waveShaperNode.connect(this.exhaustHighpass);
+    this.exhaustHighpass.connect(this.helmholtzFilter);
   }
 
   // Setup 3-Stage Formants (Helmholtz Sub-Bass, Manifold Throat, Tailpipe Rasp)
@@ -218,14 +287,15 @@ export class SoundEngine {
     for (let i = 1; i < numHarmonics; i++) {
       const width = (character === 'screamer' ? 0.22 : 0.36) / config.cylinders;
       const decay = Math.exp(-i * 0.012) / (1 + (i * width) ** 2);
-      // Asymmetric supersonic shockwave steepening (AngeTheGreat blowdown acoustic profile)
+      // Fourier fallback approximates a steep pressure rise and slower decay.
       const shockFront = 1.0 + 0.12 * Math.sin(Math.min(Math.PI, i * width));
 
       for (let cylinder = 0; cylinder < config.firingAngles.length; cylinder++) {
         const phase = (360 - config.firingAngles[cylinder]) / 720 * Math.PI * 2;
         const angle = i * phase;
         // Separate-bank exhaust paths contribute unequal pulse amplitudes.
-        const bankGain = config.layout === 'v' && cylinder % 2 ? 0.78 : 1;
+        const bank = config.exhaustBanks?.[cylinder] ?? (cylinder % 2);
+        const bankGain = (config.layout === 'v' || config.layout === 'w') && bank ? 0.78 : 1;
         real[i] += bankGain * decay * shockFront * (Math.cos(angle) - i * width * Math.sin(angle)) / config.cylinders;
         imag[i] += bankGain * decay * shockFront * (Math.sin(angle) + i * width * Math.cos(angle)) / config.cylinders;
       }
@@ -241,12 +311,12 @@ export class SoundEngine {
     const imag = new Float32Array(numHarmonics);
     real[0] = 0;
     imag[0] = 0;
-    // Fundamental compressor blade pass
+    // Audible shaft order; actual compressor blade-pass orders are higher.
     real[1] = 0.85;
     // Housing scroll aerodynamic harmonics
-    real[2] = 0.32;
-    real[3] = 0.12;
-    real[4] = 0.05;
+    real[2] = 0.10;
+    real[3] = 0.03;
+    real[4] = 0.008;
     return this.ctx.createPeriodicWave(real, imag, { disableNormalization: false });
   }
 
@@ -316,17 +386,18 @@ export class SoundEngine {
 
     this.intakeNoiseNode.connect(this.intakeFilter);
     this.intakeFilter.connect(this.intakeGain);
-    this.intakeGain.connect(this.helmholtzFilter);
+    // Intake and exhaust are separate acoustic paths. Sending intake noise
+    // through exhaust resonators masked the ignition-cut breakpoint.
+    this.intakeGain.connect(this.masterGain);
 
-    // 7A. Turbocharger Turbine Spool Whistle (1.2 kHz - 4.6 kHz with blade harmonics)
+    // 7A. Quiet turbo shaft-order tone underneath intake airflow.
     this.turboSpoolOsc = this.ctx.createOscillator();
     const turboWave = this.createTurboWhistleWave();
     this.turboSpoolOsc.setPeriodicWave(turboWave);
     this.turboSpoolFilter = this.ctx.createBiquadFilter();
-    this.turboSpoolFilter.type = 'peaking';
+    this.turboSpoolFilter.type = 'lowpass';
     this.turboSpoolFilter.frequency.setValueAtTime(1400, t);
-    this.turboSpoolFilter.Q.setValueAtTime(3.5, t);
-    this.turboSpoolFilter.gain.setValueAtTime(6.0, t);
+    this.turboSpoolFilter.Q.setValueAtTime(0.55, t);
     this.turboSpoolGain = this.ctx.createGain();
     this.turboSpoolGain.gain.setValueAtTime(0.0, t);
     this.turboSpoolOsc.connect(this.turboSpoolFilter);
@@ -337,20 +408,24 @@ export class SoundEngine {
     this.turboAirFilter = this.ctx.createBiquadFilter();
     this.turboAirFilter.type = 'bandpass';
     this.turboAirFilter.frequency.setValueAtTime(1800, t);
-    this.turboAirFilter.Q.setValueAtTime(1.8, t);
+    this.turboAirFilter.Q.setValueAtTime(0.65, t);
     this.turboAirGain = this.ctx.createGain();
     this.turboAirGain.gain.setValueAtTime(0.0, t);
     this.intakeNoiseNode.connect(this.turboAirFilter);
     this.turboAirFilter.connect(this.turboAirGain);
     this.turboAirGain.connect(this.masterGain);
 
-    // 8. Supercharger Screw Screaming Whine (800 Hz - 3500 Hz)
+    // 8. Roots / TVS rotor passage whine.
     this.scWhineOsc = this.ctx.createOscillator();
-    this.scWhineOsc.type = 'sawtooth';
+    // Four-lobe TVS passage pressure ripple; a sawtooth sounded like a synth.
+    this.scWhineOsc.setPeriodicWave(this.ctx.createPeriodicWave(
+      new Float32Array([0, 0.82, 0.18, 0.055, 0.015]), new Float32Array(5),
+      { disableNormalization: false },
+    ));
     this.scWhineFilter = this.ctx.createBiquadFilter();
     this.scWhineFilter.type = 'bandpass';
     this.scWhineFilter.frequency.setValueAtTime(1600, t);
-    this.scWhineFilter.Q.setValueAtTime(3.8, t);
+    this.scWhineFilter.Q.setValueAtTime(0.80, t);
     this.scWhineGain = this.ctx.createGain();
     this.scWhineGain.gain.setValueAtTime(0.0, t);
     this.scWhineOsc.connect(this.scWhineFilter);
@@ -376,6 +451,7 @@ export class SoundEngine {
     const wave = this.createCombustionPulseWave(profile);
     this.combustionOsc.setPeriodicWave(wave);
     this.waveKey = '';
+    this.configurePressureGenerator(this.currentDisplacement);
 
     if (profile === 'muscle') {
       this.subBassGain.gain.setTargetAtTime(0.65, this.ctx.currentTime, 0.05);
@@ -484,151 +560,101 @@ export class SoundEngine {
     subOsc.start(t);
     subOsc.stop(t + decayTime + 0.01);
     burstNode.start(t);
-    burstNode.onended = () => { burstNode.disconnect(); burstFilter.disconnect(); burstGain.disconnect(); };
-    subOsc.onended = () => { subOsc.disconnect(); subGain.disconnect(); };
+    this.trackBurst(burstNode, [burstNode, burstFilter, burstGain]);
+    this.trackBurst(subOsc, [subOsc, subGain]);
   }
 
-  // Play Blow-off Valve (BOV) Atmospheric Vent ("TSSSHHH-TSUU!")
-  playBovSound(intensity = 1.0) {
+  // Valve sound follows the stored charge pressure and vent duration.
+  playBovSound(eventOrIntensity = 1.0) {
     if (!this.ctx || !this.isStarted || !this.running) return;
-    const t = this.ctx.currentTime;
-    const duration = 0.40;
+    const event = inductionEventShape(eventOrIntensity, 'bov');
+    if (event.intensity <= 0) return;
+    const t = Math.max(this.ctx.currentTime, Number(event.when) || this.ctx.currentTime);
     const sampleRate = this.ctx.sampleRate;
-    const bufLen = Math.floor(sampleRate * duration);
-    const buf = this.ctx.createBuffer(1, bufLen, sampleRate);
-    const data = buf.getChannelData(0);
-    for (let i = 0; i < bufLen; i++) {
+    const buffer = this.ctx.createBuffer(1, Math.ceil(sampleRate * event.duration), sampleRate);
+    const data = buffer.getChannelData(0);
+    let noiseBody = 0;
+    for (let i = 0; i < data.length; i++) {
       const time = i / sampleRate;
-      // Initial supersonic crack (first 14ms)
-      const crack = time < 0.014 ? (Math.random() * 2 - 1) * Math.sin(time * 3200 * Math.PI * 2) * 1.6 : 0;
-      // High-pressure pneumatic venting hiss with exponential decay
-      const hissDecay = Math.exp(-time * 10.5);
-      const hiss = (Math.random() * 2 - 1) * hissDecay;
-      // Secondary sequential valve trailing chirp ("-tsuu" at 0.11 - 0.25s)
-      const chirpTime = time - 0.11;
-      const chirp = (chirpTime > 0 && chirpTime < 0.14)
-        ? Math.sin(2 * Math.PI * (3600 - chirpTime * 8500) * chirpTime) * Math.exp(-chirpTime * 26) * 0.50
-        : 0;
-      data[i] = crack + hiss * 0.80 + chirp;
+      const progress = time / event.duration;
+      const envelope = (1 - Math.exp(-time / 0.0025)) * Math.exp(-progress * 4.8) * (1 - progress);
+      const noise = Math.random() * 2 - 1;
+      noiseBody += (noise - noiseBody) * 0.28;
+      // Broad pressure-driven vent rush with a small lip tone, not a laser chirp.
+      const lipHz = 1300 + Math.sqrt(event.pressure) * 340 - progress * 480;
+      data[i] = (noise * 0.48 + noiseBody * 0.5 + Math.sin(2 * Math.PI * lipHz * time) * 0.045) * envelope;
     }
-    const node = this.ctx.createBufferSource();
-    node.buffer = buf;
+    const source = this.ctx.createBufferSource();
+    source.buffer = buffer;
     const filter = this.ctx.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(3200, t);
-    filter.frequency.exponentialRampToValueAtTime(1500, t + duration * 0.7);
-    filter.Q.setValueAtTime(2.2, t);
-
-    const gain = this.ctx.createGain();
-    const vol = Math.min(0.98, 0.75 * intensity);
-    gain.gain.setValueAtTime(0.001, t);
-    gain.gain.linearRampToValueAtTime(vol, t + 0.002);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
-
-    node.connect(filter);
-    filter.connect(gain);
-    gain.connect(this.masterGain);
-
-    node.start(t);
-    node.onended = () => { node.disconnect(); filter.disconnect(); gain.disconnect(); };
-  }
-
-  // Play Compressor Surge / Flutter ("Stutututu / Supra 2JZ 經典放油門反串流 / 貓叫鳥叫聲")
-  playFlutterSound(intensity = 1.0) {
-    if (!this.ctx || !this.isStarted || !this.running) return;
-    const t = this.ctx.currentTime;
-    const duration = 0.85;
-    const sampleRate = this.ctx.sampleRate;
-    const bufLen = Math.floor(sampleRate * duration);
-    const buf = this.ctx.createBuffer(1, bufLen, sampleRate);
-    const data = buf.getChannelData(0);
-    const numPulses = 11;
-    let pTimeAcc = 0;
-
-    for (let p = 0; p < numPulses; p++) {
-      // Natural surge deceleration: each pulse interval elongates slightly as charge pressure bleeds
-      const pInterval = 0.058 + p * 0.0032;
-      const pStart = pTimeAcc;
-      pTimeAcc += pInterval;
-      const pDuration = 0.076;
-      // Exponential pulse train decay
-      const pAmplitude = Math.pow(0.79, p);
-      const startSample = Math.floor(pStart * sampleRate);
-      const endSample = Math.min(bufLen, Math.floor((pStart + pDuration) * sampleRate));
-
-      for (let i = startSample; i < endSample; i++) {
-        const time = i / sampleRate;
-        const tPulse = time - pStart;
-        const decay = Math.exp(-tPulse * 36) * pAmplitude;
-
-        // 1. Initial shockwave contact slap on compressor wheel (first 10ms of each chop)
-        const slap = tPulse < 0.010
-          ? (Math.random() * 2 - 1) * Math.sin(tPulse * 3400 * Math.PI * 2) * Math.exp(-tPulse * 320) * 0.95
-          : 0;
-
-        // 2. Hollow aluminum intercooler charge pipe cavity thump ("DOO / TU")
-        // Fundamental pipe resonance (290 Hz down to 210 Hz) + 2nd overtone
-        const pipeFreq = Math.max(190, 290 - p * 9);
-        const pipe = Math.sin(2 * Math.PI * pipeFreq * tPulse) * 0.80
-          + Math.sin(4 * Math.PI * pipeFreq * tPulse) * 0.35;
-
-        // 3. Compressor impeller blade stall chirp ("TSHU / bird chirp / 貓叫聲")
-        // Fast downward pitch sweep from ~2550 Hz down to ~1100 Hz
-        const startFreq = 2550 - p * 75;
-        const endFreq = 1100 - p * 45;
-        const chirpFreq = Math.max(650, startFreq - (startFreq - endFreq) * (tPulse / pDuration));
-        const bladeChirp = Math.sin(2 * Math.PI * chirpFreq * tPulse) * 0.85;
-
-        // 4. Intercooler charge pipe air turbulence
-        const turbulence = (Math.random() * 2 - 1) * 0.25;
-
-        data[i] += (slap + pipe + bladeChirp + turbulence) * decay;
-      }
-    }
-
-    // Dynamic normalization: ensure optimal punch and clarity without clipping
-    let maxVal = 0;
-    for (let i = 0; i < bufLen; i++) {
-      const abs = Math.abs(data[i]);
-      if (abs > maxVal) maxVal = abs;
-    }
-    if (maxVal > 0) {
-      const normFactor = 0.95 / maxVal;
-      for (let i = 0; i < bufLen; i++) {
-        data[i] *= normFactor;
-      }
-    }
-
-    const node = this.ctx.createBufferSource();
-    node.buffer = buf;
-
-    // Acoustic filtering: Preserves the deep hollow pipe thumps (200-450 Hz) while accentuating
-    // the metallic blade chirp at 2050 Hz, with a gentle lowpass at 5600 Hz to prevent harshness
-    const peakFilter = this.ctx.createBiquadFilter();
-    peakFilter.type = 'peaking';
-    peakFilter.frequency.setValueAtTime(2050, t);
-    peakFilter.Q.setValueAtTime(2.4, t);
-    peakFilter.gain.setValueAtTime(4.5, t);
-
+    filter.type = 'highpass';
+    filter.frequency.setValueAtTime(480, t);
+    filter.Q.setValueAtTime(0.6, t);
     const lowpass = this.ctx.createBiquadFilter();
     lowpass.type = 'lowpass';
-    lowpass.frequency.setValueAtTime(5600, t);
-    lowpass.Q.setValueAtTime(0.85, t);
-
+    lowpass.frequency.setValueAtTime(3800 + Math.min(2200, event.pressure * 750), t);
+    lowpass.Q.setValueAtTime(0.6, t);
     const gain = this.ctx.createGain();
-    const vol = Math.min(1.0, 0.95 * intensity);
-    gain.gain.setValueAtTime(vol, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
-
-    node.connect(peakFilter);
-    peakFilter.connect(lowpass);
+    gain.gain.setValueAtTime(Math.min(0.68, 0.26 * Math.sqrt(event.pressure) * event.intensity), t);
+    source.connect(filter);
+    filter.connect(lowpass);
     lowpass.connect(gain);
     gain.connect(this.masterGain);
-
-    node.start(t);
-    node.onended = () => { node.disconnect(); peakFilter.disconnect(); lowpass.disconnect(); gain.disconnect(); };
+    this.trackBurst(source, [source, filter, lowpass, gain]);
+    source.start(t);
   }
 
+  // Surge pulses slow and weaken as charge pressure and rotor energy decay.
+  playFlutterSound(eventOrIntensity = 1.0) {
+    if (!this.ctx || !this.isStarted || !this.running) return;
+    const event = inductionEventShape(eventOrIntensity, 'flutter');
+    if (event.intensity <= 0) return;
+    const t = Math.max(this.ctx.currentTime, Number(event.when) || this.ctx.currentTime);
+    const sampleRate = this.ctx.sampleRate;
+    const buffer = this.ctx.createBuffer(1, Math.ceil(sampleRate * event.duration), sampleRate);
+    const data = buffer.getChannelData(0);
+    let pulseStart = 0;
+    let pulse = 0;
+    while (pulseStart < event.duration) {
+      const progress = pulseStart / event.duration;
+      const rate = event.pulseRate * (1 - progress * 0.58);
+      const interval = 1 / Math.max(5, rate);
+      const pulseDuration = Math.min(interval * 0.83, 0.10);
+      const amplitude = Math.exp(-progress * 3.1) * (1 - progress);
+      const rotorRatio = Math.max(0.24, 1 - progress * 0.75);
+      const toneStart = 650 + event.rotorRPM / 85 * rotorRatio;
+      const toneEnd = toneStart * 0.56;
+      const cavityHz = 205 + Math.sqrt(event.pressure) * 58;
+      const first = Math.floor(pulseStart * sampleRate);
+      const last = Math.min(data.length, Math.ceil((pulseStart + pulseDuration) * sampleRate));
+      for (let i = first; i < last; i++) {
+        const age = i / sampleRate - pulseStart;
+        const envelope = (1 - Math.exp(-age / 0.0014)) * Math.exp(-age / (pulseDuration * 0.24));
+        // Integrate a chirp's frequency; f(t)*t would double its sweep speed.
+        const phase = 2 * Math.PI * (toneStart * age + (toneEnd - toneStart) * age * age / (2 * pulseDuration));
+        const stalledBlade = Math.sin(phase) * 0.39;
+        const pipePressure = Math.sin(2 * Math.PI * cavityHz * age) * 0.30;
+        const turbulentChop = (Math.random() * 2 - 1) * 0.38;
+        data[i] += (stalledBlade + pipePressure + turbulentChop) * envelope * amplitude;
+      }
+      pulseStart += interval;
+      pulse++;
+      if (pulse > 40) break;
+    }
+    const source = this.ctx.createBufferSource();
+    source.buffer = buffer;
+    const lowpass = this.ctx.createBiquadFilter();
+    lowpass.type = 'lowpass';
+    lowpass.frequency.setValueAtTime(4200, t);
+    lowpass.Q.setValueAtTime(0.65, t);
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(Math.min(0.78, 0.42 * Math.sqrt(event.pressure) * event.intensity), t);
+    source.connect(lowpass);
+    lowpass.connect(gain);
+    gain.connect(this.masterGain);
+    this.trackBurst(source, [source, lowpass, gain]);
+    source.start(t);
+  }
   // Real-time audio frame update
   update(engineState, config, drivetrainState = {}) {
     if (!this.ctx || !this.isStarted) return;
@@ -636,7 +662,6 @@ export class SoundEngine {
     const t = this.ctx.currentTime;
     this.setEngineConfig(config);
     const rpm = Math.max(120, engineState.rpm || 1000);
-    const redline = engineState.redlineRPM || (config && config.defaultRedlineRPM) || 10000;
     const throttle = Math.max(0, Math.min(1, engineState.manifoldThrottle ?? engineState.throttle ?? 0));
     const cylinders = (config && config.cylinders) || 4;
     const speedKmh = Math.max(0, drivetrainState.speedKmh || 0);
@@ -695,7 +720,7 @@ export class SoundEngine {
       const gearRatio = drivetrainState.gearRatio || 1;
       const whineFreq = Math.min(3200, 320 + speedKmh * 14.0 + (rpm / 60) * gearRatio * 3.2);
       this.gearWhineOsc.frequency.setTargetAtTime(whineFreq, t, smoothTime);
-      const whineVol = Math.min(0.06, 0.015 + (speedKmh / 200) * 0.045);
+      const whineVol = Math.min(0.012, 0.002 + (speedKmh / 200) * 0.010);
       this.gearWhineGain.gain.setTargetAtTime(whineVol, t, smoothTime);
     } else {
       this.gearWhineGain.gain.setTargetAtTime(0.0, t, 0.05);
@@ -708,9 +733,26 @@ export class SoundEngine {
     // This creates an authentic ignition cut without a silent dead hole:
     // Combustion snap dips into a deep, muffled hollow burble (~45%),
     // keeping exhaust resonance and crank momentum audibly continuous!
-    const isShiftCut = Boolean(drivetrainState.isShifting && drivetrainState.isUpshift);
+    const shiftingUp = Boolean(drivetrainState.isShifting && drivetrainState.isUpshift);
+    const measuredCut = drivetrainState.cutAmount ?? engineState.cutAmount;
+    const torqueScale = engineState.torqueScale ?? drivetrainState.torqueScale;
+    const fallbackCut = shiftingUp ? (drivetrainState.mode === 'at' ? 0.34 : 0.90) : 0;
+    const cutAmount = Math.max(0, Math.min(1, measuredCut
+      ?? (engineState.ignitionCut ? (torqueScale == null ? 1 : 1 - torqueScale) : fallbackCut)));
+    const isShiftCut = cutAmount > 0.05;
     const displacement = engineState.displacement || (config && config.defaultDisplacement) || 1000;
     const dispLiters = Math.max(0.125, displacement / 1000);
+    this.currentDisplacement = displacement;
+    if (`${config.id}:${displacement}:${this.soundProfile}` !== this.pressureConfigurationKey) {
+      this.configurePressureGenerator(displacement);
+    }
+    if (this.pressureNode) {
+      const pressureLoad = Math.min(1.6, throttle * Math.sqrt(1 + Math.max(0, engineState.boostPressure || 0)));
+      this.pressureNode.parameters.get('rpm').setTargetAtTime(rpm, t, 0.0025);
+      this.pressureNode.parameters.get('load').setTargetAtTime(pressureLoad, t, 0.006);
+      this.pressureNode.parameters.get('ignitionCut').setTargetAtTime(cutAmount, t, 0.001);
+      this.pressureNode.parameters.get('limiter').setValueAtTime(engineState.isRevLimiting ? 1 : 0, t);
+    }
 
     let blowdownBoost = 0;
     if (engineState.cylinderStates) {
@@ -722,48 +764,46 @@ export class SoundEngine {
     const dispPerCyl = dispLiters / Math.max(1, cylinders);
     const dispDriveMod = 0.78 + 0.32 * Math.min(2.0, Math.sqrt(dispPerCyl / 0.25));
     const rawDrive = (0.55 + 1.25 * Math.pow(throttle, 1.3) + Math.min(0.25, blowdownBoost * 0.04)) * dispDriveMod;
-    const driveAmount = isShiftCut ? Math.max(0.38, rawDrive * 0.42) : rawDrive;
-    this.saturationDriveGain.gain.setTargetAtTime(driveAmount, t, isShiftCut ? 0.005 : smoothTime);
+    const driveAmount = rawDrive * (1 - cutAmount * 0.30);
+    this.saturationDriveGain.gain.setTargetAtTime(driveAmount, t, isShiftCut ? 0.002 : smoothTime);
 
     // Primary combustion pulse softens into a muffled hollow ignition-cut tone (never 0 dead air!)
-    const combustionVol = isShiftCut ? 0.28 : 0.55;
-    this.combustionGain.gain.setTargetAtTime(combustionVol, t, isShiftCut ? 0.005 : smoothTime);
+    const combustionVol = this.pressureNode ? 0 : 0.07 + 0.48 * (1 - cutAmount);
+    this.combustionGain.gain.setTargetAtTime(combustionVol, t, isShiftCut ? 0.0015 : 0.007);
 
     // Sub-bass thump (30-80 Hz) physically scales with displacement volume:
     // Large displacement engines deliver deep chest-thumping bass; small engines have tighter pulse
     const dispBassMod = 0.52 + 0.48 * Math.min(2.2, Math.sqrt(dispLiters));
-    const baseSubBassVol = (this.soundProfile === 'muscle' ? 0.65 : 0.50) * dispBassMod;
-    const baseCamVol = (this.soundProfile === 'muscle' ? 0.55 : 0.40) * Math.min(1.8, 0.65 + 0.35 * Math.sqrt(dispLiters));
-    this.subBassGain.gain.setTargetAtTime(isShiftCut ? baseSubBassVol * 0.70 : baseSubBassVol, t, smoothTime);
-    this.camshaftGain.gain.setTargetAtTime(isShiftCut ? baseCamVol * 0.65 : baseCamVol, t, smoothTime);
+    // These are quiet mechanical orders; exhaust pressure supplies the body.
+    // Large pure sine layers obscured both firing order and the shift breakpoint.
+    const baseSubBassVol = (this.soundProfile === 'muscle' ? 0.075 : this.soundProfile === 'screamer' ? 0.028 : 0.045) * dispBassMod;
+    const baseCamVol = (this.soundProfile === 'muscle' ? 0.035 : this.soundProfile === 'screamer' ? 0.010 : 0.019) * Math.min(1.8, 0.65 + 0.35 * Math.sqrt(dispLiters));
+    const orderLayerScale = this.pressureNode ? 0.18 : 1;
+    this.subBassGain.gain.setTargetAtTime(baseSubBassVol * orderLayerScale * (1 - cutAmount * 0.18), t, 0.005);
+    this.camshaftGain.gain.setTargetAtTime(baseCamVol * orderLayerScale * (1 - cutAmount * 0.18), t, 0.005);
 
     // -------------------------------------------------------------
     // 3. Dynamic Intake Induction Roar
     // -------------------------------------------------------------
     // Airflow volume is proportional to displacement * RPM
     const intakeAirflow = Math.min(2.4, Math.sqrt(dispLiters));
-    const intakeVol = isShiftCut ? 0.025 : Math.pow(throttle, 1.35) * (0.05 + 0.09 * intakeAirflow);
-    this.intakeGain.gain.setTargetAtTime(intakeVol, t, isShiftCut ? 0.005 : 0.025);
+    const intakeVol = Math.pow(throttle, 1.35) * (0.020 + 0.045 * intakeAirflow);
+    this.intakeGain.gain.setTargetAtTime(intakeVol, t, 0.015);
     // Induction formant shifts with displacement and revs
-    const intakeCenterFreq = Math.max(110, Math.min(1600, (220 + (rpm / redline) * 260) * Math.pow(1.0 / dispLiters, 0.14)));
+    const intakeCenterFreq = Math.max(110, Math.min(1600, (220 + rpm * 0.028) * Math.pow(1.0 / dispLiters, 0.14)));
     this.intakeFilter.frequency.setTargetAtTime(intakeCenterFreq, t, smoothTime);
 
     // Harmonic Cut during shift cut: softens high-order firing ping while preserving body
-    if (isShiftCut) {
-      this.harmonicGain.gain.setTargetAtTime(0.10, t, 0.005);
-    } else {
-      const baseHarmonic = this.soundProfile === 'muscle' ? 0.20 : this.soundProfile === 'screamer' ? 0.40 : 0.28;
-      this.harmonicGain.gain.setTargetAtTime(baseHarmonic, t, smoothTime);
-    }
+    const baseHarmonic = this.soundProfile === 'muscle' ? 0.015 : this.soundProfile === 'screamer' ? 0.042 : 0.025;
+    this.harmonicGain.gain.setTargetAtTime(baseHarmonic * (this.pressureNode ? 0.12 : 1) * (1 - cutAmount * 0.94), t, isShiftCut ? 0.0015 : 0.007);
 
     // -------------------------------------------------------------
     // 4. Rev Limiter Staccato Gate Handling
     // -------------------------------------------------------------
     // Keep exhaust resonance audible through a shift. Only the redline limiter
     // uses rhythmic gating; AT has a smaller load dip than AMT.
-    const shiftDip = (drivetrainState.mode === 'at' ? 0.12 : 0.3) * (drivetrainState.shiftEnvelope || 0);
-    this.limiterGate.gain.setTargetAtTime(engineState.isRevLimiting ? 0.72 : 1 - shiftDip, t, 0.018);
-    this.limiterModGain.gain.setTargetAtTime(engineState.isRevLimiting ? 0.28 : 0, t, 0.008);
+    this.limiterGate.gain.setTargetAtTime(engineState.isRevLimiting && !this.pressureNode ? 0.72 : 1, t, 0.008);
+    this.limiterModGain.gain.setTargetAtTime(engineState.isRevLimiting && !this.pressureNode ? 0.28 : 0, t, 0.008);
 
     // -------------------------------------------------------------
     // 5. Dynamic Tone Formant Tracking
@@ -774,7 +814,7 @@ export class SoundEngine {
     const tunedHelmholtz = Math.max(52, Math.min(200, baseHelmholtz * Math.pow(1.0 / dispLiters, 0.18)));
     this.helmholtzFilter.frequency.setTargetAtTime(tunedHelmholtz, t, smoothTime);
 
-    const baseCollector = 380 + (rpm / redline) * 220;
+    const baseCollector = 380 * Math.sqrt(1 + throttle * 0.55);
     const collectorFreq = Math.max(220, Math.min(1800, baseCollector * Math.pow(1.0 / dispLiters, 0.12)));
     this.manifoldFilter.frequency.setTargetAtTime(collectorFreq, t, smoothTime);
 
@@ -782,25 +822,26 @@ export class SoundEngine {
     // 6. Forced Induction (Turbo Whistle & Supercharger Screaming Whine)
     // -------------------------------------------------------------
     const forcedInduction = engineState.forcedInduction || 'na';
-    const turboSpool = engineState.turboSpool || 0;
+    const turboRPM = Math.max(0, Number(engineState.turboRPM) || (engineState.turboSpool || 0) * 155000);
+    const airFlow = Math.max(0, Number(engineState.airFlow) || dispLiters * rpm / 120 * 0.0012 * throttle);
+    const boost = Math.max(0, engineState.boostPressure || 0);
 
     if (this.turboSpoolOsc && this.turboSpoolGain) {
-      if (forcedInduction === 'turbo' && turboSpool > 0.02) {
-        // Authentic aerodynamic jet-turbine whistle (800 Hz - 2,200 Hz):
-        // Never shrill dentist-drill frequencies; sings harmoniously with exhaust note
-        const turboPitch = Math.min(2200, 800 + Math.pow(turboSpool, 1.30) * 1350);
+      if (forcedInduction === 'turbo' && turboRPM > 3000) {
+        // Audible shaft order sits beneath broad compressor airflow. Blade-pass
+        // energy is mostly ultrasonic; it should not dominate as a shrill beep.
+        const turboPitch = Math.max(70, Math.min(3100, turboRPM / 60));
         this.turboSpoolOsc.frequency.setTargetAtTime(turboPitch, t, smoothTime);
-        this.turboSpoolFilter.frequency.setTargetAtTime(turboPitch, t, smoothTime);
-        const turboVol = Math.pow(turboSpool, 1.25) * (0.04 + 0.10 * throttle);
-        this.turboSpoolGain.gain.setTargetAtTime(isShiftCut ? turboVol * 0.55 : turboVol, t, smoothTime);
+        this.turboSpoolFilter.frequency.setTargetAtTime(Math.min(3500, turboPitch * 1.18 + 400), t, smoothTime);
+        const turboVol = Math.min(0.075, Math.sqrt(turboRPM / 180000) * (0.008 + Math.sqrt(airFlow) * 0.042));
+        this.turboSpoolGain.gain.setTargetAtTime(turboVol, t, 0.025);
 
         // Pressurized intake airflow suction rush (clean intercooler pipe whoosh)
         if (this.turboAirFilter && this.turboAirGain) {
-          const airFreq = Math.min(2400, 1050 + turboSpool * 1100);
+          const airFreq = Math.min(3400, 650 + turboRPM / 105 + Math.sqrt(boost) * 280);
           this.turboAirFilter.frequency.setTargetAtTime(airFreq, t, smoothTime);
-          const boostFactor = Math.min(1.6, Math.sqrt((engineState.boostPressure || 0) + 0.15));
-          const airVol = Math.pow(turboSpool, 1.20) * Math.pow(throttle, 0.95) * 0.12 * boostFactor;
-          this.turboAirGain.gain.setTargetAtTime(isShiftCut ? 0.02 : airVol, t, smoothTime);
+          const airVol = Math.min(0.27, Math.sqrt(airFlow) * (0.12 + Math.sqrt(boost) * 0.085));
+          this.turboAirGain.gain.setTargetAtTime(airVol, t, 0.018);
         }
       } else {
         this.turboSpoolGain.gain.setTargetAtTime(0.0, t, 0.04);
@@ -810,12 +851,16 @@ export class SoundEngine {
 
     if (this.scWhineOsc && this.scWhineGain) {
       if (forcedInduction === 'supercharger') {
-        // Crankshaft direct-belt mechanical whine (screaming sawtooth tracking engine RPM)
-        const scPitch = Math.min(3200, 680 + (rpm / redline) * 2350);
+        const rotorRPM = Math.max(0, Number(engineState.superchargerRPM) || rpm * 2.35);
+        const lobeCount = engineState.superchargerLobes || 4;
+        const scPitch = Math.max(35, Math.min(6000, rotorRPM / 60 * lobeCount));
         this.scWhineOsc.frequency.setTargetAtTime(scPitch, t, smoothTime);
-        this.scWhineFilter.frequency.setTargetAtTime(scPitch, t, smoothTime);
-        const scVol = (0.05 + 0.24 * (rpm / redline)) * Math.pow(throttle, 0.90);
-        this.scWhineGain.gain.setTargetAtTime(isShiftCut ? scVol * 0.35 : scVol, t, smoothTime);
+        this.scWhineFilter.frequency.setTargetAtTime(Math.min(7200, scPitch * 1.3), t, smoothTime);
+        const bypass = Math.max(0, Math.min(1, engineState.bypassOpening ?? 1 - throttle));
+        const inductionLoad = Math.max(0, Math.min(1.5, engineState.inductionLoad ?? throttle * Math.sqrt(boost + 0.1)));
+        const scVol = Math.min(0.23, Math.sqrt(rotorRPM / 18000) * (0.012 + inductionLoad * 0.13) * (1 - bypass * 0.82));
+        // The belt and rotors keep turning during an ignition cut.
+        this.scWhineGain.gain.setTargetAtTime(scVol, t, 0.012);
       } else {
         this.scWhineGain.gain.setTargetAtTime(0.0, t, 0.04);
       }
@@ -834,6 +879,12 @@ export class SoundEngine {
 
   setRunning(running) {
     this.running = Boolean(running);
+    if (!this.running) {
+      for (const source of this.activeBursts) {
+        try { source.stop(); } catch { /* already ended */ }
+      }
+      this.activeBursts.clear();
+    }
     if (this.outputGain) this.outputGain.gain.setTargetAtTime(this.running ? 1 : 0, this.ctx.currentTime, 0.035);
   }
 
@@ -844,5 +895,6 @@ export class SoundEngine {
     if (key === this.waveKey) return;
     this.combustionOsc.setPeriodicWave(this.createCombustionPulseWave(this.soundProfile, config));
     this.waveKey = key;
+    this.configurePressureGenerator(this.currentDisplacement || config.defaultDisplacement);
   }
 }

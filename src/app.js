@@ -5,15 +5,16 @@ import { ENGINE_CONFIGS } from './physics/EngineConfigurations.js';
 import { EXHAUST_MODELS } from './audio/ExhaustModels.js';
 import { EngineModel } from './physics/EngineModel.js';
 import { Drivetrain } from './physics/Drivetrain.js';
+import { VEHICLE_PROFILES } from './physics/VehicleProfiles.js';
 import { SoundEngine } from './audio/SoundEngine.js';
 import { EngineRenderer } from './visuals/EngineRenderer.js';
 import { GaugeRenderer } from './visuals/GaugeRenderer.js';
 import { InputManager } from './controls/InputManager.js';
 
-class App {
+export class App {
   constructor() {
     // 1. Initialize Physics & Audio models
-    this.engine = new EngineModel('i4_flat', 'akrapovic');
+    this.engine = new EngineModel('i4_flat', 'oem');
     this.drivetrain = new Drivetrain(this.engine);
     this.sound = new SoundEngine();
 
@@ -120,6 +121,12 @@ class App {
     // Exhaust System Cards Selection
     const exhaustCards = document.querySelectorAll('.exhaust-card');
     exhaustCards.forEach(card => {
+      card.addEventListener('keydown', event => {
+        if (event.code === 'Enter' || event.code === 'Space') {
+          event.preventDefault();
+          card.click();
+        }
+      });
       card.addEventListener('click', () => {
         exhaustCards.forEach(c => c.classList.remove('selected'));
         card.classList.add('selected');
@@ -147,12 +154,10 @@ class App {
       });
     });
 
-    // AMT Gear buttons (-1, 0, 1..6)
-    const amtBtns = document.querySelectorAll('.amt-gear-btn');
-    amtBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        this.drivetrain.setAmtGear(Number(btn.dataset.gear));
-      });
+    // Delegation supports each reference vehicle's actual number of gears.
+    document.querySelector('.amt-shifter')?.addEventListener('click', event => {
+      const button = event.target.closest('.amt-gear-btn');
+      if (button) this.drivetrain.setAmtGear(Number(button.dataset.gear));
     });
 
     // Paddle Shifters (+ / -)
@@ -201,20 +206,16 @@ class App {
       dispVal.textContent = `${this.engine.displacement} cc`;
       dispSlider.addEventListener('input', (e) => {
         this.engine.setDisplacement(e.target.value);
-        dispVal.textContent = `${this.engine.displacement} cc`;
-        this.updateDynoOverview();
+        this.syncTuningUI();
       });
     }
 
     const redlineSlider = document.getElementById('redline-slider');
     const redlineVal = document.getElementById('redline-val');
     if (redlineSlider && redlineVal) {
-      redlineSlider.value = this.engine.redlineRPM;
-      redlineVal.textContent = `${this.engine.redlineRPM} RPM`;
       redlineSlider.addEventListener('input', (e) => {
         this.engine.setRedlineRPM(e.target.value);
-        redlineVal.textContent = `${e.target.value} RPM`;
-        this.updateDynoOverview();
+        this.syncTuningUI();
       });
     }
 
@@ -223,40 +224,25 @@ class App {
       massSlider.addEventListener('input', e => {
         this.drivetrain.setVehicleMass(e.target.value);
         this.updateVehicleLoad();
+        this.updateReferenceStatus();
       });
     }
     this.updateVehicleLoad();
 
     // Forced Induction Selection (NA, Turbo, Supercharger)
     const inductionBtns = document.querySelectorAll('.induction-btn');
-    const turboPanel = document.getElementById('turbo-controls-panel');
-    const bovRow = document.querySelector('.bov-selection-row');
-    const boostLabel = document.getElementById('boost-slider-title');
-    const boostBadge = document.getElementById('boost-status-badge');
-
     inductionBtns.forEach(btn => {
       btn.addEventListener('click', () => {
-        inductionBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
         const indType = btn.dataset.induction;
         this.engine.setForcedInduction(indType);
-        if (turboPanel) {
-          turboPanel.style.display = indType !== 'na' ? 'block' : 'none';
-        }
-        if (bovRow) {
-          bovRow.style.display = indType === 'turbo' ? 'flex' : 'none';
-        }
-        if (boostLabel) {
-          boostLabel.textContent = indType === 'supercharger' ? '機械增壓值 (SC Boost)' : '渦輪最大增壓值 (Max Boost)';
-        }
-        if (boostBadge) {
-          boostBadge.textContent = indType === 'turbo'
-            ? `TURBO (+${this.engine.maxBoost.toFixed(1)} bar)`
-            : indType === 'supercharger'
-            ? `SUPERCHARGER (+${this.engine.maxBoost.toFixed(1)} bar)`
-            : '自然進氣 (NA)';
-        }
-        this.updateDynoOverview();
+        this.syncTuningUI();
+      });
+    });
+
+    document.querySelectorAll('.turbo-size-btn').forEach(button => {
+      button.addEventListener('click', () => {
+        this.engine.setTurboSize(button.dataset.turboSize);
+        this.syncTuningUI();
       });
     });
 
@@ -264,28 +250,18 @@ class App {
     const bovBtns = document.querySelectorAll('.bov-btn');
     bovBtns.forEach(btn => {
       btn.addEventListener('click', () => {
-        bovBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
         this.engine.setBovType(btn.dataset.bov);
+        this.syncTuningUI();
       });
     });
 
     // Boost Pressure Slider (Supported for both Turbo and Supercharger)
     const boostSlider = document.getElementById('boost-slider');
-    const boostVal = document.getElementById('boost-val');
-    if (boostSlider && boostVal) {
+    if (boostSlider) {
       boostSlider.addEventListener('input', (e) => {
         const bar = Number(e.target.value) / 100;
         this.engine.setMaxBoost(bar);
-        boostVal.textContent = `+${bar.toFixed(2)} bar`;
-        if (boostBadge) {
-          if (this.engine.forcedInduction === 'turbo') {
-            boostBadge.textContent = `TURBO (+${bar.toFixed(1)} bar)`;
-          } else if (this.engine.forcedInduction === 'supercharger') {
-            boostBadge.textContent = `SUPERCHARGER (+${bar.toFixed(1)} bar)`;
-          }
-        }
-        this.updateDynoOverview();
+        this.syncTuningUI();
       });
     }
 
@@ -317,6 +293,16 @@ class App {
         element.addEventListener(event, onRelease);
       }
       window.addEventListener('blur', onRelease);
+      element.addEventListener('keydown', event => {
+        if (event.code === 'Space' || event.code === 'Enter') {
+          event.preventDefault();
+          onPress();
+        }
+      });
+      element.addEventListener('keyup', event => {
+        if (event.code === 'Space' || event.code === 'Enter') onRelease();
+      });
+      element.addEventListener('blur', onRelease);
     };
 
     handlePedal(gasPedal, () => {
@@ -414,7 +400,7 @@ class App {
 
     // Initial specs presentation
     this.updateEngineDescription();
-    this.updateDynoOverview();
+    this.syncTuningUI();
     this.updateKeyHints();
   }
 
@@ -427,14 +413,18 @@ class App {
     this.updateVehicleLoad();
     this.sound.setEngineConfig(this.engine.config);
     this.updateEngineDescription();
-    this.updateDynoOverview();
+    this.syncTuningUI();
+  }
 
-    // Update displacement & redline sliders to match defaults
+  // All tuning controls are views of model state, including after preset changes.
+  syncTuningUI() {
+    const config = this.engine.config;
     const dispSlider = document.getElementById('displacement-slider');
     const dispVal = document.getElementById('displacement-val');
     if (dispSlider && dispVal) {
-      dispSlider.min = this.engine.config.minDisplacement;
-      dispSlider.max = this.engine.config.maxDisplacement;
+      dispSlider.min = config.minDisplacement;
+      dispSlider.max = config.maxDisplacement;
+      dispSlider.step = 0.1;
       dispSlider.value = this.engine.displacement;
       dispVal.textContent = `${this.engine.displacement} cc`;
     }
@@ -442,23 +432,93 @@ class App {
     const redlineSlider = document.getElementById('redline-slider');
     const redlineVal = document.getElementById('redline-val');
     if (redlineSlider && redlineVal) {
+      redlineSlider.min = config.minRedlineRPM ?? Math.max(config.defaultIdleRPM + 500, Math.floor(config.defaultRedlineRPM * 0.65 / 100) * 100);
+      redlineSlider.max = config.maxRedlineRPM ?? Math.ceil(config.defaultRedlineRPM * 1.25 / 100) * 100;
+      redlineSlider.step = 50;
       redlineSlider.value = this.engine.redlineRPM;
       redlineVal.textContent = `${this.engine.redlineRPM} RPM`;
     }
 
+    const induction = this.engine.forcedInduction;
+    for (const button of document.querySelectorAll('.induction-btn')) {
+      const selected = button.dataset.induction === induction;
+      button.classList.toggle('active', selected);
+      button.setAttribute('aria-pressed', String(selected));
+    }
+    for (const button of document.querySelectorAll('.turbo-size-btn')) {
+      const selected = button.dataset.turboSize === this.engine.turboSize;
+      button.classList.toggle('active', selected);
+      button.setAttribute('aria-pressed', String(selected));
+    }
+    for (const button of document.querySelectorAll('.bov-btn')) {
+      const selected = button.dataset.bov === this.engine.bovType;
+      button.classList.toggle('active', selected);
+      button.setAttribute('aria-pressed', String(selected));
+    }
+    const panel = document.getElementById('turbo-controls-panel');
+    if (panel) panel.style.display = induction === 'na' ? 'none' : 'block';
+    for (const row of document.querySelectorAll('.bov-selection-row, .turbo-size-row')) {
+      row.style.display = induction === 'turbo' ? 'flex' : 'none';
+    }
+    const scNote = document.getElementById('supercharger-note');
+    if (scNote) scNote.hidden = induction !== 'supercharger';
+    const slider = document.getElementById('boost-slider');
+    if (slider) {
+      slider.min = 30;
+      slider.max = 300;
+      slider.value = Math.round(this.engine.maxBoost * 100);
+    }
+    const boost = document.getElementById('boost-val');
+    if (boost) boost.textContent = `+${this.engine.maxBoost.toFixed(2)} bar`;
+    const title = document.getElementById('boost-slider-title');
+    if (title) title.textContent = induction === 'supercharger' ? 'TVS 全油門目標增壓' : '渦輪目標增壓';
+    const badge = document.getElementById('boost-status-badge');
+    if (badge) badge.textContent = induction === 'na' ? '自然進氣 (NA)' :
+      `${induction === 'turbo' ? `TURBO · ${this.engine.turboSize === 'large' ? '大渦輪' : '小渦輪'}` : 'ROOTS / TVS'} · ${this.engine.maxBoost.toFixed(2)} bar`;
+    this.syncGearControls();
+    this.updateReferenceStatus();
+    this.updateDynoOverview();
+  }
+
+  syncGearControls() {
+    const group = document.querySelector('.amt-shifter');
+    if (!group) return;
+    const hasReverse = Boolean(this.drivetrain.gearRatios?.[-1]);
+    for (const button of document.querySelectorAll('.at-btn[data-pos="R"]')) {
+      button.hidden = !hasReverse;
+      button.disabled = !hasReverse;
+    }
+    const maxGear = this.drivetrain.maxGear ?? Math.max(...Object.keys(this.drivetrain.gearRatios).map(Number));
+    const values = [...(hasReverse ? [-1] : []), 0, ...Array.from({ length: maxGear }, (_, index) => index + 1)];
+    group.style.gridTemplateColumns = `repeat(${values.length}, minmax(0, 1fr))`;
+    group.replaceChildren(...values.map(gear => {
+      const button = document.createElement('button');
+      button.className = 'amt-gear-btn';
+      button.dataset.gear = gear;
+      button.textContent = gear === -1 ? 'R' : gear === 0 ? 'N' : String(gear);
+      button.setAttribute('aria-label', gear === -1 ? '倒檔' : gear === 0 ? '空檔' : `${gear} 檔`);
+      button.classList.toggle('active', gear === this.drivetrain.currentGear);
+      return button;
+    }));
   }
 
   selectExhaust(exhaustId) {
     this.engine.setExhaust(exhaustId);
     this.sound.setExhaustModel(this.engine.exhaust);
     this.updateDynoOverview();
+    this.updateReferenceStatus();
   }
 
   updateVehicleLoad() {
     const slider = document.getElementById('vehicle-mass-slider');
     const label = document.getElementById('vehicle-mass-val');
-    if (slider) slider.value = this.drivetrain.vehicleMass;
-    if (label) label.textContent = `${this.drivetrain.vehicleMass} kg`;
+    if (slider) {
+      slider.min = Math.min(180, this.drivetrain.vehicleMass);
+      slider.max = Math.max(3000, this.drivetrain.vehicleMass);
+      slider.step = 1;
+      slider.value = this.drivetrain.vehicleMass;
+    }
+    if (label) label.textContent = `${Number(this.drivetrain.vehicleMass.toFixed(1))} kg`;
   }
 
   selectTransmissionMode(mode) {
@@ -470,6 +530,7 @@ class App {
 
     if (atControls) atControls.style.display = mode === 'at' ? 'flex' : 'none';
     if (amtControls) amtControls.style.display = mode === 'amt' ? 'flex' : 'none';
+    this.updateReferenceStatus();
   }
 
   updateEngineDescription() {
@@ -481,7 +542,46 @@ class App {
     if (descEl) descEl.textContent = this.engine.config.description;
     if (tagLayout) tagLayout.textContent = `${this.engine.config.layout.toUpperCase()} 架構`;
     if (tagCyls) tagCyls.textContent = `${this.engine.config.cylinders} 汽缸`;
-    if (tagSound) tagSound.textContent = `聲浪風格: ${this.engine.config.soundCharacter}`;
+    if (tagSound) tagSound.textContent = `聲浪風格: ${this.engine.config.soundCharacter || this.engine.config.shortName}`;
+  }
+
+  updateReferenceStatus() {
+    const config = this.engine.config;
+    const profile = VEHICLE_PROFILES[config.id];
+    const label = document.getElementById('reference-model-name');
+    const source = document.getElementById('reference-model-source');
+    const state = document.getElementById('tuning-state-badge');
+    const note = document.getElementById('reference-model-note');
+    const transmissionNote = document.getElementById('transmission-context-note');
+    const model = config.representativeModel || config.name;
+    if (label) label.textContent = config.modelYear && !model.startsWith(String(config.modelYear))
+      ? `${config.modelYear} ${model}` : model;
+    if (source) {
+      source.hidden = !config.referenceSource;
+      if (config.referenceSource) source.href = config.referenceSource;
+    }
+    const isStock = this.engine.displacement === config.defaultDisplacement
+      && this.engine.redlineRPM === config.defaultRedlineRPM
+      && this.engine.forcedInduction === (config.defaultInduction || 'na')
+      && (this.engine.forcedInduction === 'na' || Math.abs(this.engine.maxBoost - (config.defaultBoost || 0)) < 0.001)
+      && (this.engine.forcedInduction !== 'turbo' || this.engine.turboSize === (config.defaultTurboSize || 'small'))
+      && (this.engine.forcedInduction !== 'turbo' || this.engine.bovType === 'bov')
+      && this.engine.exhaust.id === 'oem'
+      && Math.abs(this.drivetrain.vehicleMass - (profile?.mass ?? 0)) <= 0.5;
+    if (state) state.textContent = isStock ? '原廠基準' : '自訂改裝';
+    if (note) note.textContent = config.layout === 'radial'
+      ? '航空引擎基準；車速與換檔為實驗負載台模擬。'
+      : '原廠數據基準（中間曲線為推估）；改裝輸出為模型估算。';
+    if (transmissionNote) {
+      transmissionNote.textContent = config.layout === 'radial' ? '實驗負載台，不代表航空傳動。'
+        : profile?.transmissionKind === 'manual' ? (this.drivetrain.mode === 'at'
+          ? '原車為手排；AT 為模擬操作模式。' : '原車為手排；以自動離合模擬撥片操作。') : '';
+      transmissionNote.hidden = !transmissionNote.textContent;
+    }
+    document.querySelectorAll('.exhaust-card').forEach(card => {
+      card.classList.toggle('selected', card.dataset.exhaust === this.engine.exhaust.id);
+      card.setAttribute('aria-pressed', String(card.dataset.exhaust === this.engine.exhaust.id));
+    });
   }
 
   updateDynoOverview() {
@@ -501,6 +601,12 @@ class App {
     const btnOpenModal = document.getElementById('btn-open-keybinds');
     const modal = document.getElementById('keybinds-modal');
     const btnCloseModal = document.getElementById('btn-close-keybinds');
+    const closeModal = () => {
+      modal.classList.remove('visible');
+      this.input.cancelRebinding();
+      this.input.controlsPaused = false;
+      btnOpenModal?.focus();
+    };
 
     if (btnOpenModal && modal) {
       btnOpenModal.addEventListener('click', () => {
@@ -508,14 +614,28 @@ class App {
         this.input.releaseHeldControls();
         modal.classList.add('visible');
         this.renderKeybindingList();
+        btnCloseModal?.focus();
       });
     }
 
     if (btnCloseModal && modal) {
-      btnCloseModal.addEventListener('click', () => {
-        modal.classList.remove('visible');
-        this.input.cancelRebinding();
-        this.input.controlsPaused = false;
+      btnCloseModal.addEventListener('click', closeModal);
+    }
+    if (modal) {
+      modal.addEventListener('keydown', event => {
+        if (event.code === 'Escape' && !this.input.bindingTarget) {
+          event.preventDefault();
+          closeModal();
+        }
+        if (event.code !== 'Tab') return;
+        const focusable = [...modal.querySelectorAll('button:not([disabled]), input, select, [tabindex="0"]')];
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault(); last?.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault(); first?.focus();
+        }
       });
     }
 
@@ -607,10 +727,12 @@ class App {
       // Play Blow-off valve (BOV) or compressor surge flutter sounds
       if (engineStatus.bovEvents && engineStatus.bovEvents.length > 0) {
         for (const bov of engineStatus.bovEvents) {
+          const event = { ...bov, when: this.sound.ctx.currentTime
+            - Math.max(0, (engineStatus.simTime ?? this.engine.time) - bov.timestamp) };
           if (bov.type === 'flutter') {
-            this.sound.playFlutterSound(bov.intensity);
+            this.sound.playFlutterSound(event);
           } else {
-            this.sound.playBovSound(bov.intensity);
+            this.sound.playBovSound(event);
           }
         }
       }
@@ -699,9 +821,11 @@ class App {
     }
     if (liveSpoolEl) {
       if (engineStatus.forcedInduction === 'na') {
-        liveSpoolEl.textContent = '0%';
+        liveSpoolEl.textContent = '—';
       } else {
-        liveSpoolEl.textContent = `${Math.round((engineStatus.turboSpool || 0) * 100)}%`;
+        const rpm = engineStatus.forcedInduction === 'supercharger'
+          ? engineStatus.superchargerRPM : engineStatus.turboRPM;
+        liveSpoolEl.textContent = `${Math.round(rpm || 0).toLocaleString()} RPM`;
       }
     }
 
@@ -718,10 +842,12 @@ class App {
     if (gasPedal) {
       if (engineStatus.throttle > 0.05) gasPedal.classList.add('active');
       else gasPedal.classList.remove('active');
+      gasPedal.setAttribute('aria-pressed', String(this.input.isThrottlePressed));
     }
     if (brakePedal) {
       if (this.drivetrain.brakeInput > 0.05) brakePedal.classList.add('active');
       else brakePedal.classList.remove('active');
+      brakePedal.setAttribute('aria-pressed', String(this.input.isBrakePressed));
     }
 
     // Synchronize active gear buttons
@@ -763,6 +889,6 @@ class App {
 }
 
 // Instantiate on window load
-window.addEventListener('DOMContentLoaded', () => {
-  new App();
-});
+if (typeof window !== 'undefined') {
+  window.addEventListener('DOMContentLoaded', () => { new App(); });
+}

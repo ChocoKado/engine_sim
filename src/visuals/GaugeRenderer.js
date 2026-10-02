@@ -5,6 +5,8 @@
 // 3. Dynamic Dyno Horsepower & Torque Telemetry
 // 4. Exhaust Tailpipe with Animated Backfire Flames
 
+import { advanceGaugeNeedle } from './MechanicalKinematics.js';
+
 export class GaugeRenderer {
   constructor(tachoCanvas, exhaustCanvas) {
     this.tachoCanvas = tachoCanvas;
@@ -43,7 +45,7 @@ export class GaugeRenderer {
       const rect = this.exhaustCanvas.parentElement.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
       this.exWidth = rect.width;
-      this.exHeight = Math.max(160, rect.height || 180);
+      this.exHeight = Math.max(80, rect.height || 180);
       this.exhaustCanvas.width = this.exWidth * dpr;
       this.exhaustCanvas.height = this.exHeight * dpr;
       this.exhaustCanvas.style.width = `${this.exWidth}px`;
@@ -114,17 +116,9 @@ export class GaugeRenderer {
       this.needleVelocity = 0;
     }
     const targetRPM = engine.isIgnitionOn ? engine.rpm : 0;
-    const stepDt = Math.max(0.001, Math.min(0.05, Number(dt) || 0.016));
-    const omega = 46;
-    const zeta = 0.84;
-    const delta = targetRPM - this.needleRPM;
-    const accel = omega * omega * delta - 2 * zeta * omega * this.needleVelocity;
-    this.needleVelocity += accel * stepDt;
-    this.needleRPM += this.needleVelocity * stepDt;
-    if (!Number.isFinite(this.needleRPM) || Math.abs(this.needleRPM - targetRPM) > 18000) {
-      this.needleRPM = targetRPM;
-      this.needleVelocity = 0;
-    }
+    const needle = advanceGaugeNeedle(this.needleRPM, this.needleVelocity, targetRPM, dt);
+    this.needleRPM = needle.position;
+    this.needleVelocity = needle.velocity;
 
     ctx.clearRect(0, 0, s, s);
 

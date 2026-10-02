@@ -165,15 +165,15 @@
               </div>
 
               <div class="telemetry-gauge">
-                <span class="telemetry-label">燃燒峰值壓力 CYL PRESSURE</span>
+                <span class="telemetry-label">估算峰值缸壓 CYL PRESSURE</span>
                 <div id="live-pressure-val" class="telemetry-number magenta-glow">1.0 bar</div>
-                <div class="telemetry-peak">歧管壓力: <strong id="spec-map-val">1.00 bar</strong></div>
+                <div class="telemetry-peak">估算歧管絕對壓力: <strong id="spec-map-val">1.00 bar</strong></div>
               </div>
 
               <div class="telemetry-gauge">
                 <span class="telemetry-label">增壓狀態 BOOST LEVEL</span>
                 <div id="live-boost-val" class="telemetry-number cyan-glow">NA (0.0 bar)</div>
-                <div class="telemetry-peak"><span id="live-spool-label">增壓轉速</span>: <strong id="live-spool-val">0%</strong></div>
+                <div class="telemetry-peak"><span id="live-spool-label">增壓轉速</span>: <strong id="live-spool-val">—</strong></div>
               </div>
             </div>
           </div>
@@ -221,6 +221,7 @@
               <button class="trans-btn active" data-mode="at">全自排 (AT Auto)</button>
               <button class="trans-btn" data-mode="amt">自手排 (AMT Manual)</button>
             </div>
+            <p id="transmission-context-note" class="meta-desc transmission-context-note" hidden></p>
 
             <!-- AT Selector (P-R-N-D) -->
             <div id="at-controls" class="shifter-group at-shifter">
@@ -265,33 +266,33 @@
           <div class="pedals-control-box">
             <div class="pedals-row">
               <!-- Brake Pedal (Red) -->
-              <div id="pedal-brake" class="pedal-unit brake-pedal" title="按住煞車 (S / ↓)">
-                <div class="pedal-tread">
-                  <div class="tread-line"></div>
-                  <div class="tread-line"></div>
-                  <div class="tread-line"></div>
-                </div>
+              <button type="button" id="pedal-brake" class="pedal-unit brake-pedal" aria-label="按住煞車" title="按住煞車 (S / ↓)">
+                <span class="pedal-tread" aria-hidden="true">
+                  <span class="tread-line"></span>
+                  <span class="tread-line"></span>
+                  <span class="tread-line"></span>
+                </span>
                 <span class="pedal-text">BRAKE (煞車)</span>
                 <span class="pedal-key-hint">按住 [S] 減速降轉</span>
-              </div>
+              </button>
 
               <!-- Gas / Accelerator Pedal (Cyan) -->
-              <div id="pedal-gas" class="pedal-unit gas-pedal" title="按住補油門 (W / ↑)">
-                <div class="pedal-tread">
-                  <div class="tread-line"></div>
-                  <div class="tread-line"></div>
-                  <div class="tread-line"></div>
-                  <div class="tread-line"></div>
-                </div>
+              <button type="button" id="pedal-gas" class="pedal-unit gas-pedal" aria-label="按住油門" title="按住補油門 (W / ↑)">
+                <span class="pedal-tread" aria-hidden="true">
+                  <span class="tread-line"></span>
+                  <span class="tread-line"></span>
+                  <span class="tread-line"></span>
+                  <span class="tread-line"></span>
+                </span>
                 <span class="pedal-text">GAS (油門)</span>
                 <span class="pedal-key-hint">按住 [W] 拉轉加速</span>
-              </div>
+              </button>
             </div>
 
             <!-- Continuous Throttle Slider -->
             <div class="continuous-throttle-row">
               <div class="slider-label-group">
-                <span>持續開度油門 (Continuous Throttle)</span>
+                <label for="throttle-slider">持續油門開度</label>
                 <span id="throttle-val">0%</span>
               </div>
               <input type="range" id="throttle-slider" min="0" max="100" value="0">
@@ -317,19 +318,28 @@
 
           <!-- Engine Description Specs Tag -->
           <div class="engine-meta-card">
+            <div class="reference-model-header">
+              <strong id="reference-model-name"></strong>
+              <span id="tuning-state-badge" class="meta-tag">原廠基準</span>
+            </div>
             <div class="meta-tags">
               <span id="tag-cylinders" class="meta-tag">4 汽缸</span>
               <span id="tag-layout" class="meta-tag">INLINE 架構</span>
               <span id="tag-sound" class="meta-tag">聲浪風格: screamer_4</span>
             </div>
-            <p id="engine-desc-text" class="meta-desc"></p>
+            <details class="model-details">
+              <summary>車款資料與模型說明</summary>
+              <p id="engine-desc-text" class="meta-desc"></p>
+              <p id="reference-model-note" class="meta-desc"></p>
+              <a id="reference-model-source" target="_blank" rel="noopener noreferrer">查看車款參考資料 ↗</a>
+            </details>
           </div>
 
           <!-- Sliders: Displacement & Redline -->
           <div class="sliders-grid">
             <div class="slider-group">
               <div class="slider-label-group">
-                <span>排氣量 (Displacement)</span>
+                <label for="displacement-slider">排氣量 (Displacement)</label>
                 <span id="displacement-val">1000 cc</span>
               </div>
               <input type="range" id="displacement-slider" min="125" max="8000" step="25" value="1000">
@@ -337,7 +347,7 @@
 
             <div class="slider-group">
               <div class="slider-label-group">
-                <span>最高紅線轉速 (Redline RPM)</span>
+                <label for="redline-slider">最高紅線轉速 (Redline RPM)</label>
                 <span id="redline-val">14500 RPM</span>
               </div>
               <input type="range" id="redline-slider" min="5000" max="18000" step="250" value="14500">
@@ -367,34 +377,42 @@
               </button>
               <button class="induction-btn" data-induction="turbo">
                 <span class="ind-name">TURBO 渦輪增壓</span>
-                <span class="ind-sub">渦輪遲滯、高轉狂暴加壓</span>
+                <span class="ind-sub">排氣驅動、尺寸影響遲滯</span>
               </button>
               <button class="induction-btn" data-induction="supercharger">
-                <span class="ind-name">SUPERCHARGER 機械增壓</span>
-                <span class="ind-sub">零遲滯、地獄貓尖叫聲</span>
+                <span class="ind-name">ROOTS / TVS 機械增壓</span>
+                <span class="ind-sub">曲軸驅動、低轉即有增壓</span>
               </button>
             </div>
 
             <!-- Turbo specific settings (BOV vs Flutter / Boost level) -->
             <div id="turbo-controls-panel" class="turbo-subpanel" style="display: none;">
+              <div class="turbo-size-row">
+                <span class="bov-label">渦輪配置:</span>
+                <div class="bov-btn-group">
+                  <button class="turbo-size-btn active" data-turbo-size="small" aria-pressed="true">原廠小渦輪</button>
+                  <button class="turbo-size-btn" data-turbo-size="large" aria-pressed="false">改裝大渦輪</button>
+                </div>
+              </div>
+              <p id="supercharger-note" class="meta-desc" hidden>Roots／TVS 容積式：轉子隨曲軸轉動，收油開啟旁通閥；輸出已扣除增壓器驅動耗功。</p>
               <div class="bov-selection-row">
                 <span class="bov-label">收油洩壓聲浪:</span>
                 <div class="bov-btn-group">
                   <button class="bov-btn active" data-bov="flutter" title="無卸壓閥/渦輪反串流：經典 JDM 貓叫聲 / 鳥叫咻咻聲">
-                    🐱 貓叫反串流 (Stututu)
+                    無 BOV · Flutter
                   </button>
                   <button class="bov-btn" data-bov="bov" title="有卸壓閥：激進大氣外洩放氣聲">
-                    💨 卸壓閥 (BOV Pshhh)
+                    外洩 BOV · Pshhh
                   </button>
                 </div>
               </div>
 
               <div class="slider-group" style="margin-top: 8px;">
                 <div class="slider-label-group">
-                  <span id="boost-slider-title">渦輪最大增壓值 (Max Boost)</span>
-                  <span id="boost-val">+1.40 bar</span>
+                  <label id="boost-slider-title" for="boost-slider">渦輪目標增壓</label>
+                  <span id="boost-val">+1.30 bar</span>
                 </div>
-                <input type="range" id="boost-slider" min="40" max="250" step="5" value="140" title="自訂最大增壓值 (0.4 ~ 2.5 bar)">
+                <input type="range" id="boost-slider" min="30" max="300" step="1" value="130" title="全油門目標增壓 (0.3 ~ 3.0 bar)">
               </div>
             </div>
           </div>
@@ -428,9 +446,10 @@
           <!-- Exhaust System Selector -->
           <div class="config-field">
             <label>排氣管系統配置 (Exhaust System Selection)</label>
+            <p class="meta-desc">音色、回火與噴火效果受排氣及操駕設定影響；動力增益為模擬估算。</p>
             <div class="exhaust-cards-grid">
               <!-- OEM -->
-              <div class="exhaust-card" data-exhaust="oem">
+              <div class="exhaust-card selected" data-exhaust="oem" role="button" tabindex="0" aria-pressed="true">
                 <div class="exhaust-card-header">
                   <span class="exhaust-badge oem">OEM 原廠</span>
                   <span class="exhaust-sound-tag">低調渾厚 / 無回火</span>
@@ -440,33 +459,33 @@
               </div>
 
               <!-- SC-Project -->
-              <div class="exhaust-card" data-exhaust="sc_project">
+              <div class="exhaust-card" data-exhaust="sc_project" role="button" tabindex="0" aria-pressed="false">
                 <div class="exhaust-card-header">
                   <span class="exhaust-badge sc">SC-PROJECT</span>
                   <span class="exhaust-sound-tag">狂暴炸裂 / 強烈回火</span>
                 </div>
                 <div class="exhaust-name">CR-T 賽道大口徑短尾</div>
-                <div class="exhaust-desc">MotoGP 激進金屬撕裂音，收油密集啪啪放炮！</div>
+                <div class="exhaust-desc">短管金屬共鳴，較強的收油回火與噴火效果。</div>
               </div>
 
               <!-- Akrapovič -->
-              <div class="exhaust-card selected" data-exhaust="akrapovic">
+              <div class="exhaust-card" data-exhaust="akrapovic" role="button" tabindex="0" aria-pressed="false">
                 <div class="exhaust-card-header">
                   <span class="exhaust-badge akra">AKRAPOVIČ 蠍子</span>
                   <span class="exhaust-sound-tag">鈦合金純淨天籟</span>
                 </div>
                 <div class="exhaust-name">Titanium Evolution 蠍管</div>
-                <div class="exhaust-desc">標誌性深沉中低音、綿密純粹高轉、尊榮低鳴。</div>
+                <div class="exhaust-desc">深沉中低頻與較柔和的高轉共鳴，回火強度居中。</div>
               </div>
 
               <!-- Straight Pipe -->
-              <div class="exhaust-card" data-exhaust="straight">
+              <div class="exhaust-card" data-exhaust="straight" role="button" tabindex="0" aria-pressed="false">
                 <div class="exhaust-card-header">
                   <span class="exhaust-badge straight">直通賽車管</span>
-                  <span class="exhaust-sound-tag">零阻力 / 槍聲放炮噴火</span>
+                  <span class="exhaust-sound-tag">低阻尼 / 強烈回火噴火</span>
                 </div>
                 <div class="exhaust-name">Full Straight Race 直通</div>
-                <div class="exhaust-desc">完全無消音直衝大氣，斷油狂暴噴火與槍響回震！</div>
+                <div class="exhaust-desc">較少消音、高轉更開闊；回火與火焰最明顯。</div>
               </div>
             </div>
           </div>
@@ -476,10 +495,10 @@
 
     <!-- Keybindings Modal -->
     <div id="keybinds-modal" class="modal-overlay">
-      <div class="modal-dialog glass-card">
+      <div class="modal-dialog glass-card" role="dialog" aria-modal="true" aria-labelledby="keybinds-title">
         <div class="modal-header">
-          <h3>自訂鍵盤操作按鍵 (Custom Keybindings)</h3>
-          <button id="btn-close-keybinds" class="modal-close-btn">&times;</button>
+          <h3 id="keybinds-title">自訂鍵盤操作按鍵 (Custom Keybindings)</h3>
+          <button id="btn-close-keybinds" class="modal-close-btn" aria-label="關閉鍵位設定">&times;</button>
         </div>
         <p class="modal-subtitle">點擊任一動作對應的按鍵標籤後，在鍵盤上按下您想設定的按鍵即可綁定。</p>
 

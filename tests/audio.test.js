@@ -47,8 +47,10 @@ test('volume, profile and warmth set before initialization are applied', async (
   sound.setExhaustModel(EXHAUST_MODELS.straight);
   await sound.init();
   assert.equal(sound.masterGain.gain.value, 0);
-  assert.equal(sound.subBassGain.gain.value, 0.65);
-  assert.equal(sound.camshaftGain.gain.value, 0.55);
+  assert.equal(sound.soundProfile, 'muscle');
+  assert.ok(sound.subBassGain.gain.value > 0.07 && sound.subBassGain.gain.value < 0.10,
+    'muscle profile retains a quiet mechanical order underneath pressure pulses');
+  assert.ok(sound.camshaftGain.gain.value > 0.03 && sound.camshaftGain.gain.value < 0.05);
   assert.equal(sound.mufflerLowpass2.frequency.value, 1800);
   assert.equal(sound.outputGain.gain.value, 0);
 });
@@ -113,13 +115,64 @@ test('shifts retain resonant sound with continuous gain automation; limiter uses
   assert.equal(sound.limiterModGain.gain.value, 0);
 });
 
-test('shift cut maintains acoustic continuity without dead silence gap', async () => {
+test('AMT has a fast pronounced cut while retaining pumping/mechanical sound; AT reduction is smaller', async () => {
   const sound = new SoundEngine(() => new Context());
   await sound.init();
-  sound.update(state, ENGINE_CONFIGS.i4_flat, { isShifting: true, isUpshift: true });
-  assert.ok(sound.combustionGain.gain.value >= 0.20, 'combustion gain must remain audible during shift cut');
-  assert.ok(sound.subBassGain.gain.value >= 0.20, 'sub-bass must retain exhaust body');
-  assert.ok(sound.saturationDriveGain.gain.value >= 0.30, 'saturation drive retains presence');
+  sound.update(state, ENGINE_CONFIGS.i4_flat, {});
+  const full = sound.combustionGain.gain.value;
+  sound.update({ ...state, ignitionCut: true, torqueScale: 0.1 }, ENGINE_CONFIGS.i4_flat,
+    { mode: 'amt', isShifting: true, isUpshift: true, cutAmount: 0.9, shiftPhase: 'release' });
+  const amt = sound.combustionGain.gain.value;
+  assert.ok(amt > 0 && amt < full * 0.25, 'AMT combustion drops sharply, pumping floor remains');
+  assert.ok(sound.subBassGain.gain.value > 0, 'rotating mechanical order continues');
+  assert.ok(sound.combustionGain.gain.changes.at(-1).duration <= 0.002, 'sharp cut uses an audio-time envelope');
+  sound.update(state, ENGINE_CONFIGS.i4_flat,
+    { mode: 'at', isShifting: true, isUpshift: true, cutAmount: 0.34, shiftPhase: 'release' });
+  assert.ok(sound.combustionGain.gain.value > amt * 2, 'AT retains more cylinder pressure than AMT');
+  assert.equal(sound.limiterGate.gain.value, 1, 'master exhaust path is never gated off for a shift');
+});
+
+test('TVS sound follows actual rotor RPM, is independent of redline and continues during ignition cut', async () => {
+  const sound = new SoundEngine(() => new Context());
+  await sound.init();
+  const sc = { ...state, forcedInduction: 'supercharger', superchargerRPM: 12000,
+    inductionLoad: 0.8, boostPressure: 0.7, bypassOpening: 0 };
+  sound.update({ ...sc, redlineRPM: 7000 }, ENGINE_CONFIGS.v8_cross, {});
+  assert.equal(sound.scWhineOsc.frequency.value, 800, 'four lobe passes per rotor revolution');
+  const gain = sound.scWhineGain.gain.value;
+  sound.update({ ...sc, redlineRPM: 18000, ignitionCut: true, torqueScale: 0.1 }, ENGINE_CONFIGS.v8_cross,
+    { isShifting: true, isUpshift: true, cutAmount: 0.9 });
+  assert.equal(sound.scWhineOsc.frequency.value, 800);
+  assert.equal(sound.scWhineGain.gain.value, gain, 'belt driven rotor does not stop with ignition');
+  sound.update({ ...sc, bypassOpening: 1 }, ENGINE_CONFIGS.v8_cross, {});
+  assert.ok(sound.scWhineGain.gain.value < gain * 0.25, 'open bypass reduces pressure ripple');
+});
+
+test('turbo pitch follows the rotor, airflow sets the rush and pure whistle stays subordinate', async () => {
+  const sound = new SoundEngine(() => new Context());
+  await sound.init();
+  const turbo = { ...state, forcedInduction: 'turbo', turboRPM: 120000, airFlow: 0.45, boostPressure: 1.2 };
+  sound.update(turbo, ENGINE_CONFIGS.i6, {});
+  assert.equal(sound.turboSpoolOsc.frequency.value, 2000);
+  const rush = sound.turboAirGain.gain.value;
+  assert.ok(rush > sound.turboSpoolGain.gain.value * 2, 'broad airflow dominates the narrow shaft tone');
+  sound.update({ ...turbo, redlineRPM: 18000 }, ENGINE_CONFIGS.i6, { isShifting: true, isUpshift: true, cutAmount: 0.9 });
+  assert.equal(sound.turboSpoolOsc.frequency.value, 2000);
+  assert.equal(sound.turboAirGain.gain.value, rush, 'ignition cut alone does not dump compressor airflow');
+});
+
+test('shutdown cancels transient sources so a fast restart cannot replay an old burst', async () => {
+  const sound = new SoundEngine(() => new Context());
+  await sound.init();
+  sound.setRunning(true);
+  sound.playFlutterSound({ intensity: 1, pressure: 1.2, rotorRPM: 160000, duration: 0.6 });
+  const sources = [...sound.activeBursts];
+  assert.equal(sources.length, 1);
+  sound.setRunning(false);
+  assert.ok(sources.every(source => source.stopped));
+  assert.equal(sound.activeBursts.size, 0);
+  assert.equal(sound.safetyClip.curve[512], 0, 'safety limiter does not inject DC into silence');
+  assert.ok(sound.safetyClip.curve.every(sample => Math.abs(sample) < 1));
 });
 
 test('playFlutterSound and playBovSound execute cleanly without exceptions', async () => {
@@ -129,4 +182,3 @@ test('playFlutterSound and playBovSound execute cleanly without exceptions', asy
   assert.doesNotThrow(() => sound.playFlutterSound(1.2));
   assert.doesNotThrow(() => sound.playBovSound(1.0));
 });
-
