@@ -2,6 +2,8 @@
 // Engine architecture definitions. Published ratings and their calibration
 // assumptions are recorded below and in docs/engine-reference.md.
 
+import { ADDITIONAL_ENGINES } from './AdditionalEngines.js';
+
 export const ENGINE_CONFIGS = {
   // 1-Cylinder (Single)
   'i1': {
@@ -527,4 +529,6 @@ for (const [id, reference] of Object.entries(REFERENCES)) {
     defaultTurboSize: 'small', curveKind: 'published-peaks-interpolated',
     ...reference,
   });
+  ENGINE_CONFIGS[id].vehicleKind = ENGINE_CONFIGS[id].cylinders <= 4 ? 'motorcycle' : 'car';
 }
+Object.assign(ENGINE_CONFIGS, ADDITIONAL_ENGINES);

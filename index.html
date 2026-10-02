@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HYPERENGINE // 擬真引擎與排氣聲浪模擬系統</title>
-  <meta name="description" content="全能真實引擎與排氣聲浪模擬網站。支援1缸至16缸、直列/V型/W型架構、可調排氣量與紅線轉速，搭配原廠、SC-Project、蠍子管及直通管真實物理聲學合成與機械動態模擬。">
+  <meta name="description" content="引擎動力與聲浪模擬：20 種引擎基準，含 Honda VTEC、水平對臥、雙轉子，搭配 ECU 斷油、增壓、排氣改裝與加速成績比較。">
   <!-- Google Fonts: Orbitron, Rajdhani, Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -70,7 +70,7 @@
           <div class="panel-header">
             <div class="panel-title-group">
               <span class="panel-tag">INTERNAL COMBUSTION DYNAMICS</span>
-              <h2>四行程引擎剖面動態模擬 (Mechanical Cutaway)</h2>
+              <h2 id="mechanical-view-title">四行程引擎剖面動態</h2>
             </div>
             <div class="view-controls">
               <button id="btn-view-multi" class="view-btn active" title="所有汽缸排列全景">多缸全景</button>
@@ -108,6 +108,7 @@
           <!-- Engine Mechanical Canvas -->
           <div class="canvas-wrapper engine-canvas-box">
             <canvas id="engine-canvas"></canvas>
+            <span id="vtec-live-badge" class="vtec-live-badge" hidden>VTEC · LOW</span>
           </div>
         </div>
 
@@ -356,6 +357,32 @@
 
           <!-- Sound Character & Acoustic Warmth Tuning -->
           <div class="config-field">
+            <label for="ecu-mode">ECU 限轉與斷油</label>
+            <select id="ecu-mode" class="custom-select">
+              <option value="soft">原廠柔和限轉</option>
+              <option value="hard">賽車硬切斷油</option>
+              <option value="sequential">逐缸切斷</option>
+            </select>
+            <div class="slider-group">
+              <div class="slider-label-group"><label for="limiter-hz">斷油節奏</label><span id="limiter-hz-val">18 Hz</span></div>
+              <input type="range" id="limiter-hz" min="8" max="32" step="1" value="18">
+            </div>
+            <div class="slider-group">
+              <div class="slider-label-group"><label for="limiter-depth">斷油聲浪深度</label><span id="limiter-depth-val">85%</span></div>
+              <input type="range" id="limiter-depth" min="30" max="100" step="1" value="85">
+            </div>
+            <p class="meta-desc">柔和模式逐步收斂；硬切有明確斷點；逐缸模式保留交錯燃燒。需選 AMT 並維持檔位，才能持續聽到限轉聲。</p>
+            <div id="vtec-controls" class="vtec-controls" hidden>
+              <label class="vtec-toggle"><input type="checkbox" id="vtec-enabled" checked> 啟用 VTEC 高凸輪</label>
+              <div class="slider-group">
+                <div class="slider-label-group"><label for="vtec-rpm">高凸輪切換點</label><span id="vtec-rpm-val">5800 RPM</span></div>
+                <input type="range" id="vtec-rpm" min="4300" max="6800" step="50" value="5800">
+              </div>
+              <p class="meta-desc" id="vtec-note"></p>
+            </div>
+          </div>
+
+          <div class="config-field">
             <div class="slider-label-group">
               <label for="vehicle-mass-slider">車輛總重（含駕駛）</label>
               <span id="vehicle-mass-val">285 kg</span>
@@ -491,6 +518,43 @@
           </div>
         </div>
       </aside>
+      <section class="performance-panel glass-card" aria-labelledby="performance-title">
+        <div class="performance-heading">
+          <div><span class="panel-tag">PERFORMANCE LAB</span><h2 id="performance-title">加速測試與改裝比較</h2></div>
+          <span id="perf-live-time" class="performance-clock">0.00 s</span>
+        </div>
+        <div class="performance-actions">
+          <label for="perf-mode" class="sr-only">測試模式</label>
+          <select id="perf-mode" class="custom-select">
+            <option value="standing">起步：0–100 / 100–200 / ¼ mile</option>
+            <option value="rolling">滾動：100–200 km/h</option>
+          </select>
+          <button id="perf-arm" class="perf-button primary">準備測試</button>
+          <button id="perf-stop" class="perf-button" disabled>結束／保存</button>
+          <button id="perf-reset" class="perf-button">回到起點並準備</button>
+        </div>
+        <p class="meta-desc">選 D 或 AMT 前進檔後準備，踩油門開始。也可按「回到起點並準備」重設車速與轉速；準備時自動煞住，踩油門釋放。可提前結束並保存已完成項目。</p>
+        <p id="perf-status" class="performance-status" role="status" aria-live="polite">煞停後準備測試。</p>
+        <div class="performance-metrics">
+          <div><span>0–100 km/h</span><strong id="perf-zero-100">—</strong></div>
+          <div><span>100–200 km/h</span><strong id="perf-100-200">—</strong></div>
+          <div><span>¼ mile · 402.336 m</span><strong id="perf-quarter">—</strong><small id="perf-finish-speed">終點速度 —</small></div>
+        </div>
+        <div class="performance-comparison-controls">
+          <label for="perf-baseline">比較基準</label>
+          <select id="perf-baseline" class="custom-select"><option value="">選擇比較基準</option></select>
+        </div>
+        <p id="perf-comparison" class="meta-desc">完成另一組設定的測試後，即可與基準比較。</p>
+        <div class="performance-chart-wrap"><svg id="perf-chart" viewBox="0 0 520 184" role="img" aria-label="加速車速與時間比較"></svg></div>
+        <div class="performance-chart-legend"><span>● 本次／最新</span><span>● 比較基準</span></div>
+        <details class="model-details performance-history">
+          <summary>測試紀錄（此瀏覽器最近 8 筆）</summary>
+          <p id="perf-history-empty" class="meta-desc">尚無測試紀錄。</p>
+          <ol id="perf-history"></ol>
+          <button id="perf-clear" class="perf-button">清除紀錄</button>
+        </details>
+        <p class="meta-desc">平地模擬、無起跑預留距離；成績受操作與設定影響，不代表原廠實測。未達項目以「—」表示。</p>
+      </section>
     </main>
 
     <!-- Keybindings Modal -->

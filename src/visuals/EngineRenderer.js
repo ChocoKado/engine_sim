@@ -3,7 +3,8 @@
 // Pistons, connecting rods, crankshaft counterweights, camshaft valves,
 // spark plug electric arc ignition, combustion fireball, and glowing exhaust runners.
 
-import { radialKinematics, radialFiringAngles, wrapDegrees, cylinderViewLayout } from './MechanicalKinematics.js';
+import { radialKinematics, radialFiringAngles, wrapDegrees, cylinderViewLayout, rotaryHousingPoint, rotaryKinematics } from './MechanicalKinematics.js';
+import { camValveLift } from '../physics/CamControl.js';
 
 export class EngineRenderer {
   constructor(canvas) {
@@ -78,7 +79,7 @@ export class EngineRenderer {
     // Engine RPM stays full speed for sound & physics, while visual animation runs at user's chosen speed!
     const visualDegPerSec = engine.rpm * 6 * this.animationSpeed;
     this.visualCrankAngle = this.animationSpeed === 1 ? engine.crankAngle
-      : (this.visualCrankAngle + visualDegPerSec * dt) % 720;
+      : (this.visualCrankAngle + visualDegPerSec * dt) % (engine.config.mechanicalCycleDegrees || 720);
 
     // Clear background with rich dark mechanical slate gradient
     const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
@@ -98,7 +99,11 @@ export class EngineRenderer {
     const isMobile = w < 650 || (typeof window !== 'undefined' && window.innerWidth < 768);
     const hideText = this.cleanMode || isMobile;
 
-    if (config.layout === 'radial' && this.viewMode !== 'focused') {
+    if (config.layout === 'rotary') {
+      this.drawRotaryEngine(ctx, engine, w, h, hideText);
+    } else if (config.layout === 'boxer' && this.viewMode !== 'focused') {
+      this.drawBoxerEngine(ctx, engine, w, h, hideText);
+    } else if (config.layout === 'radial' && this.viewMode !== 'focused') {
       this.drawRadialEngine(ctx, engine, w, h, hideText);
     } else {
       const layout = cylinderViewLayout(cylinders, config, w, h, {
@@ -131,6 +136,85 @@ export class EngineRenderer {
     if (!hideText) {
       this.drawCanvasOverlay(ctx, engine, drivetrain, w, h);
     }
+  }
+
+  drawBoxerEngine(ctx, engine, w, h, hideText) {
+    const pairs = engine.config.boxerPairs || [[0, 1], [2, 3]];
+    const top = hideText ? 4 : 65;
+    const rowHeight = (h - top - 6) / pairs.length;
+    const scale = Math.min((w - 12) / 425, rowHeight / 98);
+    pairs.forEach((pair, row) => {
+      const cy = top + rowHeight * (row + 0.5);
+      pair.forEach((index, side) => {
+        ctx.save();
+        ctx.translate(w / 2 + (side ? 90 : -90) * scale, cy);
+        ctx.rotate((side ? 1 : -1) * Math.PI / 2);
+        this.drawSingleCylinder(ctx, engine.cylinderStates[index], engine, scale, this.visualCrankAngle, true);
+        ctx.restore();
+      });
+      if (!hideText) {
+        ctx.fillStyle = '#94a3b8'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(`對向汽缸 ${pair[0] + 1} / ${pair[1] + 1} · 獨立曲柄銷`, w / 2, cy + rowHeight * 0.44);
+        ctx.textAlign = 'left';
+      }
+    });
+  }
+
+  drawRotaryEngine(ctx, engine, w, h, hideText) {
+    const focused = this.viewMode === 'focused';
+    const indices = focused ? [this.focusedCylIndex % engine.config.rotors] : [0, 1];
+    const top = hideText ? 4 : 62;
+    const cellWidth = w / indices.length;
+    const scale = Math.max(0.1, Math.min((cellWidth - 16) / 190, (h - top - 12) / 176));
+    indices.forEach((index, column) => {
+      const shaftAngle = this.visualCrankAngle + engine.config.firingAngles[index];
+      const geometry = rotaryKinematics(shaftAngle);
+      ctx.save(); ctx.translate(cellWidth * (column + 0.5), top + (h - top) * 0.5); ctx.scale(scale, scale);
+      // Each face runs its own four stages over 1080 shaft degrees. Chamber
+      // colours are illustrative gas states; the housing/apex geometry is exact.
+      geometry.apexes.forEach((apex, face) => {
+        const phase = ((shaftAngle + face * 360) % 1080 + 1080) % 1080;
+        const stage = Math.floor(phase / 270);
+        const colors = ['rgba(56,189,248,.34)', 'rgba(167,139,250,.35)', 'rgba(255,115,35,.65)', 'rgba(148,163,184,.28)'];
+        ctx.beginPath(); ctx.moveTo(apex.x, apex.y);
+        for (let i = 1; i <= 48; i++) {
+          const p = rotaryHousingPoint(apex.t + i / 48 * Math.PI * 2 / 3);
+          ctx.lineTo(p.x, p.y);
+        }
+        ctx.closePath();
+        ctx.fillStyle = stage === 2 && (!engine.isIgnitionOn || engine.ignitionCut) ? colors[3] : colors[stage];
+        ctx.fill();
+      });
+      ctx.beginPath();
+      for (let i = 0; i <= 180; i++) {
+        const p = rotaryHousingPoint(i / 180 * Math.PI * 2);
+        i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y);
+      }
+      ctx.closePath(); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 5; ctx.stroke();
+      ctx.beginPath();
+      geometry.apexes.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+      ctx.closePath(); ctx.fillStyle = '#334155'; ctx.fill(); ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 2; ctx.stroke();
+      geometry.apexes.forEach(p => {
+        ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fillStyle = '#f8fafc'; ctx.fill();
+      });
+      // Side intake/exhaust ports: no poppet valves or connecting rods.
+      for (const [x, y, color] of [[-25, 42, '#38bdf8'], [25, 42, '#fb923c']]) {
+        ctx.fillStyle = color; ctx.fillRect(x - 6, y - 5, 12, 10);
+      }
+      ctx.beginPath(); ctx.arc(geometry.center.x, geometry.center.y, 20, 0, Math.PI * 2);
+      ctx.fillStyle = '#64748b'; ctx.fill(); ctx.strokeStyle = '#cbd5e1'; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(geometry.center.x, geometry.center.y);
+      ctx.lineWidth = 6; ctx.strokeStyle = '#fbbf24'; ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fillStyle = '#e2e8f0'; ctx.fill();
+      // Two plugs in the stationary housing (leading / trailing).
+      ctx.fillStyle = engine.isIgnitionOn && !engine.ignitionCut ? '#fde68a' : '#64748b';
+      ctx.fillRect(-16, -59, 6, 13); ctx.fillRect(10, -59, 6, 13);
+      if (!hideText) {
+        ctx.fillStyle = '#94a3b8'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(`ROTOR ${index + 1} · 轉子 : 輸出軸 = 1 : 3`, 0, 78);
+      }
+      ctx.restore();
+    });
   }
 
   drawTechnicalGrid(ctx, w, h) {
@@ -503,13 +587,14 @@ export class EngineRenderer {
       visualIsFiring = true;
     }
 
+    const valves = camValveLift(cylVisualAngle, engine.cam?.blend || 0);
     const visualCyl = {
       index: cyl.index,
       phaseAngle: cylVisualAngle,
       pistonPos: visualPistonPos,
       stroke: visualStroke,
-      intakeValve: visualIntakeValve,
-      exhaustValve: visualExhaustValve,
+      intakeValve: valves.intake,
+      exhaustValve: valves.exhaust,
       isFiring: visualIsFiring,
       // Live pressure belongs to the physical phase, not the slowed visual phase.
       gasPressure: this.animationSpeed === 1 ? cyl.gasPressure : undefined,

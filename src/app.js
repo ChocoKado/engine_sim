@@ -10,6 +10,7 @@ import { SoundEngine } from './audio/SoundEngine.js';
 import { EngineRenderer } from './visuals/EngineRenderer.js';
 import { GaugeRenderer } from './visuals/GaugeRenderer.js';
 import { InputManager } from './controls/InputManager.js';
+import { PerformancePanel } from './controls/PerformancePanel.js';
 
 export class App {
   constructor() {
@@ -36,6 +37,7 @@ export class App {
 
     // 5. Setup UI & Event Listeners
     this.initUI();
+    this.performancePanel = new PerformancePanel(this.engine, this.drivetrain, () => this.resetPerformanceVehicle());
 
     // 6. Start Main Animation Loop
     requestAnimationFrame((t) => this.loop(t));
@@ -108,7 +110,7 @@ export class App {
       for (let key in ENGINE_CONFIGS) {
         const opt = document.createElement('option');
         opt.value = key;
-        opt.textContent = `${ENGINE_CONFIGS[key].name} (${ENGINE_CONFIGS[key].cylinders}缸)`;
+        opt.textContent = `${ENGINE_CONFIGS[key].name} (${ENGINE_CONFIGS[key].cylinders}${ENGINE_CONFIGS[key].layout === 'rotary' ? '轉子' : '缸'})`;
         if (key === 'i4_flat') opt.selected = true;
         engineSelect.appendChild(opt);
       }
@@ -399,6 +401,7 @@ export class App {
     }
 
     // Initial specs presentation
+    this.initECUControls();
     this.updateEngineDescription();
     this.syncTuningUI();
     this.updateKeyHints();
@@ -476,6 +479,7 @@ export class App {
     if (badge) badge.textContent = induction === 'na' ? '自然進氣 (NA)' :
       `${induction === 'turbo' ? `TURBO · ${this.engine.turboSize === 'large' ? '大渦輪' : '小渦輪'}` : 'ROOTS / TVS'} · ${this.engine.maxBoost.toFixed(2)} bar`;
     this.syncGearControls();
+    this.syncECUControls();
     this.updateReferenceStatus();
     this.updateDynoOverview();
   }
@@ -541,8 +545,51 @@ export class App {
 
     if (descEl) descEl.textContent = this.engine.config.description;
     if (tagLayout) tagLayout.textContent = `${this.engine.config.layout.toUpperCase()} 架構`;
-    if (tagCyls) tagCyls.textContent = `${this.engine.config.cylinders} 汽缸`;
+    if (tagCyls) tagCyls.textContent = `${this.engine.config.cylinders} ${this.engine.config.layout === 'rotary' ? '轉子' : '汽缸'}`;
     if (tagSound) tagSound.textContent = `聲浪風格: ${this.engine.config.soundCharacter || this.engine.config.shortName}`;
+    const heading = document.getElementById('mechanical-view-title');
+    if (heading) heading.textContent = this.engine.config.layout === 'rotary' ? '轉子引擎剖面動態' : '四行程引擎剖面動態';
+    const focus = document.getElementById('btn-view-focus');
+    if (focus) { focus.textContent = this.engine.config.layout === 'rotary' ? '轉子特寫' : '單缸特寫'; focus.title = focus.textContent; }
+  }
+
+  initECUControls() {
+    const bind = (id, event, update) => document.getElementById(id)?.addEventListener(event, e => { update(e.target); this.syncTuningUI(); });
+    bind('ecu-mode', 'change', el => this.engine.setECUMode(el.value));
+    bind('limiter-hz', 'input', el => this.engine.setLimiterHz(el.value));
+    bind('limiter-depth', 'input', el => this.engine.setLimiterDepth(Number(el.value) / 100));
+    bind('vtec-enabled', 'change', el => this.engine.setVtecEnabled(el.checked));
+    bind('vtec-rpm', 'input', el => this.engine.setVtecRPM(el.value));
+  }
+
+  resetPerformanceVehicle() {
+    this.input.releaseHeldControls();
+    this.input.manualThrottleSlider = 0;
+    const slider = document.getElementById('throttle-slider'); if (slider) slider.value = 0;
+    const value = document.getElementById('throttle-val'); if (value) value.textContent = '0%';
+    this.engine.resetCombustion();
+    this.engine.rpm = this.isEngineRunning ? this.engine.idleRPM : 0;
+    this.drivetrain.speedKmh = 0;
+    this.drivetrain.accumulator = 0;
+    if (this.drivetrain.mode === 'at') { this.drivetrain.setAtSelector('N'); this.drivetrain.setAtSelector('D'); }
+    else { this.drivetrain.setAmtGear(0); this.drivetrain.setAmtGear(1); }
+  }
+
+  syncECUControls() {
+    const ecu = this.engine.limiter;
+    const cam = this.engine.cam;
+    const mode = document.getElementById('ecu-mode'); if (mode && ecu) mode.value = ecu.mode;
+    const hz = document.getElementById('limiter-hz'); if (hz && ecu) hz.value = ecu.hz;
+    const hzLabel = document.getElementById('limiter-hz-val'); if (hzLabel && ecu) hzLabel.textContent = `${ecu.hz} Hz`;
+    const depth = document.getElementById('limiter-depth'); if (depth && ecu) depth.value = Math.round(ecu.depth * 100);
+    const depthLabel = document.getElementById('limiter-depth-val'); if (depthLabel && ecu) depthLabel.textContent = `${Math.round(ecu.depth * 100)}%`;
+    const vtec = document.getElementById('vtec-controls'); if (vtec) vtec.hidden = !cam?.spec;
+    const check = document.getElementById('vtec-enabled'); if (check && cam) check.checked = cam.enabled;
+    const rpm = document.getElementById('vtec-rpm');
+    if (rpm && cam?.spec) { rpm.min = cam.spec.minRPM; rpm.max = Math.min(cam.spec.maxRPM, this.engine.redlineRPM - 350); rpm.value = cam.engageRPM; rpm.disabled = !cam.enabled; }
+    const rpmLabel = document.getElementById('vtec-rpm-val'); if (rpmLabel && cam) rpmLabel.textContent = `${cam.engageRPM} RPM`;
+    const note = document.getElementById('vtec-note'); if (note && cam?.spec) note.textContent = cam.spec.switchKind === 'published'
+      ? '原廠切換 5,800 RPM；可調切換點，或關閉高凸輪比較。' : '切換 6,000 RPM 為推估；可調切換點，或關閉高凸輪比較。';
   }
 
   updateReferenceStatus() {
@@ -567,6 +614,8 @@ export class App {
       && (this.engine.forcedInduction !== 'turbo' || this.engine.turboSize === (config.defaultTurboSize || 'small'))
       && (this.engine.forcedInduction !== 'turbo' || this.engine.bovType === 'bov')
       && this.engine.exhaust.id === 'oem'
+      && (!this.engine.limiter || this.engine.limiter.mode === 'soft' && this.engine.limiter.hz === 18 && this.engine.limiter.depth === 0.85)
+      && (!config.vtec || this.engine.cam?.enabled && this.engine.cam.engageRPM === config.vtec.engageRPM)
       && Math.abs(this.drivetrain.vehicleMass - (profile?.mass ?? 0)) <= 0.5;
     if (state) state.textContent = isStock ? '原廠基準' : '自訂改裝';
     if (note) note.textContent = config.layout === 'radial'
@@ -705,9 +754,10 @@ export class App {
 
     // Get input values
     const throttle = this.input.getThrottle();
-    const brake = this.input.getBrake();
+    const brake = this.performancePanel?.brakeForLaunch(throttle, this.input.getBrake()) ?? this.input.getBrake();
 
     // Drivetrain & Engine update
+    this.performancePanel?.beforeStep();
     const drivetrainStatus = this.drivetrain.update(dt, throttle, brake);
     const engineStatus = drivetrainStatus.engine;
 
@@ -745,11 +795,18 @@ export class App {
 
     // Update Real-time Telemetry UI
     this.updateTelemetryHUD(engineStatus, drivetrainStatus);
+    this.performancePanel?.update();
 
     requestAnimationFrame((t) => this.loop(t));
   }
 
   updateTelemetryHUD(engineStatus, drivetrainStatus) {
+    const vtec = document.getElementById('vtec-live-badge');
+    if (vtec) {
+      vtec.hidden = !engineStatus.vtecSupported;
+      vtec.textContent = !engineStatus.vtecEnabled ? 'VTEC OFF' : engineStatus.vtecActive ? 'VTEC · HIGH' : 'VTEC · LOW';
+      vtec.classList.toggle('high-cam', Boolean(engineStatus.vtecActive));
+    }
     const shiftMessage = document.getElementById('shift-message');
     if (shiftMessage && shiftMessage.textContent !== drivetrainStatus.message) {
       shiftMessage.textContent = drivetrainStatus.message;

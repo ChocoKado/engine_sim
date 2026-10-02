@@ -291,11 +291,11 @@ export class SoundEngine {
       const shockFront = 1.0 + 0.12 * Math.sin(Math.min(Math.PI, i * width));
 
       for (let cylinder = 0; cylinder < config.firingAngles.length; cylinder++) {
-        const phase = (360 - config.firingAngles[cylinder]) / 720 * Math.PI * 2;
+        const phase = ((config.cycleDegrees || 720) / 2 - config.firingAngles[cylinder]) / (config.cycleDegrees || 720) * Math.PI * 2;
         const angle = i * phase;
         // Separate-bank exhaust paths contribute unequal pulse amplitudes.
         const bank = config.exhaustBanks?.[cylinder] ?? (cylinder % 2);
-        const bankGain = (config.layout === 'v' || config.layout === 'w') && bank ? 0.78 : 1;
+        const bankGain = ['v', 'w', 'boxer'].includes(config.layout) && bank ? 0.78 : 1;
         real[i] += bankGain * decay * shockFront * (Math.cos(angle) - i * width * Math.sin(angle)) / config.cylinders;
         imag[i] += bankGain * decay * shockFront * (Math.sin(angle) + i * width * Math.cos(angle)) / config.cylinders;
       }
@@ -673,7 +673,7 @@ export class SoundEngine {
     // 1. Engine Frequencies & Orders Calculation
     // -------------------------------------------------------------
     // F_cycle (Order 0.5): 1 complete 4-stroke cycle per 2 crankshaft rotations
-    const cycleFreq = (rpm / 120) * jitter;
+    const cycleFreq = (rpm * 6 / (config.cycleDegrees || 720)) * jitter;
     // F_crank (Order 1.0): 1 revolution per second
     const crankFreq = (rpm / 60) * jitter;
     // F_firing (Fundamental firing order): (RPM / 120) * cylinders
@@ -691,7 +691,13 @@ export class SoundEngine {
     let subBassFreq = crankFreq * 0.5;
     let camshaftFreq = cycleFreq;
 
-    if (cylinders === 1) {
+    if (config.layout === 'rotary') {
+      subBassFreq = crankFreq;
+      camshaftFreq = crankFreq / 3; // Rotor order, no camshafts on a Wankel.
+    } else if (config.soundCharacter === 'boxer_rumble') {
+      subBassFreq = crankFreq;
+      camshaftFreq = cycleFreq;
+    } else if (cylinders === 1) {
       subBassFreq = cycleFreq; // Single cylinder slow heavy thump (10-60 Hz)
       camshaftFreq = cycleFreq * 2;
     } else if (config.soundCharacter === 'radial_7') {
@@ -754,6 +760,10 @@ export class SoundEngine {
       this.pressureNode.parameters.get('load').setTargetAtTime(pressureLoad, t, 0.006);
       this.pressureNode.parameters.get('ignitionCut').setTargetAtTime(cutAmount, t, 0.001);
       this.pressureNode.parameters.get('limiter').setTargetAtTime(limiterAmount, t, 0.003);
+      this.pressureNode.parameters.get('limiterHz')?.setTargetAtTime(engineState.limiterHz || 18, t, 0.01);
+      this.pressureNode.parameters.get('limiterMode')?.setValueAtTime(({ soft: 0, hard: 1, sequential: 2 })[engineState.ecuMode] ?? 1, t);
+      this.pressureNode.parameters.get('limiterDepth')?.setTargetAtTime(engineState.limiterDepth ?? 0.85, t, 0.01);
+      this.pressureNode.parameters.get('camBlend')?.setTargetAtTime(engineState.camBlend || 0, t, 0.015);
     }
 
     let blowdownBoost = 0;
@@ -789,10 +799,11 @@ export class SoundEngine {
     // -------------------------------------------------------------
     // Airflow volume is proportional to displacement * RPM
     const intakeAirflow = Math.min(2.4, Math.sqrt(dispLiters));
-    const intakeVol = Math.pow(throttle, 1.35) * (0.020 + 0.045 * intakeAirflow);
+    const camRoar = (engineState.camBlend || 0) * Math.min(1, rpm / (engineState.redlineRPM || 9000));
+    const intakeVol = Math.pow(throttle, 1.35) * (0.020 + 0.045 * intakeAirflow) * (1 + 0.9 * camRoar);
     this.intakeGain.gain.setTargetAtTime(intakeVol, t, 0.015);
     // Induction formant shifts with displacement and revs
-    const intakeCenterFreq = Math.max(110, Math.min(1600, (220 + rpm * 0.028) * Math.pow(1.0 / dispLiters, 0.14)));
+    const intakeCenterFreq = Math.max(110, Math.min(1600, (220 + rpm * 0.028) * Math.pow(1.0 / dispLiters, 0.14) * (1 + camRoar * 0.25)));
     this.intakeFilter.frequency.setTargetAtTime(intakeCenterFreq, t, smoothTime);
 
     // Harmonic Cut during shift cut: softens high-order firing ping while preserving body
@@ -806,6 +817,7 @@ export class SoundEngine {
     // uses rhythmic gating; AT has a smaller load dip than AMT.
     this.limiterGate.gain.setTargetAtTime(!this.pressureNode ? 1 - limiterAmount * 0.28 : 1, t, 0.008);
     this.limiterModGain.gain.setTargetAtTime(!this.pressureNode ? limiterAmount * 0.28 : 0, t, 0.008);
+    this.limiterOsc.frequency.setTargetAtTime(engineState.limiterHz || 18, t, 0.01);
 
     // -------------------------------------------------------------
     // 5. Dynamic Tone Formant Tracking

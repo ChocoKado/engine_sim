@@ -59,7 +59,7 @@ export class InductionModel {
     const liters = displacement / 1000;
     const omega = rpm * Math.PI / 30;
     const referenceRPM = config.ratedPowerRPM || config.defaultRedlineRPM * 0.92;
-    const demandVolume = displacement / 1e6 * rpm / 120 * 0.90;
+    const demandVolume = displacement / 1e6 * rpm / ((config.cycleDegrees || 720) / 6) * 0.90;
     const reservoirVolume = 0.0015 + displacement / 1e6 * 0.8;
     const nominalBoost = steadyBoost(config, type, size, maxBoost, rpm, displacement);
     const previousBoost = this.chargeBoost;

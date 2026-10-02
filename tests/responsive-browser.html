@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-TW">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HYPERENGINE 響應式預覽</title>
+<style>
+  body { margin: 0; padding: 16px; background: #080d15; color: #cbd5e1; font: 14px system-ui; }
+  header { margin-bottom: 12px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  select { padding: 8px; background: #1e293b; color: white; border: 1px solid #475569; }
+  iframe { display: block; border: 1px solid #475569; width: 390px; height: 844px; }
+  p { max-width: 800px; }
+</style>
+<header><label for="device">手機畫面尺寸</label><select id="device">
+  <option value="390x844">390 × 844 直向</option>
+  <option value="320x568">320 × 568 直向</option>
+  <option value="667x375">667 × 375 橫向</option>
+  <option value="844x390">844 × 390 橫向</option>
+</select><span>獨立 iframe 視窗，可實際操作並檢查 CSS 響應式佈局。</span></header>
+<iframe id="simulator" title="手機引擎模擬器" src="/"></iframe>
+<script>
+document.getElementById('device').addEventListener('change', event => {
+  const [width, height] = event.target.value.split('x').map(Number);
+  const frame = document.getElementById('simulator');
+  frame.style.width = width + 'px'; frame.style.height = height + 'px';
+});
+</script>
+</html>

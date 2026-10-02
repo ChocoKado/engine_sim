@@ -16,6 +16,28 @@ class Element {
   replaceChildren(...children) { this.children = children; }
 }
 
+test('performance reset clears road momentum and held throttle, then selects a valid launch gear', () => {
+  const original = globalThis.document;
+  const slider = new Element(), value = new Element();
+  globalThis.document = { getElementById: id => id === 'throttle-slider' ? slider : id === 'throttle-val' ? value : null };
+  try {
+    for (const mode of ['at', 'amt']) {
+      const app = Object.create(App.prototype);
+      app.engine = new EngineModel('honda_k20a'); app.drivetrain = new Drivetrain(app.engine);
+      app.engine.setRunning(true); app.isEngineRunning = true;
+      app.drivetrain.setMode(mode); app.drivetrain.currentGear = 6; app.drivetrain.speedKmh = 200;
+      app.engine.rpm = 8000; app.engine.boostPressure = 1.5;
+      app.input = { manualThrottleSlider: 1, isThrottlePressed: true,
+        releaseHeldControls() { this.isThrottlePressed = false; } };
+      app.resetPerformanceVehicle();
+      assert.equal(app.drivetrain.speedKmh, 0); assert.equal(app.drivetrain.currentGear, 1);
+      assert.equal(app.engine.rpm, app.engine.idleRPM); assert.equal(app.engine.boostPressure, 0);
+      assert.equal(app.input.isThrottlePressed, false); assert.equal(app.input.manualThrottleSlider, 0);
+      assert.equal(slider.value, 0); assert.equal(value.textContent, '0%'); assert.equal(app.engine.isIgnitionOn, true);
+    }
+  } finally { globalThis.document = original; }
+});
+
 function fixture() {
   const ids = new Map(['displacement-slider', 'displacement-val', 'redline-slider', 'redline-val',
     'turbo-controls-panel', 'boost-slider', 'boost-val', 'boost-slider-title', 'boost-status-badge', 'supercharger-note',

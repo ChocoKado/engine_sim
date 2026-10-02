@@ -1,6 +1,8 @@
 import { ENGINE_CONFIGS } from './EngineConfigurations.js';
 import { EXHAUST_MODELS } from '../audio/ExhaustModels.js';
 import { InductionModel, ATMOSPHERE, chargeThermodynamics, steadyBoost } from './InductionModel.js';
+import { CamControl, camValveLift } from './CamControl.js';
+import { RevLimiter } from './RevLimiter.js';
 
 export const PHYSICS_STEP = 1 / 240;
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
@@ -54,6 +56,8 @@ export class EngineModel {
     this.isRevLimitingCut = false;
     this.revLimiterCutAmount = 0;
     this.revLimiterBounceTimer = 0;
+    this.limiter?.reset();
+    this.cam?.reset();
     this.netTorque = 0;
     this.combustionTorque = 0;
     this.currentEngineDrag = 0;
@@ -87,6 +91,8 @@ export class EngineModel {
     this.displacement = this.config.defaultDisplacement;
     this.idleRPM = this.config.defaultIdleRPM;
     this.redlineRPM = this.config.defaultRedlineRPM;
+    this.cam = new CamControl(this.config);
+    this.limiter = new RevLimiter();
     this.rpm = this.isIgnitionOn ? this.idleRPM : 0;
     this.resetCombustion();
     this.cylinderStates = this.config.firingAngles.map((firingOffset, index) => ({
@@ -161,6 +167,7 @@ export class EngineModel {
     if (!Number.isFinite(Number(value))) return;
     this.redlineRPM = clamp(Number(value), this.config.minRedlineRPM || 2500, this.config.maxRedlineRPM || 18000);
     this.idleRPM = Math.min(this.idleRPM, this.redlineRPM - 1000);
+    if (this.cam?.spec) this.cam.setEngageRPM(this.cam.engageRPM, this.redlineRPM);
     this.dynoData = this.calculateDynoCurve();
   }
 
@@ -169,18 +176,24 @@ export class EngineModel {
     // Small displacement engines have lightweight reciprocating mass and snap up quickly.
     // Large displacement engines have heavy pistons, massive counterweights, and heavy flywheels.
     const liters = this.displacement / 1000;
-    const motorcycle = this.config.cylinders <= 4 && this.config.layout !== 'radial';
+    const motorcycle = this.config.vehicleKind === 'motorcycle';
     const crank = motorcycle ? this.config.flywheelInertia * 0.30 + 0.004
       : this.config.flywheelInertia + 0.02;
-    const reciprocating = Math.pow(liters, 1.1) * (motorcycle ? 0.009 : this.config.layout === 'radial' ? 0.055 : 0.024);
+    const reciprocating = Math.pow(liters, 1.1) * (motorcycle ? 0.009 : this.config.layout === 'radial' ? 0.055 : this.config.layout === 'rotary' ? 0.012 : 0.024);
     return crank + reciprocating + (this.forcedInduction === 'supercharger' ? liters * 0.004 : 0);
   }
 
   get revLimitControlRange() {
     // A small RPM control band, rather than a percentage-based latch that
     // kept cutting power thousands of RPM below the selected limit.
-    return clamp(this.redlineRPM * 0.02, 100, 300);
+    return this.limiter.getControlRange(this.redlineRPM);
   }
+
+  setECUMode(mode) { this.limiter.setMode(mode); }
+  setLimiterHz(value) { this.limiter.setHz(value); }
+  setLimiterDepth(value) { this.limiter.setDepth(value); }
+  setVtecEnabled(enabled) { this.cam.setEnabled(enabled); this.dynoData = this.calculateDynoCurve(); }
+  setVtecRPM(value) { this.cam.setEngageRPM(value, this.redlineRPM); this.dynoData = this.calculateDynoCurve(); }
 
   torqueAtRPM(rpm) {
     if (this.config.torquePoints) {
@@ -219,7 +232,7 @@ export class EngineModel {
 
   compressorTorque(rpm, displacement, boost) {
     const thermo = chargeThermodynamics(boost, 0.68);
-    const flow = displacement / 1e6 * rpm / 120 * 0.9
+    const flow = displacement / 1e6 * rpm / ((this.config.cycleDegrees || 720) / 6) * 0.9
       * (ATMOSPHERE + boost * 100000) / (287.05 * thermo.intakeTemperature);
     return flow * thermo.specificWork / Math.max(20, rpm / RPM_PER_RAD) / 0.94
       + displacement / 1000 * 0.65 * rpm / Math.max(1000, this.config.ratedPowerRPM || this.config.defaultRedlineRPM * 0.92);
@@ -228,7 +241,7 @@ export class EngineModel {
   steadyTorqueAtRPM(rpm) {
     const boost = steadyBoost(this.config, this.forcedInduction, this.turboSize, this.maxBoost, rpm, this.displacement);
     const thermo = chargeThermodynamics(boost, this.forcedInduction === 'supercharger' ? 0.68 : 0.72);
-    const base = this.torqueAtRPM(rpm);
+    const base = this.torqueAtRPM(rpm) * this.cam.steadyFactor(rpm);
     return Math.max(0, base * (thermo.densityRatio - (this.forcedInduction === 'turbo' ? boost * 0.018 : 0))
       - (this.forcedInduction === 'supercharger' ? this.compressorTorque(rpm, this.displacement, boost) : 0));
   }
@@ -296,21 +309,12 @@ export class EngineModel {
           * (0.4 + 0.6 * this.overrunTime / this.exhaust.overrunDuration));
       }
     } else this.overrunLoad = 0;
-    const softLimitRPM = this.redlineRPM - this.revLimitControlRange;
-    this.isRevLimiting = this.isIgnitionOn && this.rpm > softLimitRPM
-      && (this.throttle >= 0.15 || this.rpm >= this.redlineRPM);
-    this.revLimiterCutAmount = 0;
-    if (this.isRevLimiting) {
-      const previousCycle = Math.floor(this.revLimiterBounceTimer * 18);
-      this.revLimiterBounceTimer += dt;
-      if (Math.floor(this.revLimiterBounceTimer * 18) > previousCycle) this.createPop('limiter', 0.85);
-      const cut = clamp((this.rpm - softLimitRPM) / this.revLimitControlRange, 0, 1);
-      // Average cylinder cuts progressively reduce torque. A small 18 Hz
-      // variation retains limiter texture without switching off the entire
-      // engine for a fixed 58% of every cycle, regardless of RPM and load.
-      const pulse = (this.revLimiterBounceTimer * 18) % 1 < 0.58 ? 1.06 : 0.92;
-      this.revLimiterCutAmount = this.rpm >= this.redlineRPM ? 1 : clamp(cut * pulse, 0, 1);
-    } else this.revLimiterBounceTimer = 0;
+    this.cam.update(dt, this.rpm, this.manifoldThrottle, this.isIgnitionOn);
+    const limiterBeat = this.limiter.update(dt, this.rpm, this.redlineRPM, this.throttle, this.isIgnitionOn);
+    this.isRevLimiting = this.limiter.active;
+    this.revLimiterCutAmount = this.limiter.cut;
+    this.revLimiterBounceTimer = this.limiter.phase / this.limiter.hz;
+    if (limiterBeat) this.createPop('limiter', (this.limiter.mode === 'soft' ? 0.4 : 1.1) * this.limiter.depth);
     this.isRevLimitingCut = this.revLimiterCutAmount === 1;
     const liters = this.displacement / 1000;
     const rpmFraction = this.rpm / this.config.defaultRedlineRPM;
@@ -323,7 +327,7 @@ export class EngineModel {
     this.torqueScale = clamp(torqueScale, 0, 1);
     this.ignitionCut = this.isRevLimitingCut || this.torqueScale < 0.12;
     const firingScale = this.torqueScale * (1 - this.revLimiterCutAmount);
-    const baseTorque = this.torqueAtRPM(this.rpm);
+    const baseTorque = this.torqueAtRPM(this.rpm) * this.cam.torqueFactor(this.rpm);
     const induction = this.induction.update(dt, {
       config: this.config, type: this.forcedInduction, size: this.turboSize,
       maxBoost: this.maxBoost, displacement: this.displacement, rpm: this.rpm,
@@ -366,7 +370,7 @@ export class EngineModel {
     // Never independently clamp coupled RPM: it must match road speed and gear.
     const deltaDeg = this.rpm * 6 * dt;
     const previousAngle = this.crankAngle;
-    this.crankAngle = (this.crankAngle + deltaDeg) % 720;
+    this.crankAngle = (this.crankAngle + deltaDeg) % (this.config.mechanicalCycleDegrees || 720);
     let maxP = 1.0;
     const rc = 10.5;
     const Vc = 1 / (rc - 1);
@@ -374,12 +378,35 @@ export class EngineModel {
     this.manifoldPressure = manifoldP.toFixed(2);
 
     for (const cyl of this.cylinderStates) {
+      if (this.config.layout === 'rotary') {
+        // Three faces each complete intake/compression/expansion/exhaust over
+        // three shaft turns. Approximate port windows; no fictitious valve train.
+        cyl.chambers = Array.from({ length: 3 }, (_, face) => {
+          const angle = (this.crankAngle + cyl.firingOffset + face * 360) % 1080;
+          const stage = Math.floor(angle / 270);
+          const u = angle % 270 / 270;
+          const volume = 0.10 + 0.90 * (stage % 2 === 0 ? u : 1 - u);
+          const p = this.rpm < 1 ? manifoldP : stage === 1 ? manifoldP * (1 / volume) ** 1.3
+            : stage === 2 ? manifoldP * (1 / volume) ** 1.25 * (1 + 2.5 * this.manifoldThrottle * this.torqueScale * (1 - this.revLimiterCutAmount))
+            : stage === 3 ? 1.05 + 3 * Math.exp(-u * 8) * this.manifoldThrottle : manifoldP;
+          return { face, angle, stroke: ['intake', 'compression', 'power', 'exhaust'][stage], pressure: p };
+        });
+        cyl.phaseAngle = (this.crankAngle + cyl.firingOffset) % 1080;
+        cyl.stroke = cyl.chambers[0].stroke;
+        cyl.intakeValve = cyl.exhaustValve = 0;
+        cyl.gasPressure = Math.max(...cyl.chambers.map(c => c.pressure));
+        cyl.blowdownPulse = Math.max(0, ...cyl.chambers.filter(c => c.stroke === 'exhaust').map(c => c.pressure - 1));
+        cyl.isFiring = this.isIgnitionOn && !this.ignitionCut && cyl.chambers.some(c => c.stroke === 'power' && c.angle % 270 < 70);
+        maxP = Math.max(maxP, cyl.gasPressure);
+        continue;
+      }
       const angle = (this.crankAngle + cyl.firingOffset) % 720;
       const previous = (previousAngle + cyl.firingOffset) % 720;
       cyl.phaseAngle = angle;
       cyl.stroke = ['intake', 'compression', 'power', 'exhaust'][Math.floor(angle / 180)];
-      cyl.intakeValve = angle < 180 ? Math.sin(angle / 180 * Math.PI) : 0;
-      cyl.exhaustValve = angle >= 540 ? Math.sin((angle - 540) / 180 * Math.PI) : 0;
+      const valves = camValveLift(angle, this.cam.blend);
+      cyl.intakeValve = valves.intake;
+      cyl.exhaustValve = valves.exhaust;
       const crossesSpark = Math.floor((previous + deltaDeg - 360) / 720) > Math.floor((previous - 360) / 720);
       cyl.sparkTimer = crossesSpark && this.isIgnitionOn && !this.isRevLimitingCut
         && !this.ignitionCut ? 0.04 : Math.max(0, cyl.sparkTimer - dt);
@@ -440,6 +467,9 @@ export class EngineModel {
       manifoldThrottle: this.manifoldThrottle, dyno: this.getCurrentDynoOutput(),
       cylinderStates: this.cylinderStates, isRevLimiting: this.isRevLimiting,
       isRevLimitingCut: this.isRevLimitingCut, revLimiterCutAmount: this.revLimiterCutAmount,
+      ecuMode: this.limiter.mode, limiterHz: this.limiter.hz, limiterDepth: this.limiter.depth,
+      vtecSupported: Boolean(this.cam.spec), vtecEnabled: this.cam.enabled,
+      vtecActive: this.cam.highCam, camBlend: this.cam.blend, vtecRPM: this.cam.engageRPM,
       exhaustHeat: this.exhaustHeat, popEvents,
       manifoldPressure: this.manifoldPressure || (1.0).toFixed(2),
       peakCylinderPressure: this.peakCylinderPressure || (1.0).toFixed(1) };

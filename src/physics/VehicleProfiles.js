@@ -22,6 +22,35 @@ const chironRatios = [90, 150, 200, 260, 320, 390, 420].map(speedKMH =>
   6700 * 2 * Math.PI * chironRadius / 60 / (speedKMH / 3.6));
 
 export const VEHICLE_PROFILES = {
+  honda_f20c: vehicle(1240, {
+    dragArea: 0.63, tireRadius: rollingRadius(225, 50, 16), primaryRatio: 1.160, finalDrive: 4.100,
+    gearRatios: ratios([3.133, 2.045, 1.481, 1.161, 0.970, 0.810], 2.800), transmissionKind: 'manual',
+    gearingKind: 'published', referenceSource: 'https://www.honda.co.jp/factbook/auto/s2000/199904/050.html',
+  }),
+  honda_k20a: vehicle(1270, {
+    dragArea: 0.66, tireRadius: rollingRadius(225, 40, 18), finalDrive: 5.062,
+    gearRatios: ratios([3.266, 2.130, 1.517, 1.147, 0.921, 0.738], 3.583), transmissionKind: 'manual',
+    gearingKind: 'published', referenceSource: 'https://www.honda.co.jp/factbook/auto/CIVIC_TYPE_R/200703/07.html',
+  }),
+  boxer4: vehicle(3386 * 0.45359237, {
+    dragArea: 0.74, tireRadius: rollingRadius(245, 40, 18), finalDrive: 3.90,
+    gearRatios: ratios([3.636, 2.235, 1.521, 1.137, 0.971, 0.756], 3.545), transmissionKind: 'manual',
+    gearingKind: 'published', referenceSource: 'https://subarumedia.iconicweb.com/mediasite/specs/2016_Subaru_WRX_STI_specs.pdf',
+  }),
+  boxer6: vehicle(1462, {
+    dragArea: 0.72, tireRadius: rollingRadius(315, 30, 21), finalDrive: 4.30,
+    gearRatios: ratios([3.75, 2.38, 1.72, 1.34, 1.08, 0.88], 3.42), transmissionKind: 'manual',
+    gearingKind: 'published', referenceSource: 'https://pnr-prd2-pub2.newsroom.porsche.com/dam/jcr:46cb0e24-ad5a-489c-a404-52c678071d03/pag-911-gt3-mt-en.pdf',
+  }),
+  rotary_2: vehicle(3029 * 0.45359237, {
+    dragArea: 0.63, tireRadius: rollingRadius(225, 45, 18), finalDrive: 4.44,
+    gearRatios: ratios([3.76, 2.27, 1.65, 1.19, 1.00, 0.84], 3.564), transmissionKind: 'manual',
+    // 2004 sheet omits reverse; use Mazda's same-generation 2008 US 6MT
+    // reference, whose forward ratios match the rounded 2004 specification.
+    reverseGearingKind: 'same-generation-reference',
+    reverseSource: 'https://news.mazdausa.com/download/2008-RX-8-Spec.pdf',
+    gearingKind: 'published', referenceSource: 'https://news.mazdausa.com/download/RX-8-Spec-Sheet-Final.pdf',
+  }),
   i1: vehicle(163, {
     dragArea: 0.43, tireRadius: rollingRadius(160, 60, 17), primaryRatio: 79 / 36, finalDrive: 40 / 16,
     gearRatios: ratios([35 / 14, 28 / 16, 28 / 21, 23 / 21, 22 / 23, 20 / 23]), transmissionKind: 'manual',

@@ -16,6 +16,7 @@ export class Drivetrain {
     this.tireRadius = 0.33;
     this.configureVehicle();
     this.speedKmh = 0; // Signed road velocity: reverse is negative.
+    this.distanceMeters = 0;
     this.brakeInput = 0;
     this.accumulator = 0;
     this.atShiftCooldown = 0;
@@ -197,6 +198,7 @@ export class Drivetrain {
     const next = velocity + (wheelForce - direction * resistance) / effectiveMass * dt;
     // Resistance stops the car; it cannot accelerate it in the opposite direction.
     this.speedKmh = direction && Math.sign(next) !== direction ? 0 : next * 3.6;
+    this.distanceMeters += (velocity + this.speedKmh / 3.6) * 0.5 * dt;
   }
 
   // Two inertias coupled by a capacity-limited friction torque. Solve the
@@ -399,6 +401,8 @@ export class Drivetrain {
     let frameUpshift = false;
     while (this.accumulator + 1e-10 >= PHYSICS_STEP) {
       this.step(PHYSICS_STEP, throttle);
+      this.onStep?.({ time: this.engine.time, speed: this.speedKmh, distance: this.distanceMeters,
+        running: this.engine.isIgnitionOn, gear: this.currentGear, throttle });
       if (this.shiftState === 'shifting' || this.cutAmount > 0) {
         frameCut = Math.max(frameCut, this.cutAmount);
         frameUpshift ||= this.isUpshift;

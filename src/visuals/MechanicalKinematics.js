@@ -1,6 +1,28 @@
 const TAU = Math.PI * 2;
 export const wrapDegrees = angle => ((angle % 720) + 720) % 720;
 
+export function boxerKinematics(angleDegrees, crankRadius = 32, rodLength = 112) {
+  const a = angleDegrees * Math.PI / 180;
+  return [-1, 1].map(side => ({ side,
+    jointX: side * crankRadius * Math.cos(a), jointY: side * crankRadius * Math.sin(a),
+    wristX: side * (crankRadius * Math.cos(a) + Math.sqrt(rodLength ** 2 - (crankRadius * Math.sin(a)) ** 2)), wristY: 0,
+  }));
+}
+
+export function rotaryHousingPoint(t, radius = 70, eccentricity = 11) {
+  return { x: radius * Math.cos(t) + eccentricity * Math.cos(3 * t),
+    y: radius * Math.sin(t) + eccentricity * Math.sin(3 * t) };
+}
+export function rotaryKinematics(shaftDegrees, radius = 70, eccentricity = 11) {
+  const shaft = shaftDegrees * Math.PI / 180;
+  const center = { x: eccentricity * Math.cos(shaft), y: eccentricity * Math.sin(shaft) };
+  const angle = shaft / 3;
+  return { center, angle, apexes: Array.from({ length: 3 }, (_, face) => {
+    const t = angle + face * TAU / 3;
+    return { x: center.x + radius * Math.cos(t), y: center.y + radius * Math.sin(t), t };
+  }) };
+}
+
 // Cross-section panels show every cylinder. V engines use two bank rows; W16
 // shows its four cylinder rows as two narrow-angle pairs. These separate
 // cutaways illustrate the firing phases, rather than claiming a CAD assembly.

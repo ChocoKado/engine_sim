@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-02T05:59:03.760Z",
-  "cases": 150,
+  "generatedAt": "2026-10-02T06:51:51.976Z",
+  "cases": 200,
   "method": "OEM exhaust; stock induction or 1.0 bar tuning; AT automatic / AMT test-driver shift at 94% redline; 20 s throttle then 20 s braking. Estimates, not measured vehicle acceleration.",
   "results": [
     {
@@ -428,7 +428,7 @@
       "speedAt1s": 24.433,
       "to30": 1.2,
       "to100": 3.966666666666667,
-      "endSpeed": 213.917,
+      "endSpeed": 213.916,
       "endGear": 6,
       "maxRPM": 8856,
       "peakAcceleration": 8.481,
@@ -518,9 +518,9 @@
       "speedAt1s": 25.02,
       "to30": 1.1833333333333333,
       "to100": 3.9833333333333334,
-      "endSpeed": 213.831,
+      "endSpeed": 213.832,
       "endGear": 6,
-      "maxRPM": 8852,
+      "maxRPM": 8853,
       "peakAcceleration": 8.481,
       "shifts": [
         {
@@ -1020,7 +1020,7 @@
       "speedAt1s": 20.195,
       "to30": 1.3333333333333333,
       "to100": 4.1,
-      "endSpeed": 214.043,
+      "endSpeed": 214.044,
       "endGear": 6,
       "maxRPM": 8862,
       "peakAcceleration": 8.506,
@@ -1065,7 +1065,7 @@
       "speedAt1s": 24.281,
       "to30": 1.2333333333333334,
       "to100": 4.066666666666666,
-      "endSpeed": 213.826,
+      "endSpeed": 213.825,
       "endGear": 6,
       "maxRPM": 8853,
       "peakAcceleration": 8.511,
@@ -1512,7 +1512,7 @@
       "speedAt1s": 15.733,
       "to30": 1.55,
       "to100": 4.5,
-      "endSpeed": 197.789,
+      "endSpeed": 197.79,
       "endGear": 6,
       "maxRPM": 11793,
       "peakAcceleration": 8.483,
@@ -1557,7 +1557,7 @@
       "speedAt1s": 15.075,
       "to30": 1.5833333333333333,
       "to100": 4.5,
-      "endSpeed": 197.976,
+      "endSpeed": 197.979,
       "endGear": 6,
       "maxRPM": 11804,
       "peakAcceleration": 8.484,
@@ -1602,7 +1602,7 @@
       "speedAt1s": 17.698,
       "to30": 1.4833333333333334,
       "to100": 4.533333333333333,
-      "endSpeed": 197.669,
+      "endSpeed": 197.67,
       "endGear": 6,
       "maxRPM": 11786,
       "peakAcceleration": 8.483,
@@ -2059,7 +2059,7 @@
       "speedAt1s": 6.371,
       "to30": 2.933333333333333,
       "to100": 5.966666666666667,
-      "endSpeed": 197.787,
+      "endSpeed": 197.789,
       "endGear": 6,
       "maxRPM": 11793,
       "peakAcceleration": 8.359,
@@ -2104,7 +2104,7 @@
       "speedAt1s": 6.371,
       "to30": 3.0833333333333335,
       "to100": 6.1,
-      "endSpeed": 197.976,
+      "endSpeed": 197.978,
       "endGear": 6,
       "maxRPM": 11804,
       "peakAcceleration": 8.358,
@@ -2149,7 +2149,7 @@
       "speedAt1s": 8.426,
       "to30": 1.9666666666666666,
       "to100": 5.1,
-      "endSpeed": 197.67,
+      "endSpeed": 197.671,
       "endGear": 6,
       "maxRPM": 11786,
       "peakAcceleration": 8.361,
@@ -2696,7 +2696,7 @@
       "speedAt1s": 23.852,
       "to30": 1.2333333333333334,
       "to100": 3.966666666666667,
-      "endSpeed": 234.779,
+      "endSpeed": 234.781,
       "endGear": 6,
       "maxRPM": 9830,
       "peakAcceleration": 8.489,
@@ -3153,7 +3153,7 @@
       "speedAt1s": 17.393,
       "to30": 1.4166666666666667,
       "to100": 4.133333333333334,
-      "endSpeed": 234.882,
+      "endSpeed": 234.881,
       "endGear": 6,
       "maxRPM": 9835,
       "peakAcceleration": 8.511,
@@ -3198,7 +3198,7 @@
       "speedAt1s": 16.396,
       "to30": 1.45,
       "to100": 4.15,
-      "endSpeed": 235.058,
+      "endSpeed": 235.056,
       "endGear": 6,
       "maxRPM": 9842,
       "peakAcceleration": 8.508,
@@ -3243,7 +3243,7 @@
       "speedAt1s": 22.132,
       "to30": 1.3,
       "to100": 4.066666666666666,
-      "endSpeed": 234.776,
+      "endSpeed": 234.779,
       "endGear": 6,
       "maxRPM": 9830,
       "peakAcceleration": 8.511,
@@ -3700,7 +3700,7 @@
       "speedAt1s": 24.068,
       "to30": 1.2166666666666666,
       "to100": 3.75,
-      "endSpeed": 279.101,
+      "endSpeed": 279.099,
       "endGear": 6,
       "maxRPM": 11342,
       "peakAcceleration": 8.461,
@@ -3745,7 +3745,7 @@
       "speedAt1s": 24.062,
       "to30": 1.2166666666666666,
       "to100": 3.75,
-      "endSpeed": 279.208,
+      "endSpeed": 279.205,
       "endGear": 6,
       "maxRPM": 11346,
       "peakAcceleration": 8.461,
@@ -3790,9 +3790,9 @@
       "speedAt1s": 24.38,
       "to30": 1.2,
       "to100": 3.783333333333333,
-      "endSpeed": 279.074,
+      "endSpeed": 279.078,
       "endGear": 6,
-      "maxRPM": 11340,
+      "maxRPM": 11341,
       "peakAcceleration": 8.462,
       "shifts": [
         {
@@ -4247,7 +4247,7 @@
       "speedAt1s": 17.616,
       "to30": 1.4166666666666667,
       "to100": 3.966666666666667,
-      "endSpeed": 279.103,
+      "endSpeed": 279.106,
       "endGear": 6,
       "maxRPM": 11342,
       "peakAcceleration": 8.51,
@@ -4292,7 +4292,7 @@
       "speedAt1s": 16.556,
       "to30": 1.45,
       "to100": 3.966666666666667,
-      "endSpeed": 279.205,
+      "endSpeed": 279.202,
       "endGear": 6,
       "maxRPM": 11346,
       "peakAcceleration": 8.506,
@@ -4337,7 +4337,7 @@
       "speedAt1s": 23.139,
       "to30": 1.25,
       "to100": 3.8666666666666667,
-      "endSpeed": 279.078,
+      "endSpeed": 279.08,
       "endGear": 6,
       "maxRPM": 11340,
       "peakAcceleration": 8.511,
@@ -4794,7 +4794,7 @@
       "speedAt1s": 24.17,
       "to30": 1.2166666666666666,
       "to100": 3.7666666666666666,
-      "endSpeed": 256.762,
+      "endSpeed": 256.761,
       "endGear": 6,
       "maxRPM": 10820,
       "peakAcceleration": 8.468,
@@ -4839,7 +4839,7 @@
       "speedAt1s": 24.167,
       "to30": 1.2166666666666666,
       "to100": 3.7666666666666666,
-      "endSpeed": 256.908,
+      "endSpeed": 256.91,
       "endGear": 6,
       "maxRPM": 10826,
       "peakAcceleration": 8.468,
@@ -4884,7 +4884,7 @@
       "speedAt1s": 24.476,
       "to30": 1.2,
       "to100": 3.8,
-      "endSpeed": 256.644,
+      "endSpeed": 256.642,
       "endGear": 6,
       "maxRPM": 10814,
       "peakAcceleration": 8.469,
@@ -5341,7 +5341,7 @@
       "speedAt1s": 9.335,
       "to30": 2.283333333333333,
       "to100": 4.866666666666666,
-      "endSpeed": 256.766,
+      "endSpeed": 256.768,
       "endGear": 6,
       "maxRPM": 10820,
       "peakAcceleration": 8.138,
@@ -5386,7 +5386,7 @@
       "speedAt1s": 9.335,
       "to30": 2.316666666666667,
       "to100": 4.9,
-      "endSpeed": 256.91,
+      "endSpeed": 256.909,
       "endGear": 6,
       "maxRPM": 10826,
       "peakAcceleration": 8.135,
@@ -5431,7 +5431,7 @@
       "speedAt1s": 21.474,
       "to30": 1.3,
       "to100": 3.933333333333333,
-      "endSpeed": 256.639,
+      "endSpeed": 256.638,
       "endGear": 6,
       "maxRPM": 10814,
       "peakAcceleration": 8.51,
@@ -5888,7 +5888,7 @@
       "speedAt1s": 22.567,
       "to30": 1.2666666666666666,
       "to100": 3.7,
-      "endSpeed": 302.265,
+      "endSpeed": 302.262,
       "endGear": 6,
       "maxRPM": 13807,
       "peakAcceleration": 8.39,
@@ -5933,9 +5933,9 @@
       "speedAt1s": 22.552,
       "to30": 1.2666666666666666,
       "to100": 3.7,
-      "endSpeed": 302.385,
+      "endSpeed": 302.382,
       "endGear": 6,
-      "maxRPM": 13812,
+      "maxRPM": 13813,
       "peakAcceleration": 8.39,
       "shifts": [
         {
@@ -5978,7 +5978,7 @@
       "speedAt1s": 22.449,
       "to30": 1.2666666666666666,
       "to100": 3.716666666666667,
-      "endSpeed": 302.214,
+      "endSpeed": 302.216,
       "endGear": 6,
       "maxRPM": 13805,
       "peakAcceleration": 8.39,
@@ -6435,7 +6435,7 @@
       "speedAt1s": 6.339,
       "to30": 3.5833333333333335,
       "to100": 6.166666666666667,
-      "endSpeed": 302.255,
+      "endSpeed": 302.268,
       "endGear": 6,
       "maxRPM": 13807,
       "peakAcceleration": 7.92,
@@ -6480,9 +6480,9 @@
       "speedAt1s": 6.339,
       "to30": 3.6,
       "to100": 6.35,
-      "endSpeed": 302.375,
+      "endSpeed": 302.382,
       "endGear": 6,
-      "maxRPM": 13812,
+      "maxRPM": 13813,
       "peakAcceleration": 7.921,
       "shifts": [
         {
@@ -6525,7 +6525,7 @@
       "speedAt1s": 6.199,
       "to30": 3.466666666666667,
       "to100": 6,
-      "endSpeed": 302.212,
+      "endSpeed": 302.219,
       "endGear": 6,
       "maxRPM": 13805,
       "peakAcceleration": 7.923,
@@ -6982,7 +6982,7 @@
       "speedAt1s": 21.681,
       "to30": 1.2833333333333334,
       "to100": 3.716666666666667,
-      "endSpeed": 312.16,
+      "endSpeed": 312.163,
       "endGear": 6,
       "maxRPM": 13804,
       "peakAcceleration": 8.383,
@@ -7027,7 +7027,7 @@
       "speedAt1s": 21.651,
       "to30": 1.2833333333333334,
       "to100": 3.716666666666667,
-      "endSpeed": 312.231,
+      "endSpeed": 312.228,
       "endGear": 6,
       "maxRPM": 13807,
       "peakAcceleration": 8.383,
@@ -7072,7 +7072,7 @@
       "speedAt1s": 21.685,
       "to30": 1.2833333333333334,
       "to100": 3.75,
-      "endSpeed": 312.085,
+      "endSpeed": 312.082,
       "endGear": 6,
       "maxRPM": 13801,
       "peakAcceleration": 8.384,
@@ -7529,7 +7529,7 @@
       "speedAt1s": 6.233,
       "to30": 3.716666666666667,
       "to100": 6.383333333333334,
-      "endSpeed": 312.16,
+      "endSpeed": 312.164,
       "endGear": 6,
       "maxRPM": 13804,
       "peakAcceleration": 7.881,
@@ -7574,7 +7574,7 @@
       "speedAt1s": 6.233,
       "to30": 3.7333333333333334,
       "to100": 6.583333333333333,
-      "endSpeed": 312.233,
+      "endSpeed": 312.237,
       "endGear": 6,
       "maxRPM": 13807,
       "peakAcceleration": 7.847,
@@ -7619,7 +7619,7 @@
       "speedAt1s": 6.148,
       "to30": 3.566666666666667,
       "to100": 6.15,
-      "endSpeed": 312.089,
+      "endSpeed": 312.094,
       "endGear": 6,
       "maxRPM": 13801,
       "peakAcceleration": 7.773,
@@ -11228,7 +11228,7 @@
       "speedAt1s": 25.458,
       "to30": 1.1833333333333333,
       "to100": 3.8666666666666667,
-      "endSpeed": 329.538,
+      "endSpeed": 329.546,
       "endGear": 7,
       "maxRPM": 8899,
       "peakAcceleration": 8.51,
@@ -11278,9 +11278,9 @@
       "speedAt1s": 25.458,
       "to30": 1.1833333333333333,
       "to100": 3.8666666666666667,
-      "endSpeed": 329.553,
+      "endSpeed": 329.561,
       "endGear": 7,
-      "maxRPM": 8899,
+      "maxRPM": 8900,
       "peakAcceleration": 8.51,
       "shifts": [
         {
@@ -11328,7 +11328,7 @@
       "speedAt1s": 25.6,
       "to30": 1.1833333333333333,
       "to100": 3.9,
-      "endSpeed": 329.471,
+      "endSpeed": 329.475,
       "endGear": 7,
       "maxRPM": 8897,
       "peakAcceleration": 8.51,
@@ -11800,7 +11800,7 @@
       "speedAt1s": 24.428,
       "to30": 1.2166666666666666,
       "to100": 3.966666666666667,
-      "endSpeed": 329.529,
+      "endSpeed": 329.543,
       "endGear": 7,
       "maxRPM": 8899,
       "peakAcceleration": 8.514,
@@ -11850,9 +11850,9 @@
       "speedAt1s": 24.405,
       "to30": 1.2333333333333334,
       "to100": 3.966666666666667,
-      "endSpeed": 329.549,
+      "endSpeed": 329.563,
       "endGear": 7,
-      "maxRPM": 8899,
+      "maxRPM": 8900,
       "peakAcceleration": 8.513,
       "shifts": [
         {
@@ -11900,7 +11900,7 @@
       "speedAt1s": 25.242,
       "to30": 1.2,
       "to100": 3.9833333333333334,
-      "endSpeed": 329.477,
+      "endSpeed": 329.481,
       "endGear": 7,
       "maxRPM": 8897,
       "peakAcceleration": 8.514,
@@ -12362,7 +12362,7 @@
       "speedAt1s": 24.499,
       "to30": 1.2166666666666666,
       "to100": 3.8666666666666667,
-      "endSpeed": 332.003,
+      "endSpeed": 332.011,
       "endGear": 6,
       "maxRPM": 8896,
       "peakAcceleration": 8.506,
@@ -12407,7 +12407,7 @@
       "speedAt1s": 24.498,
       "to30": 1.2166666666666666,
       "to100": 3.8666666666666667,
-      "endSpeed": 332.066,
+      "endSpeed": 332.074,
       "endGear": 6,
       "maxRPM": 8898,
       "peakAcceleration": 8.506,
@@ -12452,7 +12452,7 @@
       "speedAt1s": 24.717,
       "to30": 1.2,
       "to100": 3.9,
-      "endSpeed": 331.793,
+      "endSpeed": 331.796,
       "endGear": 6,
       "maxRPM": 8890,
       "peakAcceleration": 8.506,
@@ -12909,7 +12909,7 @@
       "speedAt1s": 23.321,
       "to30": 1.2666666666666666,
       "to100": 3.95,
-      "endSpeed": 332.008,
+      "endSpeed": 332.014,
       "endGear": 6,
       "maxRPM": 8896,
       "peakAcceleration": 8.514,
@@ -12954,9 +12954,9 @@
       "speedAt1s": 22.123,
       "to30": 1.2666666666666666,
       "to100": 3.95,
-      "endSpeed": 332.06,
+      "endSpeed": 332.068,
       "endGear": 6,
-      "maxRPM": 8897,
+      "maxRPM": 8898,
       "peakAcceleration": 8.513,
       "shifts": [
         {
@@ -12999,7 +12999,7 @@
       "speedAt1s": 24.812,
       "to30": 1.2166666666666666,
       "to100": 3.95,
-      "endSpeed": 331.73,
+      "endSpeed": 331.731,
       "endGear": 6,
       "maxRPM": 8888,
       "peakAcceleration": 8.514,
@@ -13456,7 +13456,7 @@
       "speedAt1s": 24.612,
       "to30": 1.2,
       "to100": 3.8666666666666667,
-      "endSpeed": 366.504,
+      "endSpeed": 366.51,
       "endGear": 7,
       "maxRPM": 8372,
       "peakAcceleration": 8.509,
@@ -13506,9 +13506,9 @@
       "speedAt1s": 24.612,
       "to30": 1.2,
       "to100": 3.8666666666666667,
-      "endSpeed": 366.672,
+      "endSpeed": 366.677,
       "endGear": 7,
-      "maxRPM": 8375,
+      "maxRPM": 8376,
       "peakAcceleration": 8.509,
       "shifts": [
         {
@@ -14018,7 +14018,7 @@
       "speedAt1s": 22.59,
       "to30": 1.2833333333333334,
       "to100": 4,
-      "endSpeed": 366.503,
+      "endSpeed": 366.509,
       "endGear": 7,
       "maxRPM": 8372,
       "peakAcceleration": 8.514,
@@ -14068,7 +14068,7 @@
       "speedAt1s": 21.854,
       "to30": 1.3,
       "to100": 4,
-      "endSpeed": 366.641,
+      "endSpeed": 366.645,
       "endGear": 7,
       "maxRPM": 8375,
       "peakAcceleration": 8.513,
@@ -16285,6 +16285,5341 @@
           "t": 16.716666666666665,
           "gear": 6,
           "rpm": 3195
+        }
+      ]
+    },
+    {
+      "id": "honda_f20c",
+      "model": "1999 Honda S2000 (JDM)",
+      "mode": "at",
+      "variant": "stock",
+      "mass": 1315,
+      "induction": "na",
+      "gears": 6,
+      "hp": 247,
+      "torque": 218,
+      "speedAt1s": 16.263,
+      "to30": 1.6166666666666667,
+      "to100": 5.816666666666666,
+      "endSpeed": 200.304,
+      "endGear": 5,
+      "maxRPM": 8702,
+      "peakAcceleration": 8.463,
+      "shifts": [
+        {
+          "t": 3.6,
+          "gear": 2,
+          "rpm": 8597
+        },
+        {
+          "t": 6.166666666666667,
+          "gear": 3,
+          "rpm": 8468
+        },
+        {
+          "t": 10.2,
+          "gear": 4,
+          "rpm": 8572
+        },
+        {
+          "t": 16.216666666666665,
+          "gear": 5,
+          "rpm": 8326
+        }
+      ],
+      "samples": [
+        {
+          "t": 0.5,
+          "rpm": 2667,
+          "speed": 3.538,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0
+        },
+        {
+          "t": 1,
+          "rpm": 3806,
+          "speed": 16.263,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0
+        },
+        {
+          "t": 1.5,
+          "rpm": 4419,
+          "speed": 27.891,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0
+        },
+        {
+          "t": 2,
+          "rpm": 4869,
+          "speed": 38.078,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0
+        },
+        {
+          "t": 2.5,
+          "rpm": 6004,
+          "speed": 46.994,
+          "gear": 1,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 3,
+          "rpm": 7264,
+          "speed": 56.861,
+          "gear": 1,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 3.5,
+          "rpm": 8560,
+          "speed": 67.004,
+          "gear": 1,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 4,
+          "rpm": 6193,
+          "speed": 74.268,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 4.5,
+          "rpm": 6774,
+          "speed": 81.23,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 5,
+          "rpm": 7373,
+          "speed": 88.416,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 5.5,
+          "rpm": 7974,
+          "speed": 95.629,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 6,
+          "rpm": 8554,
+          "speed": 102.581,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 6.5,
+          "rpm": 6509,
+          "speed": 107.787,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 7,
+          "rpm": 6810,
+          "speed": 112.763,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 7.5,
+          "rpm": 7114,
+          "speed": 117.801,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 8,
+          "rpm": 7420,
+          "speed": 122.871,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 8.5,
+          "rpm": 7725,
+          "speed": 127.915,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 9,
+          "rpm": 8024,
+          "speed": 132.872,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 9.5,
+          "rpm": 8316,
+          "speed": 137.703,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 10,
+          "rpm": 8594,
+          "speed": 142.314,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 10.5,
+          "rpm": 6900,
+          "speed": 145.755,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 11,
+          "rpm": 7068,
+          "speed": 149.302,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 11.5,
+          "rpm": 7236,
+          "speed": 152.847,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 12,
+          "rpm": 7403,
+          "speed": 156.375,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 12.5,
+          "rpm": 7569,
+          "speed": 159.872,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 13,
+          "rpm": 7732,
+          "speed": 163.322,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 13.5,
+          "rpm": 7892,
+          "speed": 166.711,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 14,
+          "rpm": 8049,
+          "speed": 170.03,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 14.5,
+          "rpm": 8203,
+          "speed": 173.272,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 15,
+          "rpm": 8353,
+          "speed": 176.431,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 15.5,
+          "rpm": 8496,
+          "speed": 179.467,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 16,
+          "rpm": 8633,
+          "speed": 182.356,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 16.5,
+          "rpm": 7292,
+          "speed": 184.361,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 17,
+          "rpm": 7386,
+          "speed": 186.743,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 17.5,
+          "rpm": 7479,
+          "speed": 189.097,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 18,
+          "rpm": 7571,
+          "speed": 191.417,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 18.5,
+          "rpm": 7661,
+          "speed": 193.701,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 19,
+          "rpm": 7750,
+          "speed": 195.945,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 19.5,
+          "rpm": 7837,
+          "speed": 198.147,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 20,
+          "rpm": 7923,
+          "speed": 200.304,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        }
+      ]
+    },
+    {
+      "id": "honda_f20c",
+      "model": "1999 Honda S2000 (JDM)",
+      "mode": "at",
+      "variant": "na",
+      "mass": 1315,
+      "induction": "na",
+      "gears": 6,
+      "hp": 247,
+      "torque": 218,
+      "speedAt1s": 16.263,
+      "to30": 1.6166666666666667,
+      "to100": 5.816666666666666,
+      "endSpeed": 200.304,
+      "endGear": 5,
+      "maxRPM": 8702,
+      "peakAcceleration": 8.463,
+      "shifts": [
+        {
+          "t": 3.6,
+          "gear": 2,
+          "rpm": 8597
+        },
+        {
+          "t": 6.166666666666667,
+          "gear": 3,
+          "rpm": 8468
+        },
+        {
+          "t": 10.2,
+          "gear": 4,
+          "rpm": 8572
+        },
+        {
+          "t": 16.216666666666665,
+          "gear": 5,
+          "rpm": 8326
+        }
+      ]
+    },
+    {
+      "id": "honda_f20c",
+      "model": "1999 Honda S2000 (JDM)",
+      "mode": "at",
+      "variant": "turbo-small",
+      "mass": 1315,
+      "induction": "turbo",
+      "gears": 6,
+      "hp": 440,
+      "torque": 395,
+      "speedAt1s": 16.998,
+      "to30": 1.4833333333333334,
+      "to100": 4.3,
+      "endSpeed": 262.335,
+      "endGear": 6,
+      "maxRPM": 8763,
+      "peakAcceleration": 8.499,
+      "shifts": [
+        {
+          "t": 3,
+          "gear": 2,
+          "rpm": 8494
+        },
+        {
+          "t": 4.5,
+          "gear": 3,
+          "rpm": 8630
+        },
+        {
+          "t": 6.7,
+          "gear": 4,
+          "rpm": 8621
+        },
+        {
+          "t": 9.666666666666666,
+          "gear": 5,
+          "rpm": 8508
+        },
+        {
+          "t": 13.35,
+          "gear": 6,
+          "rpm": 8377
+        }
+      ]
+    },
+    {
+      "id": "honda_f20c",
+      "model": "1999 Honda S2000 (JDM)",
+      "mode": "at",
+      "variant": "turbo-large",
+      "mass": 1315,
+      "induction": "turbo",
+      "gears": 6,
+      "hp": 448,
+      "torque": 395,
+      "speedAt1s": 16.46,
+      "to30": 1.5,
+      "to100": 4.316666666666666,
+      "endSpeed": 263.377,
+      "endGear": 6,
+      "maxRPM": 8744,
+      "peakAcceleration": 8.499,
+      "shifts": [
+        {
+          "t": 3.0166666666666666,
+          "gear": 2,
+          "rpm": 8590
+        },
+        {
+          "t": 4.516666666666667,
+          "gear": 3,
+          "rpm": 8721
+        },
+        {
+          "t": 6.7,
+          "gear": 4,
+          "rpm": 8702
+        },
+        {
+          "t": 9.65,
+          "gear": 5,
+          "rpm": 8393
+        },
+        {
+          "t": 13.266666666666667,
+          "gear": 6,
+          "rpm": 8693
+        }
+      ]
+    },
+    {
+      "id": "honda_f20c",
+      "model": "1999 Honda S2000 (JDM)",
+      "mode": "at",
+      "variant": "roots-tvs",
+      "mass": 1315,
+      "induction": "supercharger",
+      "gears": 6,
+      "hp": 408,
+      "torque": 360,
+      "speedAt1s": 19.207,
+      "to30": 1.4166666666666667,
+      "to100": 4.316666666666666,
+      "endSpeed": 253.273,
+      "endGear": 6,
+      "maxRPM": 8726,
+      "peakAcceleration": 8.498,
+      "shifts": [
+        {
+          "t": 2.933333333333333,
+          "gear": 2,
+          "rpm": 8542
+        },
+        {
+          "t": 4.55,
+          "gear": 3,
+          "rpm": 8362
+        },
+        {
+          "t": 6.916666666666667,
+          "gear": 4,
+          "rpm": 8672
+        },
+        {
+          "t": 10.166666666666666,
+          "gear": 5,
+          "rpm": 8470
+        },
+        {
+          "t": 14.25,
+          "gear": 6,
+          "rpm": 8467
+        }
+      ]
+    },
+    {
+      "id": "honda_f20c",
+      "model": "1999 Honda S2000 (JDM)",
+      "mode": "amt",
+      "variant": "stock",
+      "mass": 1315,
+      "induction": "na",
+      "gears": 6,
+      "hp": 247,
+      "torque": 218,
+      "speedAt1s": 7.73,
+      "to30": 2.35,
+      "to100": 6.483333333333333,
+      "endSpeed": 196.232,
+      "endGear": 5,
+      "maxRPM": 8491,
+      "peakAcceleration": 8.465,
+      "shifts": [
+        {
+          "t": 4.133333333333334,
+          "gear": 2,
+          "rpm": 8033
+        },
+        {
+          "t": 6.633333333333334,
+          "gear": 3,
+          "rpm": 7925
+        },
+        {
+          "t": 10.533333333333333,
+          "gear": 4,
+          "rpm": 7909
+        },
+        {
+          "t": 16.233333333333334,
+          "gear": 5,
+          "rpm": 7906
+        }
+      ],
+      "samples": [
+        {
+          "t": 0.5,
+          "rpm": 1460,
+          "speed": 2.421,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0
+        },
+        {
+          "t": 1,
+          "rpm": 2685,
+          "speed": 7.73,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0
+        },
+        {
+          "t": 1.5,
+          "rpm": 4038,
+          "speed": 14.897,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0
+        },
+        {
+          "t": 2,
+          "rpm": 5315,
+          "speed": 23.257,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0
+        },
+        {
+          "t": 2.5,
+          "rpm": 5766,
+          "speed": 33.537,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0
+        },
+        {
+          "t": 3,
+          "rpm": 5740,
+          "speed": 44.648,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0
+        },
+        {
+          "t": 3.5,
+          "rpm": 6930,
+          "speed": 54.249,
+          "gear": 1,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 4,
+          "rpm": 8238,
+          "speed": 64.485,
+          "gear": 1,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 4.5,
+          "rpm": 5999,
+          "speed": 71.945,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 5,
+          "rpm": 6571,
+          "speed": 78.806,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 5.5,
+          "rpm": 7165,
+          "speed": 85.925,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 6,
+          "rpm": 7769,
+          "speed": 93.163,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 6.5,
+          "rpm": 8359,
+          "speed": 100.244,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 7,
+          "rpm": 6370,
+          "speed": 105.487,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 7.5,
+          "rpm": 6669,
+          "speed": 110.432,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 8,
+          "rpm": 6972,
+          "speed": 115.443,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 8.5,
+          "rpm": 7277,
+          "speed": 120.504,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 9,
+          "rpm": 7583,
+          "speed": 125.568,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 9.5,
+          "rpm": 7885,
+          "speed": 130.572,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 10,
+          "rpm": 8181,
+          "speed": 135.465,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 10.5,
+          "rpm": 8467,
+          "speed": 140.199,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 11,
+          "rpm": 6794,
+          "speed": 143.507,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 11.5,
+          "rpm": 6962,
+          "speed": 147.052,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 12,
+          "rpm": 7130,
+          "speed": 150.599,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 12.5,
+          "rpm": 7297,
+          "speed": 154.139,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 13,
+          "rpm": 7464,
+          "speed": 157.659,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 13.5,
+          "rpm": 7629,
+          "speed": 161.14,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 14,
+          "rpm": 7791,
+          "speed": 164.568,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 14.5,
+          "rpm": 7950,
+          "speed": 167.933,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 15,
+          "rpm": 8106,
+          "speed": 171.224,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 15.5,
+          "rpm": 8258,
+          "speed": 174.438,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 16,
+          "rpm": 8406,
+          "speed": 177.557,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 16.5,
+          "rpm": 7113,
+          "speed": 179.844,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 17,
+          "rpm": 7209,
+          "speed": 182.267,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 17.5,
+          "rpm": 7304,
+          "speed": 184.67,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 18,
+          "rpm": 7398,
+          "speed": 187.049,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 18.5,
+          "rpm": 7491,
+          "speed": 189.399,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 19,
+          "rpm": 7583,
+          "speed": 191.714,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 19.5,
+          "rpm": 7673,
+          "speed": 193.993,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 20,
+          "rpm": 7762,
+          "speed": 196.232,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        }
+      ]
+    },
+    {
+      "id": "honda_f20c",
+      "model": "1999 Honda S2000 (JDM)",
+      "mode": "amt",
+      "variant": "na",
+      "mass": 1315,
+      "induction": "na",
+      "gears": 6,
+      "hp": 247,
+      "torque": 218,
+      "speedAt1s": 7.73,
+      "to30": 2.35,
+      "to100": 6.483333333333333,
+      "endSpeed": 196.232,
+      "endGear": 5,
+      "maxRPM": 8491,
+      "peakAcceleration": 8.465,
+      "shifts": [
+        {
+          "t": 4.133333333333334,
+          "gear": 2,
+          "rpm": 8033
+        },
+        {
+          "t": 6.633333333333334,
+          "gear": 3,
+          "rpm": 7925
+        },
+        {
+          "t": 10.533333333333333,
+          "gear": 4,
+          "rpm": 7909
+        },
+        {
+          "t": 16.233333333333334,
+          "gear": 5,
+          "rpm": 7906
+        }
+      ]
+    },
+    {
+      "id": "honda_f20c",
+      "model": "1999 Honda S2000 (JDM)",
+      "mode": "amt",
+      "variant": "turbo-small",
+      "mass": 1315,
+      "induction": "turbo",
+      "gears": 6,
+      "hp": 440,
+      "torque": 395,
+      "speedAt1s": 7.628,
+      "to30": 1.9,
+      "to100": 4.75,
+      "endSpeed": 259.935,
+      "endGear": 6,
+      "maxRPM": 8585,
+      "peakAcceleration": 8.51,
+      "shifts": [
+        {
+          "t": 3.4,
+          "gear": 2,
+          "rpm": 8067
+        },
+        {
+          "t": 4.833333333333333,
+          "gear": 3,
+          "rpm": 7927
+        },
+        {
+          "t": 6.95,
+          "gear": 4,
+          "rpm": 7930
+        },
+        {
+          "t": 9.75,
+          "gear": 5,
+          "rpm": 7920
+        },
+        {
+          "t": 13.183333333333334,
+          "gear": 6,
+          "rpm": 7921
+        }
+      ]
+    },
+    {
+      "id": "honda_f20c",
+      "model": "1999 Honda S2000 (JDM)",
+      "mode": "amt",
+      "variant": "turbo-large",
+      "mass": 1315,
+      "induction": "turbo",
+      "gears": 6,
+      "hp": 448,
+      "torque": 395,
+      "speedAt1s": 7.334,
+      "to30": 2.183333333333333,
+      "to100": 4.983333333333333,
+      "endSpeed": 259.387,
+      "endGear": 6,
+      "maxRPM": 8567,
+      "peakAcceleration": 8.505,
+      "shifts": [
+        {
+          "t": 3.6166666666666667,
+          "gear": 2,
+          "rpm": 8031
+        },
+        {
+          "t": 5.066666666666666,
+          "gear": 3,
+          "rpm": 7941
+        },
+        {
+          "t": 7.166666666666667,
+          "gear": 4,
+          "rpm": 7928
+        },
+        {
+          "t": 9.966666666666667,
+          "gear": 5,
+          "rpm": 7925
+        },
+        {
+          "t": 13.366666666666667,
+          "gear": 6,
+          "rpm": 7919
+        }
+      ]
+    },
+    {
+      "id": "honda_f20c",
+      "model": "1999 Honda S2000 (JDM)",
+      "mode": "amt",
+      "variant": "roots-tvs",
+      "mass": 1315,
+      "induction": "supercharger",
+      "gears": 6,
+      "hp": 408,
+      "torque": 360,
+      "speedAt1s": 13.262,
+      "to30": 1.6,
+      "to100": 4.566666666666666,
+      "endSpeed": 251.086,
+      "endGear": 6,
+      "maxRPM": 8488,
+      "peakAcceleration": 8.508,
+      "shifts": [
+        {
+          "t": 3.0833333333333335,
+          "gear": 2,
+          "rpm": 8002
+        },
+        {
+          "t": 4.666666666666667,
+          "gear": 3,
+          "rpm": 7921
+        },
+        {
+          "t": 6.966666666666667,
+          "gear": 4,
+          "rpm": 7892
+        },
+        {
+          "t": 10.05,
+          "gear": 5,
+          "rpm": 7880
+        },
+        {
+          "t": 13.9,
+          "gear": 6,
+          "rpm": 7882
+        }
+      ]
+    },
+    {
+      "id": "honda_k20a",
+      "model": "2007 Honda Civic Type R FD2 (JDM)",
+      "mode": "at",
+      "variant": "stock",
+      "mass": 1345,
+      "induction": "na",
+      "gears": 6,
+      "hp": 221,
+      "torque": 215,
+      "speedAt1s": 17.83,
+      "to30": 1.5833333333333333,
+      "to100": 6.1,
+      "endSpeed": 189.561,
+      "endGear": 5,
+      "maxRPM": 8132,
+      "peakAcceleration": 8.477,
+      "shifts": [
+        {
+          "t": 3,
+          "gear": 2,
+          "rpm": 8022
+        },
+        {
+          "t": 5.083333333333333,
+          "gear": 3,
+          "rpm": 7766
+        },
+        {
+          "t": 8.516666666666667,
+          "gear": 4,
+          "rpm": 7887
+        },
+        {
+          "t": 14.316666666666666,
+          "gear": 5,
+          "rpm": 7753
+        }
+      ],
+      "samples": [
+        {
+          "t": 0.5,
+          "rpm": 2454,
+          "speed": 4.982,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0
+        },
+        {
+          "t": 1,
+          "rpm": 3359,
+          "speed": 17.83,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0
+        },
+        {
+          "t": 1.5,
+          "rpm": 4047,
+          "speed": 28.725,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0
+        },
+        {
+          "t": 2,
+          "rpm": 5382,
+          "speed": 38.318,
+          "gear": 1,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 2.5,
+          "rpm": 6826,
+          "speed": 48.602,
+          "gear": 1,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 3,
+          "rpm": 8022,
+          "speed": 58.062,
+          "gear": 2,
+          "state": "shifting",
+          "boost": 0
+        },
+        {
+          "t": 3.5,
+          "rpm": 6035,
+          "speed": 65.881,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 4,
+          "rpm": 6738,
+          "speed": 73.555,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 4.5,
+          "rpm": 7420,
+          "speed": 81.006,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 5,
+          "rpm": 8071,
+          "speed": 88.116,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 5.5,
+          "rpm": 6096,
+          "speed": 93.44,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 6,
+          "rpm": 6454,
+          "speed": 98.927,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 6.5,
+          "rpm": 6806,
+          "speed": 104.322,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 7,
+          "rpm": 7150,
+          "speed": 109.598,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 7.5,
+          "rpm": 7486,
+          "speed": 114.741,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 8,
+          "rpm": 7811,
+          "speed": 119.728,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 8.5,
+          "rpm": 8110,
+          "speed": 124.21,
+          "gear": 3,
+          "state": "shifting",
+          "boost": 0
+        },
+        {
+          "t": 9,
+          "rpm": 6311,
+          "speed": 127.941,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 9.5,
+          "rpm": 6498,
+          "speed": 131.738,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 10,
+          "rpm": 6682,
+          "speed": 135.472,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 10.5,
+          "rpm": 6863,
+          "speed": 139.139,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 11,
+          "rpm": 7041,
+          "speed": 142.735,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 11.5,
+          "rpm": 7214,
+          "speed": 146.255,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 12,
+          "rpm": 7384,
+          "speed": 149.702,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 12.5,
+          "rpm": 7550,
+          "speed": 153.071,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 13,
+          "rpm": 7712,
+          "speed": 156.353,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 13.5,
+          "rpm": 7870,
+          "speed": 159.542,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 14,
+          "rpm": 8022,
+          "speed": 162.63,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 14.5,
+          "rpm": 6535,
+          "speed": 164.981,
+          "gear": 5,
+          "state": "shifting",
+          "boost": 0
+        },
+        {
+          "t": 15,
+          "rpm": 6630,
+          "speed": 167.397,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 15.5,
+          "rpm": 6726,
+          "speed": 169.817,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 16,
+          "rpm": 6820,
+          "speed": 172.192,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 16.5,
+          "rpm": 6912,
+          "speed": 174.522,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 17,
+          "rpm": 7003,
+          "speed": 176.807,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 17.5,
+          "rpm": 7092,
+          "speed": 179.046,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 18,
+          "rpm": 7178,
+          "speed": 181.238,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 18.5,
+          "rpm": 7263,
+          "speed": 183.386,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 19,
+          "rpm": 7347,
+          "speed": 185.489,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 19.5,
+          "rpm": 7428,
+          "speed": 187.548,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 20,
+          "rpm": 7508,
+          "speed": 189.561,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        }
+      ]
+    },
+    {
+      "id": "honda_k20a",
+      "model": "2007 Honda Civic Type R FD2 (JDM)",
+      "mode": "at",
+      "variant": "na",
+      "mass": 1345,
+      "induction": "na",
+      "gears": 6,
+      "hp": 221,
+      "torque": 215,
+      "speedAt1s": 17.83,
+      "to30": 1.5833333333333333,
+      "to100": 6.1,
+      "endSpeed": 189.561,
+      "endGear": 5,
+      "maxRPM": 8132,
+      "peakAcceleration": 8.477,
+      "shifts": [
+        {
+          "t": 3,
+          "gear": 2,
+          "rpm": 8022
+        },
+        {
+          "t": 5.083333333333333,
+          "gear": 3,
+          "rpm": 7766
+        },
+        {
+          "t": 8.516666666666667,
+          "gear": 4,
+          "rpm": 7887
+        },
+        {
+          "t": 14.316666666666666,
+          "gear": 5,
+          "rpm": 7753
+        }
+      ]
+    },
+    {
+      "id": "honda_k20a",
+      "model": "2007 Honda Civic Type R FD2 (JDM)",
+      "mode": "at",
+      "variant": "turbo-small",
+      "mass": 1345,
+      "induction": "turbo",
+      "gears": 6,
+      "hp": 398,
+      "torque": 390,
+      "speedAt1s": 18.529,
+      "to30": 1.4333333333333333,
+      "to100": 4.516666666666667,
+      "endSpeed": 247.729,
+      "endGear": 6,
+      "maxRPM": 8167,
+      "peakAcceleration": 8.506,
+      "shifts": [
+        {
+          "t": 2.6166666666666667,
+          "gear": 2,
+          "rpm": 8104
+        },
+        {
+          "t": 3.8833333333333333,
+          "gear": 3,
+          "rpm": 7855
+        },
+        {
+          "t": 5.783333333333333,
+          "gear": 4,
+          "rpm": 8054
+        },
+        {
+          "t": 8.716666666666667,
+          "gear": 5,
+          "rpm": 7950
+        },
+        {
+          "t": 12.883333333333333,
+          "gear": 6,
+          "rpm": 7948
+        }
+      ]
+    },
+    {
+      "id": "honda_k20a",
+      "model": "2007 Honda Civic Type R FD2 (JDM)",
+      "mode": "at",
+      "variant": "turbo-large",
+      "mass": 1345,
+      "induction": "turbo",
+      "gears": 6,
+      "hp": 401,
+      "torque": 390,
+      "speedAt1s": 18.259,
+      "to30": 1.45,
+      "to100": 4.516666666666667,
+      "endSpeed": 247.875,
+      "endGear": 6,
+      "maxRPM": 8199,
+      "peakAcceleration": 8.506,
+      "shifts": [
+        {
+          "t": 2.6333333333333333,
+          "gear": 2,
+          "rpm": 7959
+        },
+        {
+          "t": 3.8833333333333333,
+          "gear": 3,
+          "rpm": 7978
+        },
+        {
+          "t": 5.783333333333333,
+          "gear": 4,
+          "rpm": 8133
+        },
+        {
+          "t": 8.716666666666667,
+          "gear": 5,
+          "rpm": 7843
+        },
+        {
+          "t": 12.85,
+          "gear": 6,
+          "rpm": 8119
+        }
+      ]
+    },
+    {
+      "id": "honda_k20a",
+      "model": "2007 Honda Civic Type R FD2 (JDM)",
+      "mode": "at",
+      "variant": "roots-tvs",
+      "mass": 1345,
+      "induction": "supercharger",
+      "gears": 6,
+      "hp": 363,
+      "torque": 355,
+      "speedAt1s": 20.324,
+      "to30": 1.3666666666666667,
+      "to100": 4.566666666666666,
+      "endSpeed": 237.538,
+      "endGear": 6,
+      "maxRPM": 8150,
+      "peakAcceleration": 8.506,
+      "shifts": [
+        {
+          "t": 2.566666666666667,
+          "gear": 2,
+          "rpm": 7981
+        },
+        {
+          "t": 3.9,
+          "gear": 3,
+          "rpm": 7927
+        },
+        {
+          "t": 5.966666666666667,
+          "gear": 4,
+          "rpm": 8021
+        },
+        {
+          "t": 9.2,
+          "gear": 5,
+          "rpm": 7785
+        },
+        {
+          "t": 13.883333333333333,
+          "gear": 6,
+          "rpm": 7907
+        }
+      ]
+    },
+    {
+      "id": "honda_k20a",
+      "model": "2007 Honda Civic Type R FD2 (JDM)",
+      "mode": "amt",
+      "variant": "stock",
+      "mass": 1345,
+      "induction": "na",
+      "gears": 6,
+      "hp": 221,
+      "torque": 215,
+      "speedAt1s": 9.504,
+      "to30": 2.033333333333333,
+      "to100": 6.633333333333334,
+      "endSpeed": 186.741,
+      "endGear": 5,
+      "maxRPM": 7909,
+      "peakAcceleration": 8.478,
+      "shifts": [
+        {
+          "t": 3.3666666666666667,
+          "gear": 2,
+          "rpm": 7479
+        },
+        {
+          "t": 5.4,
+          "gear": 3,
+          "rpm": 7392
+        },
+        {
+          "t": 8.7,
+          "gear": 4,
+          "rpm": 7374
+        },
+        {
+          "t": 14.216666666666667,
+          "gear": 5,
+          "rpm": 7376
+        }
+      ],
+      "samples": [
+        {
+          "t": 0.5,
+          "rpm": 1525,
+          "speed": 2.929,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0
+        },
+        {
+          "t": 1,
+          "rpm": 2748,
+          "speed": 9.504,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0
+        },
+        {
+          "t": 1.5,
+          "rpm": 3783,
+          "speed": 18.536,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0
+        },
+        {
+          "t": 2,
+          "rpm": 4167,
+          "speed": 29.564,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0
+        },
+        {
+          "t": 2.5,
+          "rpm": 5506,
+          "speed": 39.204,
+          "gear": 1,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 3,
+          "rpm": 6959,
+          "speed": 49.545,
+          "gear": 1,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 3.5,
+          "rpm": 5408,
+          "speed": 59.044,
+          "gear": 2,
+          "state": "shifting",
+          "boost": 0
+        },
+        {
+          "t": 4,
+          "rpm": 6043,
+          "speed": 65.967,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 4.5,
+          "rpm": 6745,
+          "speed": 73.639,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 5,
+          "rpm": 7428,
+          "speed": 81.086,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 5.5,
+          "rpm": 5739,
+          "speed": 87.969,
+          "gear": 3,
+          "state": "shifting",
+          "boost": 0
+        },
+        {
+          "t": 6,
+          "rpm": 6073,
+          "speed": 93.093,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 6.5,
+          "rpm": 6431,
+          "speed": 98.584,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 7,
+          "rpm": 6784,
+          "speed": 103.986,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 7.5,
+          "rpm": 7129,
+          "speed": 109.269,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 8,
+          "rpm": 7465,
+          "speed": 114.422,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 8.5,
+          "rpm": 7791,
+          "speed": 119.42,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 9,
+          "rpm": 6087,
+          "speed": 123.395,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 9.5,
+          "rpm": 6277,
+          "speed": 127.253,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 10,
+          "rpm": 6465,
+          "speed": 131.06,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 10.5,
+          "rpm": 6650,
+          "speed": 134.806,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 11,
+          "rpm": 6831,
+          "speed": 138.485,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 11.5,
+          "rpm": 7009,
+          "speed": 142.094,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 12,
+          "rpm": 7183,
+          "speed": 145.629,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 12.5,
+          "rpm": 7354,
+          "speed": 149.088,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 13,
+          "rpm": 7521,
+          "speed": 152.472,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 13.5,
+          "rpm": 7684,
+          "speed": 155.771,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 14,
+          "rpm": 7842,
+          "speed": 158.977,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 14.5,
+          "rpm": 6394,
+          "speed": 161.426,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 15,
+          "rpm": 6494,
+          "speed": 163.949,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 15.5,
+          "rpm": 6592,
+          "speed": 166.43,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 16,
+          "rpm": 6688,
+          "speed": 168.868,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 16.5,
+          "rpm": 6783,
+          "speed": 171.26,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 17,
+          "rpm": 6876,
+          "speed": 173.608,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 17.5,
+          "rpm": 6967,
+          "speed": 175.911,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 18,
+          "rpm": 7057,
+          "speed": 178.168,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 18.5,
+          "rpm": 7144,
+          "speed": 180.379,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 19,
+          "rpm": 7230,
+          "speed": 182.544,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 19.5,
+          "rpm": 7314,
+          "speed": 184.664,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 20,
+          "rpm": 7396,
+          "speed": 186.741,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        }
+      ]
+    },
+    {
+      "id": "honda_k20a",
+      "model": "2007 Honda Civic Type R FD2 (JDM)",
+      "mode": "amt",
+      "variant": "na",
+      "mass": 1345,
+      "induction": "na",
+      "gears": 6,
+      "hp": 221,
+      "torque": 215,
+      "speedAt1s": 9.504,
+      "to30": 2.033333333333333,
+      "to100": 6.633333333333334,
+      "endSpeed": 186.741,
+      "endGear": 5,
+      "maxRPM": 7909,
+      "peakAcceleration": 8.478,
+      "shifts": [
+        {
+          "t": 3.3666666666666667,
+          "gear": 2,
+          "rpm": 7479
+        },
+        {
+          "t": 5.4,
+          "gear": 3,
+          "rpm": 7392
+        },
+        {
+          "t": 8.7,
+          "gear": 4,
+          "rpm": 7374
+        },
+        {
+          "t": 14.216666666666667,
+          "gear": 5,
+          "rpm": 7376
+        }
+      ]
+    },
+    {
+      "id": "honda_k20a",
+      "model": "2007 Honda Civic Type R FD2 (JDM)",
+      "mode": "amt",
+      "variant": "turbo-small",
+      "mass": 1345,
+      "induction": "turbo",
+      "gears": 6,
+      "hp": 398,
+      "torque": 390,
+      "speedAt1s": 9.968,
+      "to30": 1.7833333333333334,
+      "to100": 4.85,
+      "endSpeed": 245.671,
+      "endGear": 6,
+      "maxRPM": 7947,
+      "peakAcceleration": 8.511,
+      "shifts": [
+        {
+          "t": 2.9166666666666665,
+          "gear": 2,
+          "rpm": 7533
+        },
+        {
+          "t": 4.116666666666666,
+          "gear": 3,
+          "rpm": 7395
+        },
+        {
+          "t": 5.95,
+          "gear": 4,
+          "rpm": 7406
+        },
+        {
+          "t": 8.716666666666667,
+          "gear": 5,
+          "rpm": 7390
+        },
+        {
+          "t": 12.633333333333333,
+          "gear": 6,
+          "rpm": 7391
+        }
+      ]
+    },
+    {
+      "id": "honda_k20a",
+      "model": "2007 Honda Civic Type R FD2 (JDM)",
+      "mode": "amt",
+      "variant": "turbo-large",
+      "mass": 1345,
+      "induction": "turbo",
+      "gears": 6,
+      "hp": 401,
+      "torque": 390,
+      "speedAt1s": 9.207,
+      "to30": 2.033333333333333,
+      "to100": 5.1,
+      "endSpeed": 244.403,
+      "endGear": 6,
+      "maxRPM": 7908,
+      "peakAcceleration": 8.478,
+      "shifts": [
+        {
+          "t": 3.15,
+          "gear": 2,
+          "rpm": 7486
+        },
+        {
+          "t": 4.366666666666666,
+          "gear": 3,
+          "rpm": 7407
+        },
+        {
+          "t": 6.183333333333334,
+          "gear": 4,
+          "rpm": 7393
+        },
+        {
+          "t": 8.966666666666667,
+          "gear": 5,
+          "rpm": 7396
+        },
+        {
+          "t": 12.866666666666667,
+          "gear": 6,
+          "rpm": 7389
+        }
+      ]
+    },
+    {
+      "id": "honda_k20a",
+      "model": "2007 Honda Civic Type R FD2 (JDM)",
+      "mode": "amt",
+      "variant": "roots-tvs",
+      "mass": 1345,
+      "induction": "supercharger",
+      "gears": 6,
+      "hp": 363,
+      "torque": 355,
+      "speedAt1s": 17.058,
+      "to30": 1.5166666666666666,
+      "to100": 4.733333333333333,
+      "endSpeed": 235.973,
+      "endGear": 6,
+      "maxRPM": 7908,
+      "peakAcceleration": 8.512,
+      "shifts": [
+        {
+          "t": 2.65,
+          "gear": 2,
+          "rpm": 7459
+        },
+        {
+          "t": 3.95,
+          "gear": 3,
+          "rpm": 7369
+        },
+        {
+          "t": 5.95,
+          "gear": 4,
+          "rpm": 7358
+        },
+        {
+          "t": 9.016666666666667,
+          "gear": 5,
+          "rpm": 7347
+        },
+        {
+          "t": 13.433333333333334,
+          "gear": 6,
+          "rpm": 7348
+        }
+      ]
+    },
+    {
+      "id": "boxer4",
+      "model": "2016 Subaru WRX STI (US)",
+      "mode": "at",
+      "variant": "stock",
+      "mass": 1610.8637648200001,
+      "induction": "turbo",
+      "gears": 6,
+      "hp": 305,
+      "torque": 393,
+      "speedAt1s": 12.438,
+      "to30": 1.65,
+      "to100": 5.516666666666667,
+      "endSpeed": 205.643,
+      "endGear": 5,
+      "maxRPM": 6510,
+      "peakAcceleration": 8.502,
+      "shifts": [
+        {
+          "t": 2.6166666666666667,
+          "gear": 2,
+          "rpm": 6451
+        },
+        {
+          "t": 4.616666666666666,
+          "gear": 3,
+          "rpm": 6262
+        },
+        {
+          "t": 8.233333333333333,
+          "gear": 4,
+          "rpm": 6252
+        },
+        {
+          "t": 14.083333333333334,
+          "gear": 5,
+          "rpm": 6475
+        }
+      ],
+      "samples": [
+        {
+          "t": 0.5,
+          "rpm": 1846,
+          "speed": 3.513,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0.137
+        },
+        {
+          "t": 1,
+          "rpm": 2881,
+          "speed": 12.438,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0.589
+        },
+        {
+          "t": 1.5,
+          "rpm": 3920,
+          "speed": 26.245,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0.97
+        },
+        {
+          "t": 2,
+          "rpm": 4749,
+          "speed": 40.344,
+          "gear": 1,
+          "state": "launching",
+          "boost": 1.012
+        },
+        {
+          "t": 2.5,
+          "rpm": 6276,
+          "speed": 53.402,
+          "gear": 1,
+          "state": "locked",
+          "boost": 0.938
+        },
+        {
+          "t": 3,
+          "rpm": 4424,
+          "speed": 61.248,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0.807
+        },
+        {
+          "t": 3.5,
+          "rpm": 5103,
+          "speed": 70.636,
+          "gear": 2,
+          "state": "locked",
+          "boost": 1.008
+        },
+        {
+          "t": 4,
+          "rpm": 5775,
+          "speed": 79.943,
+          "gear": 2,
+          "state": "locked",
+          "boost": 1.013
+        },
+        {
+          "t": 4.5,
+          "rpm": 6402,
+          "speed": 88.626,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0.905
+        },
+        {
+          "t": 5,
+          "rpm": 4599,
+          "speed": 93.54,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0.838
+        },
+        {
+          "t": 5.5,
+          "rpm": 4910,
+          "speed": 99.867,
+          "gear": 3,
+          "state": "locked",
+          "boost": 1.009
+        },
+        {
+          "t": 6,
+          "rpm": 5221,
+          "speed": 106.202,
+          "gear": 3,
+          "state": "locked",
+          "boost": 1.013
+        },
+        {
+          "t": 6.5,
+          "rpm": 5526,
+          "speed": 112.407,
+          "gear": 3,
+          "state": "locked",
+          "boost": 1.014
+        },
+        {
+          "t": 7,
+          "rpm": 5823,
+          "speed": 118.457,
+          "gear": 3,
+          "state": "locked",
+          "boost": 1.013
+        },
+        {
+          "t": 7.5,
+          "rpm": 6111,
+          "speed": 124.307,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0.956
+        },
+        {
+          "t": 8,
+          "rpm": 6377,
+          "speed": 129.724,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0.907
+        },
+        {
+          "t": 8.5,
+          "rpm": 4890,
+          "speed": 133.07,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0.699
+        },
+        {
+          "t": 9,
+          "rpm": 5044,
+          "speed": 137.252,
+          "gear": 4,
+          "state": "locked",
+          "boost": 1.006
+        },
+        {
+          "t": 9.5,
+          "rpm": 5202,
+          "speed": 141.549,
+          "gear": 4,
+          "state": "locked",
+          "boost": 1.013
+        },
+        {
+          "t": 10,
+          "rpm": 5357,
+          "speed": 145.775,
+          "gear": 4,
+          "state": "locked",
+          "boost": 1.014
+        },
+        {
+          "t": 10.5,
+          "rpm": 5510,
+          "speed": 149.92,
+          "gear": 4,
+          "state": "locked",
+          "boost": 1.014
+        },
+        {
+          "t": 11,
+          "rpm": 5659,
+          "speed": 153.982,
+          "gear": 4,
+          "state": "locked",
+          "boost": 1.014
+        },
+        {
+          "t": 11.5,
+          "rpm": 5805,
+          "speed": 157.954,
+          "gear": 4,
+          "state": "locked",
+          "boost": 1.014
+        },
+        {
+          "t": 12,
+          "rpm": 5947,
+          "speed": 161.83,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0.988
+        },
+        {
+          "t": 12.5,
+          "rpm": 6085,
+          "speed": 165.589,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0.96
+        },
+        {
+          "t": 13,
+          "rpm": 6217,
+          "speed": 169.162,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0.935
+        },
+        {
+          "t": 13.5,
+          "rpm": 6340,
+          "speed": 172.523,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0.912
+        },
+        {
+          "t": 14,
+          "rpm": 6456,
+          "speed": 175.67,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0.892
+        },
+        {
+          "t": 14.5,
+          "rpm": 5568,
+          "speed": 177.419,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0.93
+        },
+        {
+          "t": 15,
+          "rpm": 5661,
+          "speed": 180.367,
+          "gear": 5,
+          "state": "locked",
+          "boost": 1.012
+        },
+        {
+          "t": 15.5,
+          "rpm": 5752,
+          "speed": 183.288,
+          "gear": 5,
+          "state": "locked",
+          "boost": 1.014
+        },
+        {
+          "t": 16,
+          "rpm": 5842,
+          "speed": 186.144,
+          "gear": 5,
+          "state": "locked",
+          "boost": 1.01
+        },
+        {
+          "t": 16.5,
+          "rpm": 5930,
+          "speed": 188.933,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0.991
+        },
+        {
+          "t": 17,
+          "rpm": 6015,
+          "speed": 191.652,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0.973
+        },
+        {
+          "t": 17.5,
+          "rpm": 6097,
+          "speed": 194.278,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0.957
+        },
+        {
+          "t": 18,
+          "rpm": 6176,
+          "speed": 196.79,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0.942
+        },
+        {
+          "t": 18.5,
+          "rpm": 6251,
+          "speed": 199.182,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0.928
+        },
+        {
+          "t": 19,
+          "rpm": 6322,
+          "speed": 201.453,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0.915
+        },
+        {
+          "t": 19.5,
+          "rpm": 6390,
+          "speed": 203.605,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0.903
+        },
+        {
+          "t": 20,
+          "rpm": 6454,
+          "speed": 205.643,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0.892
+        }
+      ]
+    },
+    {
+      "id": "boxer4",
+      "model": "2016 Subaru WRX STI (US)",
+      "mode": "at",
+      "variant": "na",
+      "mass": 1610.8637648200001,
+      "induction": "na",
+      "gears": 6,
+      "hp": 171,
+      "torque": 215,
+      "speedAt1s": 9.933,
+      "to30": 2.466666666666667,
+      "to100": 9.216666666666667,
+      "endSpeed": 151.788,
+      "endGear": 4,
+      "maxRPM": 6483,
+      "peakAcceleration": 8.464,
+      "shifts": [
+        {
+          "t": 4.133333333333334,
+          "gear": 2,
+          "rpm": 6456
+        },
+        {
+          "t": 7.65,
+          "gear": 3,
+          "rpm": 6184
+        },
+        {
+          "t": 14.6,
+          "gear": 4,
+          "rpm": 6285
+        }
+      ]
+    },
+    {
+      "id": "boxer4",
+      "model": "2016 Subaru WRX STI (US)",
+      "mode": "at",
+      "variant": "turbo-small",
+      "mass": 1610.8637648200001,
+      "induction": "turbo",
+      "gears": 6,
+      "hp": 303,
+      "torque": 391,
+      "speedAt1s": 12.386,
+      "to30": 1.65,
+      "to100": 5.533333333333333,
+      "endSpeed": 205.146,
+      "endGear": 5,
+      "maxRPM": 6510,
+      "peakAcceleration": 8.502,
+      "shifts": [
+        {
+          "t": 2.6166666666666667,
+          "gear": 2,
+          "rpm": 6510
+        },
+        {
+          "t": 4.616666666666666,
+          "gear": 3,
+          "rpm": 6488
+        },
+        {
+          "t": 8.266666666666667,
+          "gear": 4,
+          "rpm": 6252
+        },
+        {
+          "t": 14.166666666666666,
+          "gear": 5,
+          "rpm": 6341
+        }
+      ]
+    },
+    {
+      "id": "boxer4",
+      "model": "2016 Subaru WRX STI (US)",
+      "mode": "at",
+      "variant": "turbo-large",
+      "mass": 1610.8637648200001,
+      "induction": "turbo",
+      "gears": 6,
+      "hp": 310,
+      "torque": 390,
+      "speedAt1s": 10.017,
+      "to30": 2.1166666666666667,
+      "to100": 5.983333333333333,
+      "endSpeed": 204.652,
+      "endGear": 5,
+      "maxRPM": 6509,
+      "peakAcceleration": 8.502,
+      "shifts": [
+        {
+          "t": 3.0833333333333335,
+          "gear": 2,
+          "rpm": 6382
+        },
+        {
+          "t": 5.066666666666666,
+          "gear": 3,
+          "rpm": 6440
+        },
+        {
+          "t": 8.666666666666666,
+          "gear": 4,
+          "rpm": 6431
+        },
+        {
+          "t": 14.466666666666667,
+          "gear": 5,
+          "rpm": 6481
+        }
+      ]
+    },
+    {
+      "id": "boxer4",
+      "model": "2016 Subaru WRX STI (US)",
+      "mode": "at",
+      "variant": "roots-tvs",
+      "mass": 1610.8637648200001,
+      "induction": "supercharger",
+      "gears": 6,
+      "hp": 273,
+      "torque": 346,
+      "speedAt1s": 17.489,
+      "to30": 1.4666666666666666,
+      "to100": 5.666666666666667,
+      "endSpeed": 195.826,
+      "endGear": 5,
+      "maxRPM": 6486,
+      "peakAcceleration": 8.501,
+      "shifts": [
+        {
+          "t": 2.4833333333333334,
+          "gear": 2,
+          "rpm": 6318
+        },
+        {
+          "t": 4.683333333333334,
+          "gear": 3,
+          "rpm": 6394
+        },
+        {
+          "t": 8.766666666666667,
+          "gear": 4,
+          "rpm": 6302
+        },
+        {
+          "t": 15.55,
+          "gear": 5,
+          "rpm": 6198
+        }
+      ]
+    },
+    {
+      "id": "boxer4",
+      "model": "2016 Subaru WRX STI (US)",
+      "mode": "amt",
+      "variant": "stock",
+      "mass": 1610.8637648200001,
+      "induction": "turbo",
+      "gears": 6,
+      "hp": 305,
+      "torque": 393,
+      "speedAt1s": 5.77,
+      "to30": 1.9666666666666666,
+      "to100": 5.816666666666666,
+      "endSpeed": 203.115,
+      "endGear": 6,
+      "maxRPM": 6323,
+      "peakAcceleration": 8.509,
+      "shifts": [
+        {
+          "t": 2.8666666666666667,
+          "gear": 2,
+          "rpm": 5903
+        },
+        {
+          "t": 4.75,
+          "gear": 3,
+          "rpm": 5883
+        },
+        {
+          "t": 8.183333333333334,
+          "gear": 4,
+          "rpm": 5883
+        },
+        {
+          "t": 13.666666666666666,
+          "gear": 5,
+          "rpm": 5880
+        },
+        {
+          "t": 19.15,
+          "gear": 6,
+          "rpm": 5882
+        }
+      ],
+      "samples": [
+        {
+          "t": 0.5,
+          "rpm": 1336,
+          "speed": 2.183,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0.036
+        },
+        {
+          "t": 1,
+          "rpm": 2438,
+          "speed": 5.77,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0.373
+        },
+        {
+          "t": 1.5,
+          "rpm": 4300,
+          "speed": 15.965,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0.939
+        },
+        {
+          "t": 2,
+          "rpm": 4304,
+          "speed": 31.274,
+          "gear": 1,
+          "state": "launching",
+          "boost": 1.011
+        },
+        {
+          "t": 2.5,
+          "rpm": 5302,
+          "speed": 45.119,
+          "gear": 1,
+          "state": "locked",
+          "boost": 1.013
+        },
+        {
+          "t": 3,
+          "rpm": 4026,
+          "speed": 55.73,
+          "gear": 2,
+          "state": "shifting",
+          "boost": 0.721
+        },
+        {
+          "t": 3.5,
+          "rpm": 4686,
+          "speed": 64.864,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0.998
+        },
+        {
+          "t": 4,
+          "rpm": 5372,
+          "speed": 74.358,
+          "gear": 2,
+          "state": "locked",
+          "boost": 1.013
+        },
+        {
+          "t": 4.5,
+          "rpm": 6033,
+          "speed": 83.517,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0.976
+        },
+        {
+          "t": 5,
+          "rpm": 4406,
+          "speed": 89.634,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0.82
+        },
+        {
+          "t": 5.5,
+          "rpm": 4720,
+          "speed": 96.016,
+          "gear": 3,
+          "state": "locked",
+          "boost": 1.008
+        },
+        {
+          "t": 6,
+          "rpm": 5035,
+          "speed": 102.428,
+          "gear": 3,
+          "state": "locked",
+          "boost": 1.013
+        },
+        {
+          "t": 6.5,
+          "rpm": 5344,
+          "speed": 108.714,
+          "gear": 3,
+          "state": "locked",
+          "boost": 1.014
+        },
+        {
+          "t": 7,
+          "rpm": 5647,
+          "speed": 114.86,
+          "gear": 3,
+          "state": "locked",
+          "boost": 1.014
+        },
+        {
+          "t": 7.5,
+          "rpm": 5941,
+          "speed": 120.841,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0.991
+        },
+        {
+          "t": 8,
+          "rpm": 6221,
+          "speed": 126.549,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0.935
+        },
+        {
+          "t": 8.5,
+          "rpm": 4785,
+          "speed": 130.201,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0.911
+        },
+        {
+          "t": 9,
+          "rpm": 4945,
+          "speed": 134.566,
+          "gear": 4,
+          "state": "locked",
+          "boost": 1.011
+        },
+        {
+          "t": 9.5,
+          "rpm": 5105,
+          "speed": 138.913,
+          "gear": 4,
+          "state": "locked",
+          "boost": 1.013
+        },
+        {
+          "t": 10,
+          "rpm": 5262,
+          "speed": 143.186,
+          "gear": 4,
+          "state": "locked",
+          "boost": 1.014
+        },
+        {
+          "t": 10.5,
+          "rpm": 5416,
+          "speed": 147.381,
+          "gear": 4,
+          "state": "locked",
+          "boost": 1.014
+        },
+        {
+          "t": 11,
+          "rpm": 5567,
+          "speed": 151.495,
+          "gear": 4,
+          "state": "locked",
+          "boost": 1.014
+        },
+        {
+          "t": 11.5,
+          "rpm": 5715,
+          "speed": 155.523,
+          "gear": 4,
+          "state": "locked",
+          "boost": 1.014
+        },
+        {
+          "t": 12,
+          "rpm": 5860,
+          "speed": 159.458,
+          "gear": 4,
+          "state": "locked",
+          "boost": 1.007
+        },
+        {
+          "t": 12.5,
+          "rpm": 6001,
+          "speed": 163.295,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0.977
+        },
+        {
+          "t": 13,
+          "rpm": 6137,
+          "speed": 166.989,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0.95
+        },
+        {
+          "t": 13.5,
+          "rpm": 6265,
+          "speed": 170.482,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0.926
+        },
+        {
+          "t": 14,
+          "rpm": 5419,
+          "speed": 172.657,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0.948
+        },
+        {
+          "t": 14.5,
+          "rpm": 5514,
+          "speed": 175.708,
+          "gear": 5,
+          "state": "locked",
+          "boost": 1.013
+        },
+        {
+          "t": 15,
+          "rpm": 5609,
+          "speed": 178.727,
+          "gear": 5,
+          "state": "locked",
+          "boost": 1.014
+        },
+        {
+          "t": 15.5,
+          "rpm": 5702,
+          "speed": 181.684,
+          "gear": 5,
+          "state": "locked",
+          "boost": 1.014
+        },
+        {
+          "t": 16,
+          "rpm": 5793,
+          "speed": 184.576,
+          "gear": 5,
+          "state": "locked",
+          "boost": 1.014
+        },
+        {
+          "t": 16.5,
+          "rpm": 5881,
+          "speed": 187.402,
+          "gear": 5,
+          "state": "locked",
+          "boost": 1.001
+        },
+        {
+          "t": 17,
+          "rpm": 5968,
+          "speed": 190.16,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0.983
+        },
+        {
+          "t": 17.5,
+          "rpm": 6052,
+          "speed": 192.842,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0.966
+        },
+        {
+          "t": 18,
+          "rpm": 6133,
+          "speed": 195.418,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0.95
+        },
+        {
+          "t": 18.5,
+          "rpm": 6210,
+          "speed": 197.877,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0.935
+        },
+        {
+          "t": 19,
+          "rpm": 6284,
+          "speed": 200.215,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0.922
+        },
+        {
+          "t": 19.5,
+          "rpm": 4920,
+          "speed": 201.36,
+          "gear": 6,
+          "state": "locked",
+          "boost": 0.939
+        },
+        {
+          "t": 20,
+          "rpm": 4963,
+          "speed": 203.115,
+          "gear": 6,
+          "state": "locked",
+          "boost": 1.012
+        }
+      ]
+    },
+    {
+      "id": "boxer4",
+      "model": "2016 Subaru WRX STI (US)",
+      "mode": "amt",
+      "variant": "na",
+      "mass": 1610.8637648200001,
+      "induction": "na",
+      "gears": 6,
+      "hp": 171,
+      "torque": 215,
+      "speedAt1s": 5.063,
+      "to30": 2.566666666666667,
+      "to100": 9.35,
+      "endSpeed": 150.839,
+      "endGear": 4,
+      "maxRPM": 6322,
+      "peakAcceleration": 8.458,
+      "shifts": [
+        {
+          "t": 4.066666666666666,
+          "gear": 2,
+          "rpm": 5888
+        },
+        {
+          "t": 7.433333333333334,
+          "gear": 3,
+          "rpm": 5876
+        },
+        {
+          "t": 14.066666666666666,
+          "gear": 4,
+          "rpm": 5871
+        }
+      ]
+    },
+    {
+      "id": "boxer4",
+      "model": "2016 Subaru WRX STI (US)",
+      "mode": "amt",
+      "variant": "turbo-small",
+      "mass": 1610.8637648200001,
+      "induction": "turbo",
+      "gears": 6,
+      "hp": 303,
+      "torque": 391,
+      "speedAt1s": 5.765,
+      "to30": 1.9666666666666666,
+      "to100": 5.833333333333333,
+      "endSpeed": 202.684,
+      "endGear": 6,
+      "maxRPM": 6320,
+      "peakAcceleration": 8.509,
+      "shifts": [
+        {
+          "t": 2.8666666666666667,
+          "gear": 2,
+          "rpm": 5899
+        },
+        {
+          "t": 4.766666666666667,
+          "gear": 3,
+          "rpm": 5890
+        },
+        {
+          "t": 8.216666666666667,
+          "gear": 4,
+          "rpm": 5884
+        },
+        {
+          "t": 13.75,
+          "gear": 5,
+          "rpm": 5883
+        },
+        {
+          "t": 19.266666666666666,
+          "gear": 6,
+          "rpm": 5882
+        }
+      ]
+    },
+    {
+      "id": "boxer4",
+      "model": "2016 Subaru WRX STI (US)",
+      "mode": "amt",
+      "variant": "turbo-large",
+      "mass": 1610.8637648200001,
+      "induction": "turbo",
+      "gears": 6,
+      "hp": 310,
+      "torque": 390,
+      "speedAt1s": 5.163,
+      "to30": 2.1333333333333333,
+      "to100": 6,
+      "endSpeed": 202.757,
+      "endGear": 6,
+      "maxRPM": 6312,
+      "peakAcceleration": 8.507,
+      "shifts": [
+        {
+          "t": 3.033333333333333,
+          "gear": 2,
+          "rpm": 5886
+        },
+        {
+          "t": 4.933333333333334,
+          "gear": 3,
+          "rpm": 5894
+        },
+        {
+          "t": 8.366666666666667,
+          "gear": 4,
+          "rpm": 5889
+        },
+        {
+          "t": 13.833333333333334,
+          "gear": 5,
+          "rpm": 5883
+        },
+        {
+          "t": 19.233333333333334,
+          "gear": 6,
+          "rpm": 5881
+        }
+      ]
+    },
+    {
+      "id": "boxer4",
+      "model": "2016 Subaru WRX STI (US)",
+      "mode": "amt",
+      "variant": "roots-tvs",
+      "mass": 1610.8637648200001,
+      "induction": "supercharger",
+      "gears": 6,
+      "hp": 273,
+      "torque": 346,
+      "speedAt1s": 8.382,
+      "to30": 1.8,
+      "to100": 6.016666666666667,
+      "endSpeed": 193.943,
+      "endGear": 5,
+      "maxRPM": 6323,
+      "peakAcceleration": 8.503,
+      "shifts": [
+        {
+          "t": 2.7333333333333334,
+          "gear": 2,
+          "rpm": 5854
+        },
+        {
+          "t": 4.85,
+          "gear": 3,
+          "rpm": 5845
+        },
+        {
+          "t": 8.75,
+          "gear": 4,
+          "rpm": 5842
+        },
+        {
+          "t": 15.133333333333333,
+          "gear": 5,
+          "rpm": 5837
+        }
+      ]
+    },
+    {
+      "id": "boxer6",
+      "model": "2025 Porsche 911 GT3 992.2 (EU, 6MT)",
+      "mode": "at",
+      "variant": "stock",
+      "mass": 1537,
+      "induction": "na",
+      "gears": 6,
+      "hp": 503,
+      "torque": 450,
+      "speedAt1s": 21.984,
+      "to30": 1.3,
+      "to100": 4.2,
+      "endSpeed": 257.912,
+      "endGear": 6,
+      "maxRPM": 8727,
+      "peakAcceleration": 8.507,
+      "shifts": [
+        {
+          "t": 3,
+          "gear": 2,
+          "rpm": 8546
+        },
+        {
+          "t": 4.816666666666666,
+          "gear": 3,
+          "rpm": 8694
+        },
+        {
+          "t": 7.5,
+          "gear": 4,
+          "rpm": 8491
+        },
+        {
+          "t": 11.383333333333333,
+          "gear": 5,
+          "rpm": 8598
+        },
+        {
+          "t": 17.966666666666665,
+          "gear": 6,
+          "rpm": 8595
+        }
+      ],
+      "samples": [
+        {
+          "t": 0.5,
+          "rpm": 2357,
+          "speed": 8.287,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0
+        },
+        {
+          "t": 1,
+          "rpm": 3271,
+          "speed": 21.984,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0
+        },
+        {
+          "t": 1.5,
+          "rpm": 4288,
+          "speed": 35.486,
+          "gear": 1,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 2,
+          "rpm": 5809,
+          "speed": 48.075,
+          "gear": 1,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 2.5,
+          "rpm": 7328,
+          "speed": 60.644,
+          "gear": 1,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 3,
+          "rpm": 8546,
+          "speed": 72.46,
+          "gear": 2,
+          "state": "shifting",
+          "boost": 0
+        },
+        {
+          "t": 3.5,
+          "rpm": 6377,
+          "speed": 83.149,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 4,
+          "rpm": 7308,
+          "speed": 95.29,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 4.5,
+          "rpm": 8210,
+          "speed": 107.053,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 5,
+          "rpm": 6435,
+          "speed": 116.098,
+          "gear": 3,
+          "state": "shifting",
+          "boost": 0
+        },
+        {
+          "t": 5.5,
+          "rpm": 6893,
+          "speed": 124.369,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 6,
+          "rpm": 7370,
+          "speed": 132.973,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 6.5,
+          "rpm": 7836,
+          "speed": 141.379,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 7,
+          "rpm": 8288,
+          "speed": 149.543,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 7.5,
+          "rpm": 8491,
+          "speed": 156.802,
+          "gear": 4,
+          "state": "shifting",
+          "boost": 0
+        },
+        {
+          "t": 8,
+          "rpm": 7002,
+          "speed": 162.157,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 8.5,
+          "rpm": 7271,
+          "speed": 168.384,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 9,
+          "rpm": 7534,
+          "speed": 174.484,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 9.5,
+          "rpm": 7792,
+          "speed": 180.451,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 10,
+          "rpm": 8043,
+          "speed": 186.274,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 10.5,
+          "rpm": 8288,
+          "speed": 191.938,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 11,
+          "rpm": 8525,
+          "speed": 197.425,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 11.5,
+          "rpm": 7040,
+          "speed": 201.827,
+          "gear": 5,
+          "state": "shifting",
+          "boost": 0
+        },
+        {
+          "t": 12,
+          "rpm": 7151,
+          "speed": 205.492,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 12.5,
+          "rpm": 7298,
+          "speed": 209.703,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 13,
+          "rpm": 7441,
+          "speed": 213.824,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 13.5,
+          "rpm": 7582,
+          "speed": 217.857,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 14,
+          "rpm": 7719,
+          "speed": 221.802,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 14.5,
+          "rpm": 7853,
+          "speed": 225.655,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 15,
+          "rpm": 7984,
+          "speed": 229.413,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 15.5,
+          "rpm": 8111,
+          "speed": 233.076,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 16,
+          "rpm": 8235,
+          "speed": 236.64,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 16.5,
+          "rpm": 8356,
+          "speed": 240.103,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 17,
+          "rpm": 8473,
+          "speed": 243.464,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 17.5,
+          "rpm": 8586,
+          "speed": 246.712,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 18,
+          "rpm": 7567,
+          "speed": 249.593,
+          "gear": 6,
+          "state": "shifting",
+          "boost": 0
+        },
+        {
+          "t": 18.5,
+          "rpm": 7120,
+          "speed": 251.075,
+          "gear": 6,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 19,
+          "rpm": 7186,
+          "speed": 253.406,
+          "gear": 6,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 19.5,
+          "rpm": 7250,
+          "speed": 255.685,
+          "gear": 6,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 20,
+          "rpm": 7313,
+          "speed": 257.912,
+          "gear": 6,
+          "state": "locked",
+          "boost": 0
+        }
+      ]
+    },
+    {
+      "id": "boxer6",
+      "model": "2025 Porsche 911 GT3 992.2 (EU, 6MT)",
+      "mode": "at",
+      "variant": "na",
+      "mass": 1537,
+      "induction": "na",
+      "gears": 6,
+      "hp": 503,
+      "torque": 450,
+      "speedAt1s": 21.984,
+      "to30": 1.3,
+      "to100": 4.2,
+      "endSpeed": 257.912,
+      "endGear": 6,
+      "maxRPM": 8727,
+      "peakAcceleration": 8.507,
+      "shifts": [
+        {
+          "t": 3,
+          "gear": 2,
+          "rpm": 8546
+        },
+        {
+          "t": 4.816666666666666,
+          "gear": 3,
+          "rpm": 8694
+        },
+        {
+          "t": 7.5,
+          "gear": 4,
+          "rpm": 8491
+        },
+        {
+          "t": 11.383333333333333,
+          "gear": 5,
+          "rpm": 8598
+        },
+        {
+          "t": 17.966666666666665,
+          "gear": 6,
+          "rpm": 8595
+        }
+      ]
+    },
+    {
+      "id": "boxer6",
+      "model": "2025 Porsche 911 GT3 992.2 (EU, 6MT)",
+      "mode": "at",
+      "variant": "turbo-small",
+      "mass": 1537,
+      "induction": "turbo",
+      "gears": 6,
+      "hp": 899,
+      "torque": 817,
+      "speedAt1s": 21.989,
+      "to30": 1.3,
+      "to100": 4.033333333333333,
+      "endSpeed": 313.471,
+      "endGear": 6,
+      "maxRPM": 8889,
+      "peakAcceleration": 8.507,
+      "shifts": [
+        {
+          "t": 3,
+          "gear": 2,
+          "rpm": 8696
+        },
+        {
+          "t": 4.55,
+          "gear": 3,
+          "rpm": 8724
+        },
+        {
+          "t": 6.2,
+          "gear": 4,
+          "rpm": 8512
+        },
+        {
+          "t": 8.233333333333333,
+          "gear": 5,
+          "rpm": 8751
+        },
+        {
+          "t": 11.25,
+          "gear": 6,
+          "rpm": 8604
+        }
+      ]
+    },
+    {
+      "id": "boxer6",
+      "model": "2025 Porsche 911 GT3 992.2 (EU, 6MT)",
+      "mode": "at",
+      "variant": "turbo-large",
+      "mass": 1537,
+      "induction": "turbo",
+      "gears": 6,
+      "hp": 912,
+      "torque": 817,
+      "speedAt1s": 21.984,
+      "to30": 1.3,
+      "to100": 4.033333333333333,
+      "endSpeed": 313.563,
+      "endGear": 6,
+      "maxRPM": 8891,
+      "peakAcceleration": 8.507,
+      "shifts": [
+        {
+          "t": 3,
+          "gear": 2,
+          "rpm": 8706
+        },
+        {
+          "t": 4.55,
+          "gear": 3,
+          "rpm": 8543
+        },
+        {
+          "t": 6.183333333333334,
+          "gear": 4,
+          "rpm": 8717
+        },
+        {
+          "t": 8.216666666666667,
+          "gear": 5,
+          "rpm": 8757
+        },
+        {
+          "t": 11.216666666666667,
+          "gear": 6,
+          "rpm": 8615
+        }
+      ]
+    },
+    {
+      "id": "boxer6",
+      "model": "2025 Porsche 911 GT3 992.2 (EU, 6MT)",
+      "mode": "at",
+      "variant": "roots-tvs",
+      "mass": 1537,
+      "induction": "supercharger",
+      "gears": 6,
+      "hp": 831,
+      "torque": 746,
+      "speedAt1s": 22.645,
+      "to30": 1.2666666666666666,
+      "to100": 4.05,
+      "endSpeed": 313.436,
+      "endGear": 6,
+      "maxRPM": 8888,
+      "peakAcceleration": 8.507,
+      "shifts": [
+        {
+          "t": 3,
+          "gear": 2,
+          "rpm": 8695
+        },
+        {
+          "t": 4.566666666666666,
+          "gear": 3,
+          "rpm": 8661
+        },
+        {
+          "t": 6.233333333333333,
+          "gear": 4,
+          "rpm": 8547
+        },
+        {
+          "t": 8.45,
+          "gear": 5,
+          "rpm": 8640
+        },
+        {
+          "t": 11.766666666666667,
+          "gear": 6,
+          "rpm": 8704
+        }
+      ]
+    },
+    {
+      "id": "boxer6",
+      "model": "2025 Porsche 911 GT3 992.2 (EU, 6MT)",
+      "mode": "amt",
+      "variant": "stock",
+      "mass": 1537,
+      "induction": "na",
+      "gears": 6,
+      "hp": 503,
+      "torque": 450,
+      "speedAt1s": 16.708,
+      "to30": 1.45,
+      "to100": 4.35,
+      "endSpeed": 255.626,
+      "endGear": 6,
+      "maxRPM": 8472,
+      "peakAcceleration": 8.511,
+      "shifts": [
+        {
+          "t": 3.066666666666667,
+          "gear": 2,
+          "rpm": 7984
+        },
+        {
+          "t": 4.833333333333333,
+          "gear": 3,
+          "rpm": 7901
+        },
+        {
+          "t": 7.4,
+          "gear": 4,
+          "rpm": 7888
+        },
+        {
+          "t": 11.1,
+          "gear": 5,
+          "rpm": 7888
+        },
+        {
+          "t": 17.25,
+          "gear": 6,
+          "rpm": 7886
+        }
+      ],
+      "samples": [
+        {
+          "t": 0.5,
+          "rpm": 1982,
+          "speed": 4.676,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0
+        },
+        {
+          "t": 1,
+          "rpm": 3539,
+          "speed": 16.708,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0
+        },
+        {
+          "t": 1.5,
+          "rpm": 3818,
+          "speed": 31.527,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0
+        },
+        {
+          "t": 2,
+          "rpm": 5333,
+          "speed": 44.133,
+          "gear": 1,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 2.5,
+          "rpm": 6852,
+          "speed": 56.709,
+          "gear": 1,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 3,
+          "rpm": 8369,
+          "speed": 69.263,
+          "gear": 1,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 3.5,
+          "rpm": 6094,
+          "speed": 79.465,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 4,
+          "rpm": 7031,
+          "speed": 91.679,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 4.5,
+          "rpm": 7943,
+          "speed": 103.573,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 5,
+          "rpm": 6240,
+          "speed": 112.597,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 5.5,
+          "rpm": 6729,
+          "speed": 121.418,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 6,
+          "rpm": 7210,
+          "speed": 130.085,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 6.5,
+          "rpm": 7679,
+          "speed": 138.56,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 7,
+          "rpm": 8137,
+          "speed": 146.814,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 7.5,
+          "rpm": 6625,
+          "speed": 153.433,
+          "gear": 4,
+          "state": "shifting",
+          "boost": 0
+        },
+        {
+          "t": 8,
+          "rpm": 6893,
+          "speed": 159.648,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 8.5,
+          "rpm": 7164,
+          "speed": 165.925,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 9,
+          "rpm": 7430,
+          "speed": 172.076,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 9.5,
+          "rpm": 7690,
+          "speed": 178.096,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 10,
+          "rpm": 7944,
+          "speed": 183.979,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 10.5,
+          "rpm": 8191,
+          "speed": 189.708,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 11,
+          "rpm": 8431,
+          "speed": 195.267,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 11.5,
+          "rpm": 6919,
+          "speed": 198.831,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 12,
+          "rpm": 7071,
+          "speed": 203.177,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 12.5,
+          "rpm": 7219,
+          "speed": 207.435,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 13,
+          "rpm": 7364,
+          "speed": 211.605,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 13.5,
+          "rpm": 7506,
+          "speed": 215.686,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 14,
+          "rpm": 7645,
+          "speed": 219.678,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 14.5,
+          "rpm": 7781,
+          "speed": 223.581,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 15,
+          "rpm": 7913,
+          "speed": 227.391,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 15.5,
+          "rpm": 8043,
+          "speed": 231.106,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 16,
+          "rpm": 8169,
+          "speed": 234.724,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 16.5,
+          "rpm": 8291,
+          "speed": 238.242,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 17,
+          "rpm": 8410,
+          "speed": 241.658,
+          "gear": 5,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 17.5,
+          "rpm": 6910,
+          "speed": 243.694,
+          "gear": 6,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 18,
+          "rpm": 6981,
+          "speed": 246.188,
+          "gear": 6,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 18.5,
+          "rpm": 7050,
+          "speed": 248.628,
+          "gear": 6,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 19,
+          "rpm": 7118,
+          "speed": 251.013,
+          "gear": 6,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 19.5,
+          "rpm": 7184,
+          "speed": 253.346,
+          "gear": 6,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 20,
+          "rpm": 7249,
+          "speed": 255.626,
+          "gear": 6,
+          "state": "locked",
+          "boost": 0
+        }
+      ]
+    },
+    {
+      "id": "boxer6",
+      "model": "2025 Porsche 911 GT3 992.2 (EU, 6MT)",
+      "mode": "amt",
+      "variant": "na",
+      "mass": 1537,
+      "induction": "na",
+      "gears": 6,
+      "hp": 503,
+      "torque": 450,
+      "speedAt1s": 16.708,
+      "to30": 1.45,
+      "to100": 4.35,
+      "endSpeed": 255.626,
+      "endGear": 6,
+      "maxRPM": 8472,
+      "peakAcceleration": 8.511,
+      "shifts": [
+        {
+          "t": 3.066666666666667,
+          "gear": 2,
+          "rpm": 7984
+        },
+        {
+          "t": 4.833333333333333,
+          "gear": 3,
+          "rpm": 7901
+        },
+        {
+          "t": 7.4,
+          "gear": 4,
+          "rpm": 7888
+        },
+        {
+          "t": 11.1,
+          "gear": 5,
+          "rpm": 7888
+        },
+        {
+          "t": 17.25,
+          "gear": 6,
+          "rpm": 7886
+        }
+      ]
+    },
+    {
+      "id": "boxer6",
+      "model": "2025 Porsche 911 GT3 992.2 (EU, 6MT)",
+      "mode": "amt",
+      "variant": "turbo-small",
+      "mass": 1537,
+      "induction": "turbo",
+      "gears": 6,
+      "hp": 899,
+      "torque": 817,
+      "speedAt1s": 14.41,
+      "to30": 1.5833333333333333,
+      "to100": 4.333333333333333,
+      "endSpeed": 313.469,
+      "endGear": 6,
+      "maxRPM": 8889,
+      "peakAcceleration": 8.513,
+      "shifts": [
+        {
+          "t": 3.216666666666667,
+          "gear": 2,
+          "rpm": 8031
+        },
+        {
+          "t": 4.75,
+          "gear": 3,
+          "rpm": 7943
+        },
+        {
+          "t": 6.333333333333333,
+          "gear": 4,
+          "rpm": 7933
+        },
+        {
+          "t": 8.25,
+          "gear": 5,
+          "rpm": 7910
+        },
+        {
+          "t": 11.083333333333334,
+          "gear": 6,
+          "rpm": 7913
+        }
+      ]
+    },
+    {
+      "id": "boxer6",
+      "model": "2025 Porsche 911 GT3 992.2 (EU, 6MT)",
+      "mode": "amt",
+      "variant": "turbo-large",
+      "mass": 1537,
+      "induction": "turbo",
+      "gears": 6,
+      "hp": 912,
+      "torque": 817,
+      "speedAt1s": 13.502,
+      "to30": 1.6166666666666667,
+      "to100": 4.366666666666666,
+      "endSpeed": 313.56,
+      "endGear": 6,
+      "maxRPM": 8891,
+      "peakAcceleration": 8.51,
+      "shifts": [
+        {
+          "t": 3.25,
+          "gear": 2,
+          "rpm": 8047
+        },
+        {
+          "t": 4.766666666666667,
+          "gear": 3,
+          "rpm": 7922
+        },
+        {
+          "t": 6.35,
+          "gear": 4,
+          "rpm": 7921
+        },
+        {
+          "t": 8.283333333333333,
+          "gear": 5,
+          "rpm": 7919
+        },
+        {
+          "t": 11.1,
+          "gear": 6,
+          "rpm": 7911
+        }
+      ]
+    },
+    {
+      "id": "boxer6",
+      "model": "2025 Porsche 911 GT3 992.2 (EU, 6MT)",
+      "mode": "amt",
+      "variant": "roots-tvs",
+      "mass": 1537,
+      "induction": "supercharger",
+      "gears": 6,
+      "hp": 831,
+      "torque": 746,
+      "speedAt1s": 21.022,
+      "to30": 1.3666666666666667,
+      "to100": 4.166666666666667,
+      "endSpeed": 313.42,
+      "endGear": 6,
+      "maxRPM": 8887,
+      "peakAcceleration": 8.514,
+      "shifts": [
+        {
+          "t": 3.0166666666666666,
+          "gear": 2,
+          "rpm": 7974
+        },
+        {
+          "t": 4.566666666666666,
+          "gear": 3,
+          "rpm": 7879
+        },
+        {
+          "t": 6.166666666666667,
+          "gear": 4,
+          "rpm": 7857
+        },
+        {
+          "t": 8.283333333333333,
+          "gear": 5,
+          "rpm": 7854
+        },
+        {
+          "t": 11.416666666666666,
+          "gear": 6,
+          "rpm": 7848
+        }
+      ]
+    },
+    {
+      "id": "rotary_2",
+      "model": "2004 Mazda RX-8 (US, 6MT)",
+      "mode": "at",
+      "variant": "stock",
+      "mass": 1448.93128873,
+      "induction": "na",
+      "gears": 6,
+      "hp": 238,
+      "torque": 216,
+      "speedAt1s": 14.102,
+      "to30": 1.8,
+      "to100": 6.3,
+      "endSpeed": 187.913,
+      "endGear": 4,
+      "maxRPM": 8715,
+      "peakAcceleration": 8.473,
+      "shifts": [
+        {
+          "t": 3.5,
+          "gear": 2,
+          "rpm": 8508
+        },
+        {
+          "t": 6.75,
+          "gear": 3,
+          "rpm": 8491
+        },
+        {
+          "t": 11.383333333333333,
+          "gear": 4,
+          "rpm": 8485
+        }
+      ],
+      "samples": [
+        {
+          "t": 0.5,
+          "rpm": 2068,
+          "speed": 3.586,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0
+        },
+        {
+          "t": 1,
+          "rpm": 2985,
+          "speed": 14.102,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0
+        },
+        {
+          "t": 1.5,
+          "rpm": 3837,
+          "speed": 24.163,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0
+        },
+        {
+          "t": 2,
+          "rpm": 4669,
+          "speed": 34.082,
+          "gear": 1,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 2.5,
+          "rpm": 6091,
+          "speed": 44.46,
+          "gear": 1,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 3,
+          "rpm": 7483,
+          "speed": 54.621,
+          "gear": 1,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 3.5,
+          "rpm": 8508,
+          "speed": 63.756,
+          "gear": 2,
+          "state": "shifting",
+          "boost": 0
+        },
+        {
+          "t": 4,
+          "rpm": 5840,
+          "speed": 70.617,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 4.5,
+          "rpm": 6392,
+          "speed": 77.284,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 5,
+          "rpm": 6931,
+          "speed": 83.802,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 5.5,
+          "rpm": 7459,
+          "speed": 90.184,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 6,
+          "rpm": 7977,
+          "speed": 96.448,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 6.5,
+          "rpm": 8483,
+          "speed": 102.571,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 7,
+          "rpm": 6445,
+          "speed": 107.204,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 7.5,
+          "rpm": 6719,
+          "speed": 111.773,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 8,
+          "rpm": 6989,
+          "speed": 116.264,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 8.5,
+          "rpm": 7255,
+          "speed": 120.683,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 9,
+          "rpm": 7517,
+          "speed": 125.035,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 9.5,
+          "rpm": 7774,
+          "speed": 129.321,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 10,
+          "rpm": 8028,
+          "speed": 133.539,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 10.5,
+          "rpm": 8277,
+          "speed": 137.679,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 11,
+          "rpm": 8520,
+          "speed": 141.733,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 11.5,
+          "rpm": 6332,
+          "speed": 145.377,
+          "gear": 4,
+          "state": "shifting",
+          "boost": 0
+        },
+        {
+          "t": 12,
+          "rpm": 6408,
+          "speed": 147.787,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 12.5,
+          "rpm": 6530,
+          "speed": 150.603,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 13,
+          "rpm": 6650,
+          "speed": 153.375,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 13.5,
+          "rpm": 6768,
+          "speed": 156.102,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 14,
+          "rpm": 6884,
+          "speed": 158.787,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 14.5,
+          "rpm": 6999,
+          "speed": 161.429,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 15,
+          "rpm": 7112,
+          "speed": 164.03,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 15.5,
+          "rpm": 7223,
+          "speed": 166.592,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 16,
+          "rpm": 7332,
+          "speed": 169.115,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 16.5,
+          "rpm": 7440,
+          "speed": 171.599,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 17,
+          "rpm": 7546,
+          "speed": 174.045,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 17.5,
+          "rpm": 7650,
+          "speed": 176.453,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 18,
+          "rpm": 7753,
+          "speed": 178.822,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 18.5,
+          "rpm": 7854,
+          "speed": 181.154,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 19,
+          "rpm": 7954,
+          "speed": 183.446,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 19.5,
+          "rpm": 8051,
+          "speed": 185.699,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 20,
+          "rpm": 8147,
+          "speed": 187.913,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        }
+      ]
+    },
+    {
+      "id": "rotary_2",
+      "model": "2004 Mazda RX-8 (US, 6MT)",
+      "mode": "at",
+      "variant": "na",
+      "mass": 1448.93128873,
+      "induction": "na",
+      "gears": 6,
+      "hp": 238,
+      "torque": 216,
+      "speedAt1s": 14.102,
+      "to30": 1.8,
+      "to100": 6.3,
+      "endSpeed": 187.913,
+      "endGear": 4,
+      "maxRPM": 8715,
+      "peakAcceleration": 8.473,
+      "shifts": [
+        {
+          "t": 3.5,
+          "gear": 2,
+          "rpm": 8508
+        },
+        {
+          "t": 6.75,
+          "gear": 3,
+          "rpm": 8491
+        },
+        {
+          "t": 11.383333333333333,
+          "gear": 4,
+          "rpm": 8485
+        }
+      ]
+    },
+    {
+      "id": "rotary_2",
+      "model": "2004 Mazda RX-8 (US, 6MT)",
+      "mode": "at",
+      "variant": "turbo-small",
+      "mass": 1448.93128873,
+      "induction": "turbo",
+      "gears": 6,
+      "hp": 425,
+      "torque": 391,
+      "speedAt1s": 16.762,
+      "to30": 1.4833333333333334,
+      "to100": 4.383333333333334,
+      "endSpeed": 248.049,
+      "endGear": 6,
+      "maxRPM": 8760,
+      "peakAcceleration": 8.506,
+      "shifts": [
+        {
+          "t": 2.783333333333333,
+          "gear": 2,
+          "rpm": 8714
+        },
+        {
+          "t": 4.65,
+          "gear": 3,
+          "rpm": 8474
+        },
+        {
+          "t": 7.116666666666666,
+          "gear": 4,
+          "rpm": 8733
+        },
+        {
+          "t": 12.4,
+          "gear": 5,
+          "rpm": 8663
+        },
+        {
+          "t": 17.8,
+          "gear": 6,
+          "rpm": 8567
+        }
+      ]
+    },
+    {
+      "id": "rotary_2",
+      "model": "2004 Mazda RX-8 (US, 6MT)",
+      "mode": "at",
+      "variant": "turbo-large",
+      "mass": 1448.93128873,
+      "induction": "turbo",
+      "gears": 6,
+      "hp": 432,
+      "torque": 390,
+      "speedAt1s": 14.203,
+      "to30": 1.6333333333333333,
+      "to100": 4.55,
+      "endSpeed": 247.506,
+      "endGear": 6,
+      "maxRPM": 8803,
+      "peakAcceleration": 8.506,
+      "shifts": [
+        {
+          "t": 2.95,
+          "gear": 2,
+          "rpm": 8526
+        },
+        {
+          "t": 4.8,
+          "gear": 3,
+          "rpm": 8755
+        },
+        {
+          "t": 7.283333333333333,
+          "gear": 4,
+          "rpm": 8590
+        },
+        {
+          "t": 12.55,
+          "gear": 5,
+          "rpm": 8472
+        },
+        {
+          "t": 17.9,
+          "gear": 6,
+          "rpm": 8731
+        }
+      ]
+    },
+    {
+      "id": "rotary_2",
+      "model": "2004 Mazda RX-8 (US, 6MT)",
+      "mode": "at",
+      "variant": "roots-tvs",
+      "mass": 1448.93128873,
+      "induction": "supercharger",
+      "gears": 6,
+      "hp": 380,
+      "torque": 346,
+      "speedAt1s": 18.605,
+      "to30": 1.4166666666666667,
+      "to100": 4.5,
+      "endSpeed": 237.425,
+      "endGear": 5,
+      "maxRPM": 8729,
+      "peakAcceleration": 8.506,
+      "shifts": [
+        {
+          "t": 2.7333333333333334,
+          "gear": 2,
+          "rpm": 8546
+        },
+        {
+          "t": 4.8,
+          "gear": 3,
+          "rpm": 8522
+        },
+        {
+          "t": 7.583333333333333,
+          "gear": 4,
+          "rpm": 8693
+        },
+        {
+          "t": 13.7,
+          "gear": 5,
+          "rpm": 8382
+        }
+      ]
+    },
+    {
+      "id": "rotary_2",
+      "model": "2004 Mazda RX-8 (US, 6MT)",
+      "mode": "amt",
+      "variant": "stock",
+      "mass": 1448.93128873,
+      "induction": "na",
+      "gears": 6,
+      "hp": 238,
+      "torque": 216,
+      "speedAt1s": 6.276,
+      "to30": 2.1666666666666665,
+      "to100": 6.583333333333333,
+      "endSpeed": 185.756,
+      "endGear": 4,
+      "maxRPM": 8481,
+      "peakAcceleration": 8.476,
+      "shifts": [
+        {
+          "t": 3.6666666666666665,
+          "gear": 2,
+          "rpm": 7944
+        },
+        {
+          "t": 6.816666666666666,
+          "gear": 3,
+          "rpm": 7937
+        },
+        {
+          "t": 11.25,
+          "gear": 4,
+          "rpm": 7924
+        }
+      ],
+      "samples": [
+        {
+          "t": 0.5,
+          "rpm": 1434,
+          "speed": 1.737,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0
+        },
+        {
+          "t": 1,
+          "rpm": 3066,
+          "speed": 6.276,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0
+        },
+        {
+          "t": 1.5,
+          "rpm": 5601,
+          "speed": 14.184,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0
+        },
+        {
+          "t": 2,
+          "rpm": 5922,
+          "speed": 26.046,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0
+        },
+        {
+          "t": 2.5,
+          "rpm": 5920,
+          "speed": 38.275,
+          "gear": 1,
+          "state": "launching",
+          "boost": 0
+        },
+        {
+          "t": 3,
+          "rpm": 6761,
+          "speed": 49.352,
+          "gear": 1,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 3.5,
+          "rpm": 8127,
+          "speed": 59.322,
+          "gear": 1,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 4,
+          "rpm": 5513,
+          "speed": 66.657,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 4.5,
+          "rpm": 6070,
+          "speed": 73.39,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 5,
+          "rpm": 6616,
+          "speed": 79.998,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 5.5,
+          "rpm": 7150,
+          "speed": 86.456,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 6,
+          "rpm": 7674,
+          "speed": 92.789,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 6.5,
+          "rpm": 8188,
+          "speed": 99,
+          "gear": 2,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 7,
+          "rpm": 6255,
+          "speed": 104.044,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 7.5,
+          "rpm": 6533,
+          "speed": 108.668,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 8,
+          "rpm": 6806,
+          "speed": 113.212,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 8.5,
+          "rpm": 7074,
+          "speed": 117.679,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 9,
+          "rpm": 7339,
+          "speed": 122.076,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 9.5,
+          "rpm": 7599,
+          "speed": 126.407,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 10,
+          "rpm": 7856,
+          "speed": 130.672,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 10.5,
+          "rpm": 8108,
+          "speed": 134.866,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 11,
+          "rpm": 8355,
+          "speed": 138.981,
+          "gear": 3,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 11.5,
+          "rpm": 6161,
+          "speed": 142.096,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 12,
+          "rpm": 6287,
+          "speed": 144.999,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 12.5,
+          "rpm": 6411,
+          "speed": 147.859,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 13,
+          "rpm": 6533,
+          "speed": 150.673,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 13.5,
+          "rpm": 6653,
+          "speed": 153.444,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 14,
+          "rpm": 6771,
+          "speed": 156.171,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 14.5,
+          "rpm": 6887,
+          "speed": 158.854,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 15,
+          "rpm": 7002,
+          "speed": 161.495,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 15.5,
+          "rpm": 7115,
+          "speed": 164.096,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 16,
+          "rpm": 7226,
+          "speed": 166.656,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 16.5,
+          "rpm": 7335,
+          "speed": 169.178,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 17,
+          "rpm": 7443,
+          "speed": 171.661,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 17.5,
+          "rpm": 7549,
+          "speed": 174.106,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 18,
+          "rpm": 7653,
+          "speed": 176.513,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 18.5,
+          "rpm": 7756,
+          "speed": 178.882,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 19,
+          "rpm": 7857,
+          "speed": 181.212,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 19.5,
+          "rpm": 7956,
+          "speed": 183.504,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        },
+        {
+          "t": 20,
+          "rpm": 8054,
+          "speed": 185.756,
+          "gear": 4,
+          "state": "locked",
+          "boost": 0
+        }
+      ]
+    },
+    {
+      "id": "rotary_2",
+      "model": "2004 Mazda RX-8 (US, 6MT)",
+      "mode": "amt",
+      "variant": "na",
+      "mass": 1448.93128873,
+      "induction": "na",
+      "gears": 6,
+      "hp": 238,
+      "torque": 216,
+      "speedAt1s": 6.276,
+      "to30": 2.1666666666666665,
+      "to100": 6.583333333333333,
+      "endSpeed": 185.756,
+      "endGear": 4,
+      "maxRPM": 8481,
+      "peakAcceleration": 8.476,
+      "shifts": [
+        {
+          "t": 3.6666666666666665,
+          "gear": 2,
+          "rpm": 7944
+        },
+        {
+          "t": 6.816666666666666,
+          "gear": 3,
+          "rpm": 7937
+        },
+        {
+          "t": 11.25,
+          "gear": 4,
+          "rpm": 7924
+        }
+      ]
+    },
+    {
+      "id": "rotary_2",
+      "model": "2004 Mazda RX-8 (US, 6MT)",
+      "mode": "amt",
+      "variant": "turbo-small",
+      "mass": 1448.93128873,
+      "induction": "turbo",
+      "gears": 6,
+      "hp": 425,
+      "torque": 391,
+      "speedAt1s": 4.181,
+      "to30": 3.4833333333333334,
+      "to100": 6.383333333333334,
+      "endSpeed": 237.129,
+      "endGear": 6,
+      "maxRPM": 8477,
+      "peakAcceleration": 8.476,
+      "shifts": [
+        {
+          "t": 4.733333333333333,
+          "gear": 2,
+          "rpm": 7956
+        },
+        {
+          "t": 6.516666666666667,
+          "gear": 3,
+          "rpm": 7953
+        },
+        {
+          "t": 8.883333333333333,
+          "gear": 4,
+          "rpm": 7949
+        },
+        {
+          "t": 13.9,
+          "gear": 5,
+          "rpm": 7940
+        },
+        {
+          "t": 18.933333333333334,
+          "gear": 6,
+          "rpm": 7940
+        }
+      ]
+    },
+    {
+      "id": "rotary_2",
+      "model": "2004 Mazda RX-8 (US, 6MT)",
+      "mode": "amt",
+      "variant": "turbo-large",
+      "mass": 1448.93128873,
+      "induction": "turbo",
+      "gears": 6,
+      "hp": 432,
+      "torque": 390,
+      "speedAt1s": 4.184,
+      "to30": 3.75,
+      "to100": 6.65,
+      "endSpeed": 235.754,
+      "endGear": 6,
+      "maxRPM": 8480,
+      "peakAcceleration": 8.476,
+      "shifts": [
+        {
+          "t": 5,
+          "gear": 2,
+          "rpm": 7960
+        },
+        {
+          "t": 6.783333333333333,
+          "gear": 3,
+          "rpm": 7949
+        },
+        {
+          "t": 9.15,
+          "gear": 4,
+          "rpm": 7947
+        },
+        {
+          "t": 14.166666666666666,
+          "gear": 5,
+          "rpm": 7941
+        },
+        {
+          "t": 19.183333333333334,
+          "gear": 6,
+          "rpm": 7939
+        }
+      ]
+    },
+    {
+      "id": "rotary_2",
+      "model": "2004 Mazda RX-8 (US, 6MT)",
+      "mode": "amt",
+      "variant": "roots-tvs",
+      "mass": 1448.93128873,
+      "induction": "supercharger",
+      "gears": 6,
+      "hp": 380,
+      "torque": 346,
+      "speedAt1s": 4.048,
+      "to30": 3.35,
+      "to100": 6.45,
+      "endSpeed": 225.96,
+      "endGear": 5,
+      "maxRPM": 8475,
+      "peakAcceleration": 8.476,
+      "shifts": [
+        {
+          "t": 4.6,
+          "gear": 2,
+          "rpm": 7869
+        },
+        {
+          "t": 6.6,
+          "gear": 3,
+          "rpm": 7882
+        },
+        {
+          "t": 9.283333333333333,
+          "gear": 4,
+          "rpm": 7881
+        },
+        {
+          "t": 15.1,
+          "gear": 5,
+          "rpm": 7872
         }
       ]
     }

@@ -33,7 +33,7 @@ const silenceEngine = sound => {
     sound[name].gain.setValueAtTime(0, 0);
   }
 };
-async function render({ mode = 'at', muted = false, stopped = false, config = ENGINE_CONFIGS.i4_flat, induction = 'na', isolate = '' } = {}) {
+async function render({ mode = 'at', muted = false, stopped = false, config = ENGINE_CONFIGS.i4_flat, induction = 'na', isolate = '', ecuMode = 'soft', limiterCut = 0, limiterHz = 18, camBlend = 0 } = {}) {
   const context = new OfflineAudioContext(1, 76800, sampleRate);
   const sound = new SoundEngine(() => context);
   sound.setVolume(muted ? 0 : 0.5);
@@ -44,7 +44,8 @@ async function render({ mode = 'at', muted = false, stopped = false, config = EN
   const state = { rpm: 6000, redlineRPM: 14500, displacement: config.defaultDisplacement,
     manifoldThrottle: 0.85, isRevLimiting: false, forcedInduction: induction,
     turboRPM: 130000, superchargerRPM: 14100, inductionLoad: 0.8,
-    bypassOpening: 0, airFlow: 0.30, boostPressure: induction === 'na' ? 0 : 1.0 };
+    bypassOpening: 0, airFlow: 0.30, boostPressure: induction === 'na' ? 0 : 1.0,
+    ecuMode, revLimiterCutAmount: limiterCut, limiterHz, limiterDepth: 1, camBlend };
   sound.update(state, config, { mode, currentGear: 1, gearRatio: 3.5 });
   isolateLayer();
   const suspended = context.suspend(0.45);
@@ -162,6 +163,26 @@ try {
     '限轉 RMS = ' + rms(limiter, 0.6, 1.1).toFixed(4));
   check('解除限轉後恢復連續排氣', rms(limiter, 1.5, 1.9) > 0.01,
     '恢復 RMS = ' + rms(limiter, 1.5, 1.9).toFixed(4));
+  for (const id of ['honda_f20c', 'honda_k20a', 'boxer4', 'boxer6', 'rotary_2']) {
+    const { data, backend } = await render({ config: ENGINE_CONFIGS[id] });
+    check(id + ' 實際 Worklet 聲浪有限且連續', backend === 'pressure-worklet' && finite(data) && rms(data, 0.3, 0.4) > 0.005,
+      'RMS = ' + rms(data, 0.3, 0.4).toFixed(4));
+  }
+  const ecuAudio = {};
+  for (const ecuMode of ['soft', 'hard', 'sequential']) {
+    const { data } = await render({ ecuMode, limiterCut: 0.55, limiterHz: 18 });
+    ecuAudio[ecuMode] = data;
+    check(ecuMode + ' 斷油仍保留連續背景', finite(data) && rms(data, 0.3, 0.4) > 0.002, 'RMS = ' + rms(data, 0.3, 0.4).toFixed(4));
+  }
+  for (const ecuMode of ['hard', 'sequential']) {
+    const difference = ecuAudio.soft.map((value, index) => value - ecuAudio[ecuMode][index]);
+    check(ecuMode + ' 與柔和模式產生不同音訊', rms(difference, 0.2, 0.4) > 0.01,
+      '差異 RMS = ' + rms(difference, 0.2, 0.4).toFixed(4));
+  }
+  const { data: highCam } = await render({ config: ENGINE_CONFIGS.honda_k20a, camBlend: 1, isolate: 'intakeGain' });
+  const { data: lowCam } = await render({ config: ENGINE_CONFIGS.honda_k20a, camBlend: 0, isolate: 'intakeGain' });
+  check('VTEC 高凸輪實際增強進氣聲', rms(highCam, 0.3, 0.4) > rms(lowCam, 0.3, 0.4) * 1.20 && finite(highCam),
+    '高 / 低凸輪 RMS = ' + (rms(highCam, 0.3, 0.4) / rms(lowCam, 0.3, 0.4)).toFixed(3));
   lines.push('全部 ' + count + ' 項音訊渲染檢查通過');
   output.textContent = lines.join('\n');
   document.body.dataset.result = 'passed';

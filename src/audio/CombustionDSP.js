@@ -22,16 +22,19 @@ export class CombustionDSP {
   }
 
   configure(config) {
+    this.cycleDegrees = config.cycleDegrees || 720;
+    this.rotary = config.layout === 'rotary';
     const angles = config.firingAngles?.length ? config.firingAngles : [0, 180, 360, 540];
     this.events = angles.map((angle, i) => ({
-      phase: (((Number(angle) || 0) % 720) + 720) % 720 / 720,
+      phase: (((Number(angle) || 0) % this.cycleDegrees) + this.cycleDegrees) % this.cycleDegrees / this.cycleDegrees,
       age: 1,
       strength: 0,
-      bank: config.exhaustBanks?.[i] ?? (config.layout === 'v' || config.layout === 'w' ? i % 2 : 0),
+      bank: config.exhaustBanks?.[i] ?? (['v', 'w', 'boxer'].includes(config.layout) ? i % 2 : 0),
+      ordinal: i,
     }));
     this.displacement = Math.max(0.05, (Number(config.displacement) || Number(config.defaultDisplacement) || 1000) / 1000);
     this.profile = config.profile || 'deep';
-    this.bankDelay = Math.round(this.sampleRate * (0.0008 + Math.min(0.0025, Math.sqrt(this.displacement) * 0.0007)));
+    this.bankDelay = Math.round(this.sampleRate * (config.exhaustPathDelay ?? (0.0008 + Math.min(0.0025, Math.sqrt(this.displacement) * 0.0007))));
     this.reflectionDelay = Math.round(this.sampleRate * (0.0038 + Math.sqrt(this.displacement) * 0.0014));
     this.secondaryDelay = Math.round(this.reflectionDelay * 1.63);
   }
@@ -53,7 +56,7 @@ export class CombustionDSP {
     const dt = 1 / this.sampleRate;
     const level = 0.76 / Math.sqrt(this.events.length);
     const cylinderLiters = this.displacement / this.events.length;
-    const exhaustDecay = Math.min(0.010, 0.0018 + Math.sqrt(cylinderLiters) * 0.0035);
+    const exhaustDecay = Math.min(0.010, (0.0018 + Math.sqrt(cylinderLiters) * 0.0035) * (this.rotary ? 1.35 : 1));
     const rpmSlew = 1 - Math.exp(-dt / 0.005);
     const loadSlew = 1 - Math.exp(-dt / 0.012);
     const cutSlew = 1 - Math.exp(-dt / 0.0015);
@@ -62,11 +65,18 @@ export class CombustionDSP {
       this.load += (Math.max(0, Math.min(1.6, read('load', i, 0))) - this.load) * loadSlew;
       this.cut += (Math.max(0, Math.min(1, read('ignitionCut', i, 0))) - this.cut) * cutSlew;
       const before = this.phase;
-      this.phase = (this.phase + this.rpm * dt / 120) % 1;
+      this.phase = (this.phase + this.rpm * 6 * dt / this.cycleDegrees) % 1;
       this.crankPhase = (this.crankPhase + this.rpm * dt / 60) % 1;
       const limiterAmount = Math.max(0, Math.min(1, read('limiter', i, 0)));
-      const limiter = (read('time', i, 0) + i * dt) * 18 % 1 < limiterAmount;
-      const combustion = (1 - this.cut) * (limiter ? 0.035 : 1);
+      const limiterHz = Math.max(8, Math.min(32, read('limiterHz', i, 18)));
+      const limiterDepth = Math.max(0.3, Math.min(1, read('limiterDepth', i, 0.85)));
+      // 0: quiet proportional cut, 1: grouped hard cuts, 2: rotating cylinders.
+      const limiterMode = Math.round(read('limiterMode', i, 1));
+      const limitPhase = (read('time', i, 0) + i * dt) * limiterHz;
+      const limiter = limitPhase % 1 < limiterAmount;
+      const combustion = (1 - this.cut) * (limiterMode === 0 ? 1 - limiterAmount * (0.70 + 0.285 * limiterDepth)
+        : limiter ? 1 - limiterDepth * 0.985 : 1);
+      const camBlend = Math.max(0, Math.min(1, read('camBlend', i, 0)));
       let pressure = 0;
       for (const event of this.events) {
         const fired = this.phase >= before
@@ -75,11 +85,14 @@ export class CombustionDSP {
         if (fired && this.rpm > 30) {
           // Small cycle differences remove a perfectly repeating electronic buzz.
           event.age = -event.bank * this.bankDelay * dt;
-          event.strength = (0.22 + 0.78 * this.load) * combustion * (0.975 + this.random() * 0.025);
+          const sequentialCut = limiterMode === 2 && ((Math.floor(limitPhase) + event.ordinal) % this.events.length)
+            / this.events.length < limiterAmount;
+          const firing = limiterMode === 2 ? (1 - this.cut) * (sequentialCut ? 1 - limiterDepth * 0.985 : 1) : combustion;
+          event.strength = (0.22 + 0.78 * this.load) * firing * (0.975 + this.random() * 0.025);
         }
         if (event.age >= 0 && event.age < exhaustDecay * 9) {
           const age = event.age;
-          const rise = 1 - Math.exp(-age / (0.00018 + 0.00012 * (1 - Math.min(1, this.load))));
+          const rise = 1 - Math.exp(-age / ((0.00018 + 0.00012 * (1 - Math.min(1, this.load))) * (1 - camBlend * 0.20)));
           const decay = Math.exp(-age / exhaustDecay);
           const reflectedDepression = Math.exp(-age / (exhaustDecay * 1.8)) * 0.23;
           const turbulentEdge = this.random() * Math.exp(-age / (exhaustDecay * 0.55)) * (0.12 + 0.2 * this.load);
@@ -120,6 +133,10 @@ class CombustionProcessor extends AudioWorkletProcessor {
       { name: 'load', defaultValue: 0, minValue: 0, maxValue: 1.6, automationRate: 'k-rate' },
       { name: 'ignitionCut', defaultValue: 0, minValue: 0, maxValue: 1, automationRate: 'a-rate' },
       { name: 'limiter', defaultValue: 0, minValue: 0, maxValue: 1, automationRate: 'k-rate' },
+      { name: 'limiterHz', defaultValue: 18, minValue: 8, maxValue: 32, automationRate: 'k-rate' },
+      { name: 'limiterMode', defaultValue: 1, minValue: 0, maxValue: 2, automationRate: 'k-rate' },
+      { name: 'limiterDepth', defaultValue: 0.85, minValue: 0.3, maxValue: 1, automationRate: 'k-rate' },
+      { name: 'camBlend', defaultValue: 0, minValue: 0, maxValue: 1, automationRate: 'k-rate' },
     ];
   }
   constructor(options) {
