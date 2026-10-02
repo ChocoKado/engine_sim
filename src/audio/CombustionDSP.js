@@ -64,7 +64,8 @@ export class CombustionDSP {
       const before = this.phase;
       this.phase = (this.phase + this.rpm * dt / 120) % 1;
       this.crankPhase = (this.crankPhase + this.rpm * dt / 60) % 1;
-      const limiter = read('limiter', i, 0) > 0.5 && (read('time', i, 0) + i * dt) * 18 % 1 < 0.48;
+      const limiterAmount = Math.max(0, Math.min(1, read('limiter', i, 0)));
+      const limiter = (read('time', i, 0) + i * dt) * 18 % 1 < limiterAmount;
       const combustion = (1 - this.cut) * (limiter ? 0.035 : 1);
       let pressure = 0;
       for (const event of this.events) {

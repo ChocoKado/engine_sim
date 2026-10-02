@@ -740,6 +740,8 @@ export class SoundEngine {
     const cutAmount = Math.max(0, Math.min(1, measuredCut
       ?? (engineState.ignitionCut ? (torqueScale == null ? 1 : 1 - torqueScale) : fallbackCut)));
     const isShiftCut = cutAmount > 0.05;
+    const limiterAmount = Math.max(0, Math.min(1, engineState.revLimiterCutAmount
+      ?? (engineState.isRevLimiting ? 1 : 0)));
     const displacement = engineState.displacement || (config && config.defaultDisplacement) || 1000;
     const dispLiters = Math.max(0.125, displacement / 1000);
     this.currentDisplacement = displacement;
@@ -751,7 +753,7 @@ export class SoundEngine {
       this.pressureNode.parameters.get('rpm').setTargetAtTime(rpm, t, 0.0025);
       this.pressureNode.parameters.get('load').setTargetAtTime(pressureLoad, t, 0.006);
       this.pressureNode.parameters.get('ignitionCut').setTargetAtTime(cutAmount, t, 0.001);
-      this.pressureNode.parameters.get('limiter').setValueAtTime(engineState.isRevLimiting ? 1 : 0, t);
+      this.pressureNode.parameters.get('limiter').setTargetAtTime(limiterAmount, t, 0.003);
     }
 
     let blowdownBoost = 0;
@@ -802,8 +804,8 @@ export class SoundEngine {
     // -------------------------------------------------------------
     // Keep exhaust resonance audible through a shift. Only the redline limiter
     // uses rhythmic gating; AT has a smaller load dip than AMT.
-    this.limiterGate.gain.setTargetAtTime(engineState.isRevLimiting && !this.pressureNode ? 0.72 : 1, t, 0.008);
-    this.limiterModGain.gain.setTargetAtTime(engineState.isRevLimiting && !this.pressureNode ? 0.28 : 0, t, 0.008);
+    this.limiterGate.gain.setTargetAtTime(!this.pressureNode ? 1 - limiterAmount * 0.28 : 1, t, 0.008);
+    this.limiterModGain.gain.setTargetAtTime(!this.pressureNode ? limiterAmount * 0.28 : 0, t, 0.008);
 
     // -------------------------------------------------------------
     // 5. Dynamic Tone Formant Tracking

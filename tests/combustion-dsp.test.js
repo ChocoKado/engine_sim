@@ -65,6 +65,21 @@ test('worklet source contains the same tested DSP and safe parameter descriptors
   assert.doesNotThrow(() => new Function('AudioWorkletProcessor', 'registerProcessor', source)(class {}, () => {}));
 });
 
+test('progressive limiter percentages change the pulse pattern while full cuts retain a motored background', () => {
+  const levels = [0, 0.25, 0.75, 1].map(limiter => {
+    const dsp = new CombustionDSP();
+    const data = render(dsp, { rpm: 10000, load: 1, limiter }, 1);
+    assert.ok(data.every(value => Number.isFinite(value)), `cut ${limiter}`);
+    return rms(data.subarray(Math.round(0.1 * dsp.sampleRate)));
+  });
+  // Rhythmic cuts introduce low-frequency energy: total RMS need not decrease
+  // monotonically relative to a continuous firing train. Full cuts must still
+  // remove most combustion, and different duty cycles must be distinguishable.
+  assert.ok(Math.abs(levels[1] - levels[2]) > 0.005, levels.join(', '));
+  assert.ok(levels.at(-1) < levels[0] * 0.25, levels.join(', '));
+  assert.ok(levels.at(-1) > 0.005, 'full cuts still retain pumping and mechanical sound');
+});
+
 test('induction events use pressure, reservoir duration and rotor speed instead of a fixed one shot', () => {
   const low = inductionEventShape({ intensity: 0.4, pressure: 0.2, rotorRPM: 65000 }, 'flutter');
   const high = inductionEventShape({ intensity: 1.1, pressure: 1.4, rotorRPM: 170000 }, 'flutter');

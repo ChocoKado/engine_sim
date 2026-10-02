@@ -82,6 +82,28 @@ async function renderTransient({ exhaust = EXHAUST_MODELS.straight, muted = fals
   }
   return (await context.startRendering()).getChannelData(0);
 }
+async function renderLimiter() {
+  const context = new OfflineAudioContext(1, 96000, sampleRate);
+  const sound = new SoundEngine(() => context);
+  sound.setVolume(0.5);
+  sound.setEngineConfig(ENGINE_CONFIGS.i2_180);
+  await sound.init();
+  sound.setRunning(true);
+  const state = { rpm: 9900, redlineRPM: 10000, displacement: 399,
+    manifoldThrottle: 1, isRevLimiting: false, revLimiterCutAmount: 0 };
+  sound.update(state, ENGINE_CONFIGS.i2_180, { currentGear: 6, cutAmount: 0 });
+  const limiting = context.suspend(0.35);
+  const rendering = context.startRendering();
+  await limiting;
+  sound.update({ ...state, isRevLimiting: true, revLimiterCutAmount: 0.70 }, ENGINE_CONFIGS.i2_180,
+    { currentGear: 6, cutAmount: 0 });
+  const recovery = context.suspend(1.25);
+  await context.resume();
+  await recovery;
+  sound.update(state, ENGINE_CONFIGS.i2_180, { currentGear: 6, cutAmount: 0 });
+  await context.resume();
+  return { data: (await rendering).getChannelData(0), backend: sound.acousticBackend };
+}
 try {
   const shiftRatios = {};
   for (const mode of ['at', 'amt']) {
@@ -134,6 +156,12 @@ try {
     check(induction + ' 增壓與換檔音訊有限且持續', finite(data) && rms(data, 0.49, 0.535) > 0.002,
       '斷點 RMS = ' + rms(data, 0.49, 0.535).toFixed(4));
   }
+  const { data: limiter, backend: limiterBackend } = await renderLimiter();
+  check('漸進限轉採用燃燒 Worklet', limiterBackend === 'pressure-worklet', limiterBackend);
+  check('持續限轉無靜音空白及削波', finite(limiter) && rms(limiter, 0.6, 1.1) > 0.002,
+    '限轉 RMS = ' + rms(limiter, 0.6, 1.1).toFixed(4));
+  check('解除限轉後恢復連續排氣', rms(limiter, 1.5, 1.9) > 0.01,
+    '恢復 RMS = ' + rms(limiter, 1.5, 1.9).toFixed(4));
   lines.push('全部 ' + count + ' 項音訊渲染檢查通過');
   output.textContent = lines.join('\n');
   document.body.dataset.result = 'passed';

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-02T05:16:23.657Z",
+  "generatedAt": "2026-10-02T05:59:03.760Z",
   "cases": 150,
   "method": "OEM exhaust; stock induction or 1.0 bar tuning; AT automatic / AMT test-driver shift at 94% redline; 20 s throttle then 20 s braking. Estimates, not measured vehicle acceleration.",
   "results": [
@@ -428,9 +428,9 @@
       "speedAt1s": 24.433,
       "to30": 1.2,
       "to100": 3.966666666666667,
-      "endSpeed": 206.518,
+      "endSpeed": 213.917,
       "endGear": 6,
-      "maxRPM": 8999,
+      "maxRPM": 8856,
       "peakAcceleration": 8.481,
       "shifts": [
         {
@@ -473,9 +473,9 @@
       "speedAt1s": 24.356,
       "to30": 1.2166666666666666,
       "to100": 3.95,
-      "endSpeed": 201.338,
+      "endSpeed": 214.043,
       "endGear": 6,
-      "maxRPM": 8998,
+      "maxRPM": 8861,
       "peakAcceleration": 8.481,
       "shifts": [
         {
@@ -518,9 +518,9 @@
       "speedAt1s": 25.02,
       "to30": 1.1833333333333333,
       "to100": 3.9833333333333334,
-      "endSpeed": 217.396,
+      "endSpeed": 213.831,
       "endGear": 6,
-      "maxRPM": 9000,
+      "maxRPM": 8852,
       "peakAcceleration": 8.481,
       "shifts": [
         {
@@ -975,9 +975,9 @@
       "speedAt1s": 21.527,
       "to30": 1.3,
       "to100": 4.083333333333333,
-      "endSpeed": 204.904,
+      "endSpeed": 213.916,
       "endGear": 6,
-      "maxRPM": 9000,
+      "maxRPM": 8856,
       "peakAcceleration": 8.51,
       "shifts": [
         {
@@ -1020,9 +1020,9 @@
       "speedAt1s": 20.195,
       "to30": 1.3333333333333333,
       "to100": 4.1,
-      "endSpeed": 200.242,
+      "endSpeed": 214.043,
       "endGear": 6,
-      "maxRPM": 9000,
+      "maxRPM": 8862,
       "peakAcceleration": 8.506,
       "shifts": [
         {
@@ -1065,9 +1065,9 @@
       "speedAt1s": 24.281,
       "to30": 1.2333333333333334,
       "to100": 4.066666666666666,
-      "endSpeed": 214.934,
+      "endSpeed": 213.826,
       "endGear": 6,
-      "maxRPM": 9000,
+      "maxRPM": 8853,
       "peakAcceleration": 8.511,
       "shifts": [
         {
@@ -1512,9 +1512,9 @@
       "speedAt1s": 15.733,
       "to30": 1.55,
       "to100": 4.5,
-      "endSpeed": 184.888,
+      "endSpeed": 197.789,
       "endGear": 6,
-      "maxRPM": 12000,
+      "maxRPM": 11793,
       "peakAcceleration": 8.483,
       "shifts": [
         {
@@ -1557,9 +1557,9 @@
       "speedAt1s": 15.075,
       "to30": 1.5833333333333333,
       "to100": 4.5,
-      "endSpeed": 179.191,
+      "endSpeed": 197.976,
       "endGear": 6,
-      "maxRPM": 11999,
+      "maxRPM": 11804,
       "peakAcceleration": 8.484,
       "shifts": [
         {
@@ -1602,9 +1602,9 @@
       "speedAt1s": 17.698,
       "to30": 1.4833333333333334,
       "to100": 4.533333333333333,
-      "endSpeed": 201.01,
+      "endSpeed": 197.669,
       "endGear": 6,
-      "maxRPM": 11985,
+      "maxRPM": 11786,
       "peakAcceleration": 8.483,
       "shifts": [
         {
@@ -2059,9 +2059,9 @@
       "speedAt1s": 6.371,
       "to30": 2.933333333333333,
       "to100": 5.966666666666667,
-      "endSpeed": 189.976,
+      "endSpeed": 197.787,
       "endGear": 6,
-      "maxRPM": 11999,
+      "maxRPM": 11793,
       "peakAcceleration": 8.359,
       "shifts": [
         {
@@ -2104,9 +2104,9 @@
       "speedAt1s": 6.371,
       "to30": 3.0833333333333335,
       "to100": 6.1,
-      "endSpeed": 180.862,
+      "endSpeed": 197.976,
       "endGear": 6,
-      "maxRPM": 11999,
+      "maxRPM": 11804,
       "peakAcceleration": 8.358,
       "shifts": [
         {
@@ -2149,9 +2149,9 @@
       "speedAt1s": 8.426,
       "to30": 1.9666666666666666,
       "to100": 5.1,
-      "endSpeed": 200.921,
+      "endSpeed": 197.67,
       "endGear": 6,
-      "maxRPM": 11980,
+      "maxRPM": 11786,
       "peakAcceleration": 8.361,
       "shifts": [
         {
@@ -2606,9 +2606,9 @@
       "speedAt1s": 23.154,
       "to30": 1.25,
       "to100": 3.95,
-      "endSpeed": 216.278,
+      "endSpeed": 234.885,
       "endGear": 6,
-      "maxRPM": 10000,
+      "maxRPM": 9835,
       "peakAcceleration": 8.488,
       "shifts": [
         {
@@ -2651,9 +2651,9 @@
       "speedAt1s": 23.131,
       "to30": 1.25,
       "to100": 3.933333333333333,
-      "endSpeed": 224,
+      "endSpeed": 235.053,
       "endGear": 6,
-      "maxRPM": 9999,
+      "maxRPM": 9842,
       "peakAcceleration": 8.489,
       "shifts": [
         {
@@ -2696,9 +2696,9 @@
       "speedAt1s": 23.852,
       "to30": 1.2333333333333334,
       "to100": 3.966666666666667,
-      "endSpeed": 214.919,
+      "endSpeed": 234.779,
       "endGear": 6,
-      "maxRPM": 9999,
+      "maxRPM": 9830,
       "peakAcceleration": 8.489,
       "shifts": [
         {
@@ -3153,9 +3153,9 @@
       "speedAt1s": 17.393,
       "to30": 1.4166666666666667,
       "to100": 4.133333333333334,
-      "endSpeed": 217.407,
+      "endSpeed": 234.882,
       "endGear": 6,
-      "maxRPM": 9999,
+      "maxRPM": 9835,
       "peakAcceleration": 8.511,
       "shifts": [
         {
@@ -3198,9 +3198,9 @@
       "speedAt1s": 16.396,
       "to30": 1.45,
       "to100": 4.15,
-      "endSpeed": 224.167,
+      "endSpeed": 235.058,
       "endGear": 6,
-      "maxRPM": 10000,
+      "maxRPM": 9842,
       "peakAcceleration": 8.508,
       "shifts": [
         {
@@ -3243,9 +3243,9 @@
       "speedAt1s": 22.132,
       "to30": 1.3,
       "to100": 4.066666666666666,
-      "endSpeed": 214.139,
+      "endSpeed": 234.776,
       "endGear": 6,
-      "maxRPM": 10000,
+      "maxRPM": 9830,
       "peakAcceleration": 8.511,
       "shifts": [
         {
@@ -3700,15 +3700,15 @@
       "speedAt1s": 24.068,
       "to30": 1.2166666666666666,
       "to100": 3.75,
-      "endSpeed": 278.413,
+      "endSpeed": 279.101,
       "endGear": 6,
-      "maxRPM": 11498,
+      "maxRPM": 11342,
       "peakAcceleration": 8.461,
       "shifts": [
         {
           "t": 4.016666666666667,
           "gear": 2,
-          "rpm": 11234
+          "rpm": 11223
         },
         {
           "t": 5.316666666666666,
@@ -3718,12 +3718,12 @@
         {
           "t": 6.733333333333333,
           "gear": 4,
-          "rpm": 10992
+          "rpm": 10991
         },
         {
           "t": 8.233333333333333,
           "gear": 5,
-          "rpm": 11183
+          "rpm": 11182
         },
         {
           "t": 9.683333333333334,
@@ -3745,35 +3745,35 @@
       "speedAt1s": 24.062,
       "to30": 1.2166666666666666,
       "to100": 3.75,
-      "endSpeed": 281.739,
+      "endSpeed": 279.208,
       "endGear": 6,
-      "maxRPM": 11499,
+      "maxRPM": 11346,
       "peakAcceleration": 8.461,
       "shifts": [
         {
           "t": 4.016666666666667,
           "gear": 2,
-          "rpm": 11313
+          "rpm": 11292
         },
         {
-          "t": 5.316666666666666,
+          "t": 5.3,
           "gear": 3,
-          "rpm": 11042
+          "rpm": 11274
         },
         {
           "t": 6.716666666666667,
           "gear": 4,
-          "rpm": 11022
+          "rpm": 11024
         },
         {
-          "t": 8.216666666666667,
+          "t": 8.2,
           "gear": 5,
-          "rpm": 11015
+          "rpm": 11247
         },
         {
           "t": 9.65,
           "gear": 6,
-          "rpm": 11007
+          "rpm": 11008
         }
       ]
     },
@@ -3790,9 +3790,9 @@
       "speedAt1s": 24.38,
       "to30": 1.2,
       "to100": 3.783333333333333,
-      "endSpeed": 281.159,
+      "endSpeed": 279.074,
       "endGear": 6,
-      "maxRPM": 11502,
+      "maxRPM": 11340,
       "peakAcceleration": 8.462,
       "shifts": [
         {
@@ -4247,9 +4247,9 @@
       "speedAt1s": 17.616,
       "to30": 1.4166666666666667,
       "to100": 3.966666666666667,
-      "endSpeed": 276.818,
+      "endSpeed": 279.103,
       "endGear": 6,
-      "maxRPM": 11501,
+      "maxRPM": 11342,
       "peakAcceleration": 8.51,
       "shifts": [
         {
@@ -4292,9 +4292,9 @@
       "speedAt1s": 16.556,
       "to30": 1.45,
       "to100": 3.966666666666667,
-      "endSpeed": 279.579,
+      "endSpeed": 279.205,
       "endGear": 6,
-      "maxRPM": 11500,
+      "maxRPM": 11346,
       "peakAcceleration": 8.506,
       "shifts": [
         {
@@ -4337,9 +4337,9 @@
       "speedAt1s": 23.139,
       "to30": 1.25,
       "to100": 3.8666666666666667,
-      "endSpeed": 281.838,
+      "endSpeed": 279.078,
       "endGear": 6,
-      "maxRPM": 11496,
+      "maxRPM": 11340,
       "peakAcceleration": 8.511,
       "shifts": [
         {
@@ -4794,9 +4794,9 @@
       "speedAt1s": 24.17,
       "to30": 1.2166666666666666,
       "to100": 3.7666666666666666,
-      "endSpeed": 259.019,
+      "endSpeed": 256.762,
       "endGear": 6,
-      "maxRPM": 11001,
+      "maxRPM": 10820,
       "peakAcceleration": 8.468,
       "shifts": [
         {
@@ -4839,15 +4839,15 @@
       "speedAt1s": 24.167,
       "to30": 1.2166666666666666,
       "to100": 3.7666666666666666,
-      "endSpeed": 256.641,
+      "endSpeed": 256.908,
       "endGear": 6,
-      "maxRPM": 11001,
+      "maxRPM": 10826,
       "peakAcceleration": 8.468,
       "shifts": [
         {
           "t": 3.8666666666666667,
           "gear": 2,
-          "rpm": 10646
+          "rpm": 10644
         },
         {
           "t": 5.133333333333334,
@@ -4884,9 +4884,9 @@
       "speedAt1s": 24.476,
       "to30": 1.2,
       "to100": 3.8,
-      "endSpeed": 251.146,
+      "endSpeed": 256.644,
       "endGear": 6,
-      "maxRPM": 11000,
+      "maxRPM": 10814,
       "peakAcceleration": 8.469,
       "shifts": [
         {
@@ -5341,9 +5341,9 @@
       "speedAt1s": 9.335,
       "to30": 2.283333333333333,
       "to100": 4.866666666666666,
-      "endSpeed": 253.545,
+      "endSpeed": 256.766,
       "endGear": 6,
-      "maxRPM": 11001,
+      "maxRPM": 10820,
       "peakAcceleration": 8.138,
       "shifts": [
         {
@@ -5386,9 +5386,9 @@
       "speedAt1s": 9.335,
       "to30": 2.316666666666667,
       "to100": 4.9,
-      "endSpeed": 257.306,
+      "endSpeed": 256.91,
       "endGear": 6,
-      "maxRPM": 10999,
+      "maxRPM": 10826,
       "peakAcceleration": 8.135,
       "shifts": [
         {
@@ -5431,9 +5431,9 @@
       "speedAt1s": 21.474,
       "to30": 1.3,
       "to100": 3.933333333333333,
-      "endSpeed": 251.258,
+      "endSpeed": 256.639,
       "endGear": 6,
-      "maxRPM": 11000,
+      "maxRPM": 10814,
       "peakAcceleration": 8.51,
       "shifts": [
         {
@@ -5888,9 +5888,9 @@
       "speedAt1s": 22.567,
       "to30": 1.2666666666666666,
       "to100": 3.7,
-      "endSpeed": 271.892,
+      "endSpeed": 302.265,
       "endGear": 6,
-      "maxRPM": 13996,
+      "maxRPM": 13807,
       "peakAcceleration": 8.39,
       "shifts": [
         {
@@ -5933,9 +5933,9 @@
       "speedAt1s": 22.552,
       "to30": 1.2666666666666666,
       "to100": 3.7,
-      "endSpeed": 271.158,
+      "endSpeed": 302.385,
       "endGear": 6,
-      "maxRPM": 13997,
+      "maxRPM": 13812,
       "peakAcceleration": 8.39,
       "shifts": [
         {
@@ -5956,7 +5956,7 @@
         {
           "t": 9.95,
           "gear": 5,
-          "rpm": 13625
+          "rpm": 13624
         },
         {
           "t": 11.25,
@@ -5978,9 +5978,9 @@
       "speedAt1s": 22.449,
       "to30": 1.2666666666666666,
       "to100": 3.716666666666667,
-      "endSpeed": 295.737,
+      "endSpeed": 302.214,
       "endGear": 6,
-      "maxRPM": 13995,
+      "maxRPM": 13805,
       "peakAcceleration": 8.39,
       "shifts": [
         {
@@ -6435,9 +6435,9 @@
       "speedAt1s": 6.339,
       "to30": 3.5833333333333335,
       "to100": 6.166666666666667,
-      "endSpeed": 278.454,
+      "endSpeed": 302.255,
       "endGear": 6,
-      "maxRPM": 13999,
+      "maxRPM": 13807,
       "peakAcceleration": 7.92,
       "shifts": [
         {
@@ -6480,9 +6480,9 @@
       "speedAt1s": 6.339,
       "to30": 3.6,
       "to100": 6.35,
-      "endSpeed": 278.824,
+      "endSpeed": 302.375,
       "endGear": 6,
-      "maxRPM": 13998,
+      "maxRPM": 13812,
       "peakAcceleration": 7.921,
       "shifts": [
         {
@@ -6525,9 +6525,9 @@
       "speedAt1s": 6.199,
       "to30": 3.466666666666667,
       "to100": 6,
-      "endSpeed": 274.011,
+      "endSpeed": 302.212,
       "endGear": 6,
-      "maxRPM": 14000,
+      "maxRPM": 13805,
       "peakAcceleration": 7.923,
       "shifts": [
         {
@@ -6982,9 +6982,9 @@
       "speedAt1s": 21.681,
       "to30": 1.2833333333333334,
       "to100": 3.716666666666667,
-      "endSpeed": 296.206,
+      "endSpeed": 312.16,
       "endGear": 6,
-      "maxRPM": 14001,
+      "maxRPM": 13804,
       "peakAcceleration": 8.383,
       "shifts": [
         {
@@ -7027,9 +7027,9 @@
       "speedAt1s": 21.651,
       "to30": 1.2833333333333334,
       "to100": 3.716666666666667,
-      "endSpeed": 299.084,
+      "endSpeed": 312.231,
       "endGear": 6,
-      "maxRPM": 13998,
+      "maxRPM": 13807,
       "peakAcceleration": 8.383,
       "shifts": [
         {
@@ -7040,7 +7040,7 @@
         {
           "t": 6.633333333333334,
           "gear": 3,
-          "rpm": 13686
+          "rpm": 13677
         },
         {
           "t": 7.966666666666667,
@@ -7050,12 +7050,12 @@
         {
           "t": 9.516666666666667,
           "gear": 5,
-          "rpm": 13561
+          "rpm": 13657
         },
         {
           "t": 11.216666666666667,
           "gear": 6,
-          "rpm": 13693
+          "rpm": 13692
         }
       ]
     },
@@ -7072,9 +7072,9 @@
       "speedAt1s": 21.685,
       "to30": 1.2833333333333334,
       "to100": 3.75,
-      "endSpeed": 305.153,
+      "endSpeed": 312.085,
       "endGear": 6,
-      "maxRPM": 13995,
+      "maxRPM": 13801,
       "peakAcceleration": 8.384,
       "shifts": [
         {
@@ -7529,9 +7529,9 @@
       "speedAt1s": 6.233,
       "to30": 3.716666666666667,
       "to100": 6.383333333333334,
-      "endSpeed": 287.733,
+      "endSpeed": 312.16,
       "endGear": 6,
-      "maxRPM": 13997,
+      "maxRPM": 13804,
       "peakAcceleration": 7.881,
       "shifts": [
         {
@@ -7574,9 +7574,9 @@
       "speedAt1s": 6.233,
       "to30": 3.7333333333333334,
       "to100": 6.583333333333333,
-      "endSpeed": 288.551,
+      "endSpeed": 312.233,
       "endGear": 6,
-      "maxRPM": 14001,
+      "maxRPM": 13807,
       "peakAcceleration": 7.847,
       "shifts": [
         {
@@ -7619,9 +7619,9 @@
       "speedAt1s": 6.148,
       "to30": 3.566666666666667,
       "to100": 6.15,
-      "endSpeed": 284.74,
+      "endSpeed": 312.089,
       "endGear": 6,
-      "maxRPM": 14000,
+      "maxRPM": 13801,
       "peakAcceleration": 7.773,
       "shifts": [
         {
@@ -8698,7 +8698,7 @@
       "speedAt1s": 22.748,
       "to30": 1.2666666666666666,
       "to100": 4.133333333333334,
-      "endSpeed": 257.292,
+      "endSpeed": 257.294,
       "endGear": 6,
       "maxRPM": 6926,
       "peakAcceleration": 8.51,
@@ -8706,7 +8706,7 @@
         {
           "t": 2.4166666666666665,
           "gear": 2,
-          "rpm": 6875
+          "rpm": 6865
         },
         {
           "t": 4.4,
@@ -8721,7 +8721,7 @@
         {
           "t": 10.983333333333333,
           "gear": 5,
-          "rpm": 6754
+          "rpm": 6831
         },
         {
           "t": 16.916666666666668,
@@ -8764,7 +8764,7 @@
         },
         {
           "t": 2.5,
-          "rpm": 4906,
+          "rpm": 4896,
           "speed": 62.177,
           "gear": 2,
           "state": "shifting",
@@ -8773,7 +8773,7 @@
         {
           "t": 3,
           "rpm": 4659,
-          "speed": 71.525,
+          "speed": 71.519,
           "gear": 2,
           "state": "locked",
           "boost": 0.946
@@ -8781,7 +8781,7 @@
         {
           "t": 3.5,
           "rpm": 5484,
-          "speed": 84.191,
+          "speed": 84.186,
           "gear": 2,
           "state": "locked",
           "boost": 0.999
@@ -8789,7 +8789,7 @@
         {
           "t": 4,
           "rpm": 6305,
-          "speed": 96.786,
+          "speed": 96.781,
           "gear": 2,
           "state": "locked",
           "boost": 1
@@ -8797,7 +8797,7 @@
         {
           "t": 4.5,
           "rpm": 4966,
-          "speed": 106.831,
+          "speed": 106.825,
           "gear": 3,
           "state": "shifting",
           "boost": 0.732
@@ -8805,7 +8805,7 @@
         {
           "t": 5,
           "rpm": 5121,
-          "speed": 113.409,
+          "speed": 113.404,
           "gear": 3,
           "state": "locked",
           "boost": 0.973
@@ -8813,7 +8813,7 @@
         {
           "t": 5.5,
           "rpm": 5512,
-          "speed": 122.066,
+          "speed": 122.061,
           "gear": 3,
           "state": "locked",
           "boost": 1
@@ -8821,7 +8821,7 @@
         {
           "t": 6,
           "rpm": 5901,
-          "speed": 130.682,
+          "speed": 130.677,
           "gear": 3,
           "state": "locked",
           "boost": 1
@@ -8829,7 +8829,7 @@
         {
           "t": 6.5,
           "rpm": 6282,
-          "speed": 139.129,
+          "speed": 139.124,
           "gear": 3,
           "state": "locked",
           "boost": 1
@@ -8837,15 +8837,15 @@
         {
           "t": 7,
           "rpm": 6652,
-          "speed": 147.31,
+          "speed": 147.305,
           "gear": 3,
           "state": "locked",
           "boost": 0.992
         },
         {
           "t": 7.5,
-          "rpm": 5400,
-          "speed": 152.827,
+          "rpm": 5399,
+          "speed": 152.823,
           "gear": 4,
           "state": "shifting",
           "boost": 0.642
@@ -8853,7 +8853,7 @@
         {
           "t": 8,
           "rpm": 5601,
-          "speed": 158.536,
+          "speed": 158.532,
           "gear": 4,
           "state": "locked",
           "boost": 0.992
@@ -8861,7 +8861,7 @@
         {
           "t": 8.5,
           "rpm": 5826,
-          "speed": 164.896,
+          "speed": 164.891,
           "gear": 4,
           "state": "locked",
           "boost": 1
@@ -8869,7 +8869,7 @@
         {
           "t": 9,
           "rpm": 6047,
-          "speed": 171.159,
+          "speed": 171.155,
           "gear": 4,
           "state": "locked",
           "boost": 1
@@ -8877,7 +8877,7 @@
         {
           "t": 9.5,
           "rpm": 6264,
-          "speed": 177.299,
+          "speed": 177.295,
           "gear": 4,
           "state": "locked",
           "boost": 1
@@ -8885,7 +8885,7 @@
         {
           "t": 10,
           "rpm": 6476,
-          "speed": 183.297,
+          "speed": 183.293,
           "gear": 4,
           "state": "locked",
           "boost": 1
@@ -8893,31 +8893,31 @@
         {
           "t": 10.5,
           "rpm": 6681,
-          "speed": 189.106,
+          "speed": 189.102,
           "gear": 4,
           "state": "locked",
           "boost": 0.986
         },
         {
           "t": 11,
-          "rpm": 6381,
-          "speed": 194.108,
+          "rpm": 6482,
+          "speed": 194.119,
           "gear": 5,
           "state": "shifting",
-          "boost": 0.842
+          "boost": 0.849
         },
         {
           "t": 11.5,
           "rpm": 5589,
-          "speed": 197.209,
+          "speed": 197.213,
           "gear": 5,
           "state": "locked",
-          "boost": 0.972
+          "boost": 0.971
         },
         {
           "t": 12,
           "rpm": 5717,
-          "speed": 201.747,
+          "speed": 201.75,
           "gear": 5,
           "state": "locked",
           "boost": 1
@@ -8925,7 +8925,7 @@
         {
           "t": 12.5,
           "rpm": 5845,
-          "speed": 206.246,
+          "speed": 206.249,
           "gear": 5,
           "state": "locked",
           "boost": 1
@@ -8933,7 +8933,7 @@
         {
           "t": 13,
           "rpm": 5970,
-          "speed": 210.667,
+          "speed": 210.67,
           "gear": 5,
           "state": "locked",
           "boost": 1
@@ -8941,7 +8941,7 @@
         {
           "t": 13.5,
           "rpm": 6093,
-          "speed": 215.007,
+          "speed": 215.01,
           "gear": 5,
           "state": "locked",
           "boost": 1
@@ -8949,7 +8949,7 @@
         {
           "t": 14,
           "rpm": 6214,
-          "speed": 219.267,
+          "speed": 219.27,
           "gear": 5,
           "state": "locked",
           "boost": 1
@@ -8957,7 +8957,7 @@
         {
           "t": 14.5,
           "rpm": 6332,
-          "speed": 223.443,
+          "speed": 223.445,
           "gear": 5,
           "state": "locked",
           "boost": 1
@@ -8965,15 +8965,15 @@
         {
           "t": 15,
           "rpm": 6448,
-          "speed": 227.525,
+          "speed": 227.528,
           "gear": 5,
           "state": "locked",
           "boost": 1
         },
         {
           "t": 15.5,
-          "rpm": 6560,
-          "speed": 231.499,
+          "rpm": 6561,
+          "speed": 231.502,
           "gear": 5,
           "state": "locked",
           "boost": 1
@@ -8981,7 +8981,7 @@
         {
           "t": 16,
           "rpm": 6670,
-          "speed": 235.362,
+          "speed": 235.365,
           "gear": 5,
           "state": "locked",
           "boost": 0.987
@@ -8989,7 +8989,7 @@
         {
           "t": 16.5,
           "rpm": 6776,
-          "speed": 239.112,
+          "speed": 239.115,
           "gear": 5,
           "state": "locked",
           "boost": 0.968
@@ -8997,7 +8997,7 @@
         {
           "t": 17,
           "rpm": 5516,
-          "speed": 241.909,
+          "speed": 241.912,
           "gear": 6,
           "state": "shifting",
           "boost": 0.741
@@ -9005,7 +9005,7 @@
         {
           "t": 17.5,
           "rpm": 5494,
-          "speed": 243.782,
+          "speed": 243.785,
           "gear": 6,
           "state": "locked",
           "boost": 0.984
@@ -9013,7 +9013,7 @@
         {
           "t": 18,
           "rpm": 5556,
-          "speed": 246.555,
+          "speed": 246.558,
           "gear": 6,
           "state": "locked",
           "boost": 1
@@ -9021,7 +9021,7 @@
         {
           "t": 18.5,
           "rpm": 5618,
-          "speed": 249.297,
+          "speed": 249.299,
           "gear": 6,
           "state": "locked",
           "boost": 1
@@ -9029,7 +9029,7 @@
         {
           "t": 19,
           "rpm": 5679,
-          "speed": 252,
+          "speed": 252.002,
           "gear": 6,
           "state": "locked",
           "boost": 1
@@ -9037,7 +9037,7 @@
         {
           "t": 19.5,
           "rpm": 5739,
-          "speed": 254.665,
+          "speed": 254.667,
           "gear": 6,
           "state": "locked",
           "boost": 1
@@ -9045,7 +9045,7 @@
         {
           "t": 20,
           "rpm": 5798,
-          "speed": 257.292,
+          "speed": 257.294,
           "gear": 6,
           "state": "locked",
           "boost": 1
@@ -9105,7 +9105,7 @@
       "speedAt1s": 22.748,
       "to30": 1.2666666666666666,
       "to100": 4.133333333333334,
-      "endSpeed": 257.292,
+      "endSpeed": 257.294,
       "endGear": 6,
       "maxRPM": 6926,
       "peakAcceleration": 8.51,
@@ -9113,7 +9113,7 @@
         {
           "t": 2.4166666666666665,
           "gear": 2,
-          "rpm": 6875
+          "rpm": 6865
         },
         {
           "t": 4.4,
@@ -9128,7 +9128,7 @@
         {
           "t": 10.983333333333333,
           "gear": 5,
-          "rpm": 6754
+          "rpm": 6831
         },
         {
           "t": 16.916666666666668,
@@ -9150,15 +9150,15 @@
       "speedAt1s": 18.547,
       "to30": 1.5333333333333334,
       "to100": 4.416666666666667,
-      "endSpeed": 255.961,
+      "endSpeed": 255.958,
       "endGear": 6,
-      "maxRPM": 6932,
+      "maxRPM": 6931,
       "peakAcceleration": 7.521,
       "shifts": [
         {
           "t": 2.683333333333333,
           "gear": 2,
-          "rpm": 6879
+          "rpm": 6869
         },
         {
           "t": 4.683333333333334,
@@ -11228,40 +11228,40 @@
       "speedAt1s": 25.458,
       "to30": 1.1833333333333333,
       "to100": 3.8666666666666667,
-      "endSpeed": 327.168,
+      "endSpeed": 329.538,
       "endGear": 7,
-      "maxRPM": 8998,
+      "maxRPM": 8899,
       "peakAcceleration": 8.51,
       "shifts": [
         {
           "t": 2.8666666666666667,
           "gear": 2,
-          "rpm": 8867
+          "rpm": 8845
         },
         {
           "t": 3.9833333333333334,
           "gear": 3,
-          "rpm": 8713
+          "rpm": 8709
         },
         {
           "t": 5.3,
           "gear": 4,
-          "rpm": 8695
+          "rpm": 8597
         },
         {
           "t": 6.683333333333334,
           "gear": 5,
-          "rpm": 8678
+          "rpm": 8680
         },
         {
           "t": 8.583333333333334,
           "gear": 6,
-          "rpm": 8786
+          "rpm": 8787
         },
         {
           "t": 11.4,
           "gear": 7,
-          "rpm": 8575
+          "rpm": 8576
         }
       ]
     },
@@ -11278,35 +11278,35 @@
       "speedAt1s": 25.458,
       "to30": 1.1833333333333333,
       "to100": 3.8666666666666667,
-      "endSpeed": 327.285,
+      "endSpeed": 329.553,
       "endGear": 7,
-      "maxRPM": 9000,
+      "maxRPM": 8899,
       "peakAcceleration": 8.51,
       "shifts": [
         {
           "t": 2.8666666666666667,
           "gear": 2,
-          "rpm": 8870
+          "rpm": 8847
         },
         {
           "t": 3.9833333333333334,
           "gear": 3,
-          "rpm": 8631
+          "rpm": 8624
         },
         {
           "t": 5.283333333333333,
           "gear": 4,
-          "rpm": 8769
+          "rpm": 8770
         },
         {
           "t": 6.666666666666667,
           "gear": 5,
-          "rpm": 8760
+          "rpm": 8684
         },
         {
           "t": 8.583333333333334,
           "gear": 6,
-          "rpm": 8586
+          "rpm": 8587
         },
         {
           "t": 11.383333333333333,
@@ -11328,9 +11328,9 @@
       "speedAt1s": 25.6,
       "to30": 1.1833333333333333,
       "to100": 3.9,
-      "endSpeed": 328.7,
+      "endSpeed": 329.471,
       "endGear": 7,
-      "maxRPM": 8999,
+      "maxRPM": 8897,
       "peakAcceleration": 8.51,
       "shifts": [
         {
@@ -11800,9 +11800,9 @@
       "speedAt1s": 24.428,
       "to30": 1.2166666666666666,
       "to100": 3.966666666666667,
-      "endSpeed": 327.309,
+      "endSpeed": 329.529,
       "endGear": 7,
-      "maxRPM": 8998,
+      "maxRPM": 8899,
       "peakAcceleration": 8.514,
       "shifts": [
         {
@@ -11850,9 +11850,9 @@
       "speedAt1s": 24.405,
       "to30": 1.2333333333333334,
       "to100": 3.966666666666667,
-      "endSpeed": 327.193,
+      "endSpeed": 329.549,
       "endGear": 7,
-      "maxRPM": 8999,
+      "maxRPM": 8899,
       "peakAcceleration": 8.513,
       "shifts": [
         {
@@ -11900,9 +11900,9 @@
       "speedAt1s": 25.242,
       "to30": 1.2,
       "to100": 3.9833333333333334,
-      "endSpeed": 328.777,
+      "endSpeed": 329.477,
       "endGear": 7,
-      "maxRPM": 9000,
+      "maxRPM": 8897,
       "peakAcceleration": 8.514,
       "shifts": [
         {
@@ -12362,25 +12362,25 @@
       "speedAt1s": 24.499,
       "to30": 1.2166666666666666,
       "to100": 3.8666666666666667,
-      "endSpeed": 331.476,
+      "endSpeed": 332.003,
       "endGear": 6,
-      "maxRPM": 8999,
+      "maxRPM": 8896,
       "peakAcceleration": 8.506,
       "shifts": [
         {
           "t": 3.1166666666666667,
           "gear": 2,
-          "rpm": 8792
+          "rpm": 8779
         },
         {
           "t": 4.55,
           "gear": 3,
-          "rpm": 8591
+          "rpm": 8590
         },
         {
           "t": 6.133333333333334,
           "gear": 4,
-          "rpm": 8743
+          "rpm": 8742
         },
         {
           "t": 8.283333333333333,
@@ -12407,25 +12407,25 @@
       "speedAt1s": 24.498,
       "to30": 1.2166666666666666,
       "to100": 3.8666666666666667,
-      "endSpeed": 331.605,
+      "endSpeed": 332.066,
       "endGear": 6,
-      "maxRPM": 9000,
+      "maxRPM": 8898,
       "peakAcceleration": 8.506,
       "shifts": [
         {
           "t": 3.1166666666666667,
           "gear": 2,
-          "rpm": 8801
+          "rpm": 8783
         },
         {
           "t": 4.533333333333333,
           "gear": 3,
-          "rpm": 8769
+          "rpm": 8768
         },
         {
           "t": 6.116666666666666,
           "gear": 4,
-          "rpm": 8797
+          "rpm": 8796
         },
         {
           "t": 8.266666666666667,
@@ -12452,9 +12452,9 @@
       "speedAt1s": 24.717,
       "to30": 1.2,
       "to100": 3.9,
-      "endSpeed": 335.283,
+      "endSpeed": 331.793,
       "endGear": 6,
-      "maxRPM": 9000,
+      "maxRPM": 8890,
       "peakAcceleration": 8.506,
       "shifts": [
         {
@@ -12909,9 +12909,9 @@
       "speedAt1s": 23.321,
       "to30": 1.2666666666666666,
       "to100": 3.95,
-      "endSpeed": 331.68,
+      "endSpeed": 332.008,
       "endGear": 6,
-      "maxRPM": 8999,
+      "maxRPM": 8896,
       "peakAcceleration": 8.514,
       "shifts": [
         {
@@ -12954,9 +12954,9 @@
       "speedAt1s": 22.123,
       "to30": 1.2666666666666666,
       "to100": 3.95,
-      "endSpeed": 331.71,
+      "endSpeed": 332.06,
       "endGear": 6,
-      "maxRPM": 9001,
+      "maxRPM": 8897,
       "peakAcceleration": 8.513,
       "shifts": [
         {
@@ -12999,9 +12999,9 @@
       "speedAt1s": 24.812,
       "to30": 1.2166666666666666,
       "to100": 3.95,
-      "endSpeed": 335.854,
+      "endSpeed": 331.73,
       "endGear": 6,
-      "maxRPM": 8999,
+      "maxRPM": 8888,
       "peakAcceleration": 8.514,
       "shifts": [
         {
@@ -13456,35 +13456,35 @@
       "speedAt1s": 24.612,
       "to30": 1.2,
       "to100": 3.8666666666666667,
-      "endSpeed": 367.812,
+      "endSpeed": 366.504,
       "endGear": 7,
-      "maxRPM": 8402,
+      "maxRPM": 8372,
       "peakAcceleration": 8.509,
       "shifts": [
         {
           "t": 3.066666666666667,
           "gear": 2,
-          "rpm": 8378
+          "rpm": 8356
         },
         {
           "t": 4.783333333333333,
           "gear": 3,
-          "rpm": 8135
+          "rpm": 8137
         },
         {
           "t": 6.383333333333334,
           "gear": 4,
-          "rpm": 8205
+          "rpm": 8207
         },
         {
           "t": 7.966666666666667,
           "gear": 5,
-          "rpm": 8266
+          "rpm": 8196
         },
         {
-          "t": 10.35,
+          "t": 10.333333333333334,
           "gear": 6,
-          "rpm": 8107
+          "rpm": 8296
         },
         {
           "t": 14.3,
@@ -13506,40 +13506,40 @@
       "speedAt1s": 24.612,
       "to30": 1.2,
       "to100": 3.8666666666666667,
-      "endSpeed": 368.355,
+      "endSpeed": 366.672,
       "endGear": 7,
-      "maxRPM": 8414,
+      "maxRPM": 8375,
       "peakAcceleration": 8.509,
       "shifts": [
         {
           "t": 3.066666666666667,
           "gear": 2,
-          "rpm": 8384
+          "rpm": 8360
         },
         {
           "t": 4.766666666666667,
           "gear": 3,
-          "rpm": 8336
+          "rpm": 8334
         },
         {
           "t": 6.366666666666666,
           "gear": 4,
-          "rpm": 8277
+          "rpm": 8318
         },
         {
           "t": 7.95,
           "gear": 5,
-          "rpm": 8272
+          "rpm": 8270
         },
         {
           "t": 10.333333333333334,
           "gear": 6,
-          "rpm": 8202
+          "rpm": 8201
         },
         {
           "t": 14.283333333333333,
           "gear": 7,
-          "rpm": 8113
+          "rpm": 8197
         }
       ]
     },
@@ -14018,9 +14018,9 @@
       "speedAt1s": 22.59,
       "to30": 1.2833333333333334,
       "to100": 4,
-      "endSpeed": 367.811,
+      "endSpeed": 366.503,
       "endGear": 7,
-      "maxRPM": 8402,
+      "maxRPM": 8372,
       "peakAcceleration": 8.514,
       "shifts": [
         {
@@ -14068,9 +14068,9 @@
       "speedAt1s": 21.854,
       "to30": 1.3,
       "to100": 4,
-      "endSpeed": 368.203,
+      "endSpeed": 366.641,
       "endGear": 7,
-      "maxRPM": 8410,
+      "maxRPM": 8375,
       "peakAcceleration": 8.513,
       "shifts": [
         {
@@ -14170,33 +14170,33 @@
       "to100": 3.7333333333333334,
       "endSpeed": 362.262,
       "endGear": 6,
-      "maxRPM": 7019,
+      "maxRPM": 6982,
       "peakAcceleration": 8.51,
       "shifts": [
         {
           "t": 3.3833333333333333,
           "gear": 2,
-          "rpm": 7019
+          "rpm": 6958
         },
         {
           "t": 5.616666666666666,
           "gear": 3,
-          "rpm": 6891
+          "rpm": 6862
         },
         {
           "t": 7.6,
           "gear": 4,
-          "rpm": 6938
+          "rpm": 6915
         },
         {
           "t": 10.85,
           "gear": 5,
-          "rpm": 6931
+          "rpm": 6914
         },
         {
           "t": 15.566666666666666,
           "gear": 6,
-          "rpm": 6981
+          "rpm": 6982
         }
       ],
       "samples": [
@@ -14250,80 +14250,80 @@
         },
         {
           "t": 3.5,
-          "rpm": 4718,
-          "speed": 95.944,
+          "rpm": 4678,
+          "speed": 95.934,
           "gear": 2,
           "state": "shifting",
-          "boost": 1.036
+          "boost": 1.037
         },
         {
           "t": 4,
-          "rpm": 4825,
-          "speed": 108.004,
+          "rpm": 4827,
+          "speed": 108.045,
           "gear": 2,
           "state": "launching",
-          "boost": 1.737
+          "boost": 1.739
         },
         {
           "t": 4.5,
-          "rpm": 5478,
-          "speed": 122.631,
+          "rpm": 5479,
+          "speed": 122.672,
           "gear": 2,
           "state": "locked",
           "boost": 1.799
         },
         {
           "t": 5,
-          "rpm": 6128,
-          "speed": 137.205,
+          "rpm": 6130,
+          "speed": 137.246,
           "gear": 2,
           "state": "locked",
           "boost": 1.8
         },
         {
           "t": 5.5,
-          "rpm": 6777,
-          "speed": 151.718,
+          "rpm": 6779,
+          "speed": 151.759,
           "gear": 2,
           "state": "locked",
-          "boost": 1.716
+          "boost": 1.715
         },
         {
           "t": 6,
-          "rpm": 5456,
-          "speed": 160.471,
+          "rpm": 5457,
+          "speed": 160.495,
           "gear": 3,
           "state": "launching",
           "boost": 1.576
         },
         {
           "t": 6.5,
-          "rpm": 5858,
-          "speed": 174.875,
+          "rpm": 5859,
+          "speed": 174.899,
           "gear": 3,
           "state": "locked",
           "boost": 1.799
         },
         {
           "t": 7,
-          "rpm": 6341,
-          "speed": 189.275,
+          "rpm": 6342,
+          "speed": 189.299,
           "gear": 3,
           "state": "locked",
           "boost": 1.8
         },
         {
           "t": 7.5,
-          "rpm": 6811,
-          "speed": 203.318,
+          "rpm": 6812,
+          "speed": 203.34,
           "gear": 3,
           "state": "locked",
-          "boost": 1.703
+          "boost": 1.702
         },
         {
           "t": 8,
           "rpm": 5460,
-          "speed": 209.595,
+          "speed": 209.608,
           "gear": 4,
           "state": "launching",
           "boost": 1.611
@@ -14331,15 +14331,15 @@
         {
           "t": 8.5,
           "rpm": 5669,
-          "speed": 219.972,
+          "speed": 219.985,
           "gear": 4,
           "state": "locked",
           "boost": 1.799
         },
         {
           "t": 9,
-          "rpm": 5935,
-          "speed": 230.322,
+          "rpm": 5936,
+          "speed": 230.334,
           "gear": 4,
           "state": "locked",
           "boost": 1.8
@@ -14347,7 +14347,7 @@
         {
           "t": 9.5,
           "rpm": 6198,
-          "speed": 240.523,
+          "speed": 240.534,
           "gear": 4,
           "state": "locked",
           "boost": 1.8
@@ -14355,15 +14355,15 @@
         {
           "t": 10,
           "rpm": 6456,
-          "speed": 250.527,
+          "speed": 250.538,
           "gear": 4,
           "state": "locked",
           "boost": 1.8
         },
         {
           "t": 10.5,
-          "rpm": 6707,
-          "speed": 260.288,
+          "rpm": 6708,
+          "speed": 260.299,
           "gear": 4,
           "state": "locked",
           "boost": 1.733
@@ -14371,15 +14371,15 @@
         {
           "t": 11,
           "rpm": 5587,
-          "speed": 266.543,
+          "speed": 266.548,
           "gear": 5,
           "state": "shifting",
           "boost": 1.022
         },
         {
           "t": 11.5,
-          "rpm": 5707,
-          "speed": 272.595,
+          "rpm": 5708,
+          "speed": 272.6,
           "gear": 5,
           "state": "locked",
           "boost": 1.788
@@ -14387,7 +14387,7 @@
         {
           "t": 12,
           "rpm": 5861,
-          "speed": 279.906,
+          "speed": 279.911,
           "gear": 5,
           "state": "locked",
           "boost": 1.8
@@ -14395,7 +14395,7 @@
         {
           "t": 12.5,
           "rpm": 6011,
-          "speed": 287.098,
+          "speed": 287.103,
           "gear": 5,
           "state": "locked",
           "boost": 1.8
@@ -14403,7 +14403,7 @@
         {
           "t": 13,
           "rpm": 6159,
-          "speed": 294.161,
+          "speed": 294.165,
           "gear": 5,
           "state": "locked",
           "boost": 1.8
@@ -14411,7 +14411,7 @@
         {
           "t": 13.5,
           "rpm": 6304,
-          "speed": 301.079,
+          "speed": 301.084,
           "gear": 5,
           "state": "locked",
           "boost": 1.8
@@ -14419,15 +14419,15 @@
         {
           "t": 14,
           "rpm": 6445,
-          "speed": 307.839,
+          "speed": 307.844,
           "gear": 5,
           "state": "locked",
           "boost": 1.8
         },
         {
           "t": 14.5,
-          "rpm": 6583,
-          "speed": 314.432,
+          "rpm": 6584,
+          "speed": 314.436,
           "gear": 5,
           "state": "locked",
           "boost": 1.773
@@ -14435,7 +14435,7 @@
         {
           "t": 15,
           "rpm": 6718,
-          "speed": 320.845,
+          "speed": 320.849,
           "gear": 5,
           "state": "locked",
           "boost": 1.728
@@ -14443,7 +14443,7 @@
         {
           "t": 15.5,
           "rpm": 6846,
-          "speed": 326.95,
+          "speed": 326.954,
           "gear": 5,
           "state": "locked",
           "boost": 1.688
@@ -14467,7 +14467,7 @@
         {
           "t": 17,
           "rpm": 5799,
-          "speed": 337.53,
+          "speed": 337.529,
           "gear": 6,
           "state": "locked",
           "boost": 1.8
@@ -14483,7 +14483,7 @@
         {
           "t": 18,
           "rpm": 5946,
-          "speed": 346.138,
+          "speed": 346.137,
           "gear": 6,
           "state": "locked",
           "boost": 1.8
@@ -14507,7 +14507,7 @@
         {
           "t": 19.5,
           "rpm": 6157,
-          "speed": 358.37,
+          "speed": 358.369,
           "gear": 6,
           "state": "locked",
           "boost": 1.8
@@ -14570,15 +14570,15 @@
       "speedAt1s": 26.901,
       "to30": 1.1166666666666667,
       "to100": 3.7666666666666666,
-      "endSpeed": 327.142,
+      "endSpeed": 327.138,
       "endGear": 5,
-      "maxRPM": 6945,
+      "maxRPM": 6944,
       "peakAcceleration": 8.51,
       "shifts": [
         {
           "t": 3.3833333333333333,
           "gear": 2,
-          "rpm": 6945
+          "rpm": 6932
         },
         {
           "t": 5.666666666666667,
@@ -14610,15 +14610,15 @@
       "speedAt1s": 26.9,
       "to30": 1.1166666666666667,
       "to100": 3.7666666666666666,
-      "endSpeed": 327.176,
+      "endSpeed": 327.17,
       "endGear": 6,
-      "maxRPM": 6953,
+      "maxRPM": 6949,
       "peakAcceleration": 8.51,
       "shifts": [
         {
           "t": 3.3833333333333333,
           "gear": 2,
-          "rpm": 6953
+          "rpm": 6936
         },
         {
           "t": 5.666666666666667,
@@ -14638,7 +14638,7 @@
         {
           "t": 19.95,
           "gear": 6,
-          "rpm": 6944
+          "rpm": 6943
         }
       ]
     },
@@ -15629,35 +15629,35 @@
       "speedAt1s": 15.68,
       "to30": 1.5,
       "to100": 4.25,
-      "endSpeed": 226.065,
+      "endSpeed": 226.059,
       "endGear": 6,
-      "maxRPM": 3604,
+      "maxRPM": 3600,
       "peakAcceleration": 8.442,
       "shifts": [
         {
           "t": 3.3333333333333335,
           "gear": 2,
-          "rpm": 3591
+          "rpm": 3580
         },
         {
           "t": 4.583333333333333,
           "gear": 3,
-          "rpm": 3545
+          "rpm": 3539
         },
         {
           "t": 6.483333333333333,
           "gear": 4,
-          "rpm": 3604
+          "rpm": 3600
         },
         {
           "t": 9.65,
           "gear": 5,
-          "rpm": 3538
+          "rpm": 3536
         },
         {
           "t": 14.5,
           "gear": 6,
-          "rpm": 3537
+          "rpm": 3573
         }
       ]
     },
@@ -15674,35 +15674,35 @@
       "speedAt1s": 13.427,
       "to30": 1.7,
       "to100": 4.5,
-      "endSpeed": 224.928,
+      "endSpeed": 224.92,
       "endGear": 6,
-      "maxRPM": 3615,
+      "maxRPM": 3612,
       "peakAcceleration": 8.442,
       "shifts": [
         {
           "t": 3.5833333333333335,
           "gear": 2,
-          "rpm": 3615
+          "rpm": 3607
         },
         {
           "t": 4.85,
           "gear": 3,
-          "rpm": 3497
+          "rpm": 3492
         },
         {
           "t": 6.766666666666667,
           "gear": 4,
-          "rpm": 3579
+          "rpm": 3575
         },
         {
-          "t": 9.933333333333334,
+          "t": 9.95,
           "gear": 5,
-          "rpm": 3601
+          "rpm": 3491
         },
         {
           "t": 14.816666666666666,
           "gear": 6,
-          "rpm": 3492
+          "rpm": 3490
         }
       ]
     },

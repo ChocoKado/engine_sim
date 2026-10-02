@@ -132,6 +132,21 @@ test('AMT has a fast pronounced cut while retaining pumping/mechanical sound; AT
   assert.equal(sound.limiterGate.gain.value, 1, 'master exhaust path is never gated off for a shift');
 });
 
+test('limiter sound follows progressive cut telemetry and restores immediately below the control band', async () => {
+  const sound = new SoundEngine(() => new Context());
+  await sound.init();
+  sound.update({ ...state, isRevLimiting: true, revLimiterCutAmount: 0.25 }, ENGINE_CONFIGS.i4_flat, {});
+  assert.equal(sound.limiterModGain.gain.value, 0.25 * 0.28);
+  assert.equal(sound.limiterGate.gain.value, 1 - 0.25 * 0.28);
+  const parameters = new Map([['rpm', new Parameter()], ['load', new Parameter()],
+    ['ignitionCut', new Parameter()], ['limiter', new Parameter()]]);
+  sound.pressureNode = { parameters };
+  sound.update({ ...state, isRevLimiting: true, revLimiterCutAmount: 0.70 }, ENGINE_CONFIGS.i4_flat, {});
+  assert.equal(parameters.get('limiter').value, 0.70, 'worklet receives cut percentage, rather than a latch');
+  sound.update({ ...state, revLimiterCutAmount: 0 }, ENGINE_CONFIGS.i4_flat, {});
+  assert.equal(parameters.get('limiter').value, 0);
+});
+
 test('TVS sound follows actual rotor RPM, is independent of redline and continues during ignition cut', async () => {
   const sound = new SoundEngine(() => new Context());
   await sound.init();

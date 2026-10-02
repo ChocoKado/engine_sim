@@ -52,6 +52,7 @@ export class EngineModel {
     this.popEvents = [];
     this.isRevLimiting = false;
     this.isRevLimitingCut = false;
+    this.revLimiterCutAmount = 0;
     this.revLimiterBounceTimer = 0;
     this.netTorque = 0;
     this.combustionTorque = 0;
@@ -175,6 +176,12 @@ export class EngineModel {
     return crank + reciprocating + (this.forcedInduction === 'supercharger' ? liters * 0.004 : 0);
   }
 
+  get revLimitControlRange() {
+    // A small RPM control band, rather than a percentage-based latch that
+    // kept cutting power thousands of RPM below the selected limit.
+    return clamp(this.redlineRPM * 0.02, 100, 300);
+  }
+
   torqueAtRPM(rpm) {
     if (this.config.torquePoints) {
       // Interpolating torque alone can invent a higher horsepower peak between
@@ -289,20 +296,22 @@ export class EngineModel {
           * (0.4 + 0.6 * this.overrunTime / this.exhaust.overrunDuration));
       }
     } else this.overrunLoad = 0;
-    if (!this.isIgnitionOn || this.throttle < 0.15 || this.rpm < this.redlineRPM * 0.88) {
-      this.isRevLimiting = false;
-      this.revLimiterBounceTimer = 0;
-    } else if (this.rpm >= this.redlineRPM) {
-      this.isRevLimiting = true;
-    }
-    let cyclicCut = false;
+    const softLimitRPM = this.redlineRPM - this.revLimitControlRange;
+    this.isRevLimiting = this.isIgnitionOn && this.rpm > softLimitRPM
+      && (this.throttle >= 0.15 || this.rpm >= this.redlineRPM);
+    this.revLimiterCutAmount = 0;
     if (this.isRevLimiting) {
       const previousCycle = Math.floor(this.revLimiterBounceTimer * 18);
       this.revLimiterBounceTimer += dt;
       if (Math.floor(this.revLimiterBounceTimer * 18) > previousCycle) this.createPop('limiter', 0.85);
-      cyclicCut = (this.revLimiterBounceTimer * 18) % 1 < 0.58;
-    }
-    this.isRevLimitingCut = this.isIgnitionOn && (cyclicCut || this.rpm >= this.redlineRPM);
+      const cut = clamp((this.rpm - softLimitRPM) / this.revLimitControlRange, 0, 1);
+      // Average cylinder cuts progressively reduce torque. A small 18 Hz
+      // variation retains limiter texture without switching off the entire
+      // engine for a fixed 58% of every cycle, regardless of RPM and load.
+      const pulse = (this.revLimiterBounceTimer * 18) % 1 < 0.58 ? 1.06 : 0.92;
+      this.revLimiterCutAmount = this.rpm >= this.redlineRPM ? 1 : clamp(cut * pulse, 0, 1);
+    } else this.revLimiterBounceTimer = 0;
+    this.isRevLimitingCut = this.revLimiterCutAmount === 1;
     const liters = this.displacement / 1000;
     const rpmFraction = this.rpm / this.config.defaultRedlineRPM;
     const friction = 4 + 13 * rpmFraction;
@@ -313,12 +322,13 @@ export class EngineModel {
 
     this.torqueScale = clamp(torqueScale, 0, 1);
     this.ignitionCut = this.isRevLimitingCut || this.torqueScale < 0.12;
+    const firingScale = this.torqueScale * (1 - this.revLimiterCutAmount);
     const baseTorque = this.torqueAtRPM(this.rpm);
     const induction = this.induction.update(dt, {
       config: this.config, type: this.forcedInduction, size: this.turboSize,
       maxBoost: this.maxBoost, displacement: this.displacement, rpm: this.rpm,
       throttle: this.manifoldThrottle, pedalThrottle: this.throttle,
-      torqueScale: this.isRevLimitingCut ? 0 : this.torqueScale,
+      torqueScale: firingScale,
       running: this.isIgnitionOn,
       baseTorque: baseTorque * chargeThermodynamics(this.induction.chargeBoost).densityRatio,
       bovType: this.bovType, time: this.time
@@ -333,8 +343,8 @@ export class EngineModel {
     this.prevTorqueScale = this.torqueScale;
     const boostLoss = this.forcedInduction === 'turbo' ? this.induction.chargeBoost * 0.018 : 0;
     const available = baseTorque * (induction.densityRatio - boostLoss);
-    this.combustionTorque = this.isIgnitionOn && !this.isRevLimitingCut
-      ? (available + drag) * this.manifoldThrottle * this.torqueScale : 0;
+    this.combustionTorque = this.isIgnitionOn
+      ? (available + drag) * this.manifoldThrottle * firingScale : 0;
     this.currentEngineDrag += induction.shaftTorque;
     let idleTorque = 0;
     if (this.isIgnitionOn && !this.isRevLimitingCut && this.rpm < this.idleRPM + 100) {
@@ -429,7 +439,8 @@ export class EngineModel {
       isIgnitionOn: this.isIgnitionOn, crankAngle: this.crankAngle, throttle: this.throttle,
       manifoldThrottle: this.manifoldThrottle, dyno: this.getCurrentDynoOutput(),
       cylinderStates: this.cylinderStates, isRevLimiting: this.isRevLimiting,
-      isRevLimitingCut: this.isRevLimitingCut, exhaustHeat: this.exhaustHeat, popEvents,
+      isRevLimitingCut: this.isRevLimitingCut, revLimiterCutAmount: this.revLimiterCutAmount,
+      exhaustHeat: this.exhaustHeat, popEvents,
       manifoldPressure: this.manifoldPressure || (1.0).toFixed(2),
       peakCylinderPressure: this.peakCylinderPressure || (1.0).toFixed(1) };
   }
