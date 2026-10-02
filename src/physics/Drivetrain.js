@@ -14,7 +14,6 @@ export class Drivetrain {
     this.gearRatios = { '-1': -3.2, 0: 0, 1: 3.5, 2: 2.15, 3: 1.5, 4: 1.15, 5: 0.9, 6: 0.74 };
     this.finalDrive = 3.65;
     this.tireRadius = 0.33;
-    this.gearingMode = this.engine.config.id === 'i4_cross' ? 'racing_close' : 'standard';
     this.configureVehicle();
     this.speedKmh = 0; // Signed road velocity: reverse is negative.
     this.brakeInput = 0;
@@ -24,13 +23,6 @@ export class Drivetrain {
     this.resetShift();
   }
 
-  setGearingMode(mode) {
-    if (['standard', 'racing_close'].includes(mode)) {
-      this.gearingMode = mode;
-      this.configureVehicle();
-    }
-  }
-
   configureVehicle() {
     const profile = VEHICLE_PROFILES[this.engine.config.id] || VEHICLE_PROFILES.i4_flat;
     this.vehicleMass = profile.mass;
@@ -38,12 +30,6 @@ export class Drivetrain {
     this.tireRadius = profile.tireRadius || 0.33;
     this.finalDrive = profile.finalDrive || 3.65;
     this.gearRatios = { ...profile.gearRatios };
-
-    if (this.gearingMode === 'racing_close' && this.engine.config.id !== 'i4_cross') {
-      this.tireRadius = 0.315;
-      this.finalDrive = 4.188;
-      this.gearRatios = { '-1': -2.5, 0: 0, 1: 2.600, 2: 2.176, 3: 1.842, 4: 1.579, 5: 1.381, 6: 1.250 };
-    }
     this.tireCircumference = 2 * Math.PI * this.tireRadius;
   }
 
@@ -189,7 +175,7 @@ export class Drivetrain {
   roadResistance() {
     const velocity = this.speedKmh / 3.6;
     return 0.5 * 1.225 * this.dragArea * velocity * velocity
-      + this.vehicleMass * (9.81 * 0.014 + this.brakeInput * 10.5);
+      + this.vehicleMass * (9.81 * 0.014 + this.brakeInput * 12.0);
   }
 
   moveVehicle(dt, wheelForce, effectiveMass = this.vehicleMass * 1.035) {

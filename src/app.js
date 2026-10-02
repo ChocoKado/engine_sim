@@ -230,6 +230,8 @@ class App {
     // Forced Induction Selection (NA, Turbo, Supercharger)
     const inductionBtns = document.querySelectorAll('.induction-btn');
     const turboPanel = document.getElementById('turbo-controls-panel');
+    const bovRow = document.querySelector('.bov-selection-row');
+    const boostLabel = document.getElementById('boost-slider-title');
     const boostBadge = document.getElementById('boost-status-badge');
 
     inductionBtns.forEach(btn => {
@@ -239,7 +241,13 @@ class App {
         const indType = btn.dataset.induction;
         this.engine.setForcedInduction(indType);
         if (turboPanel) {
-          turboPanel.style.display = indType === 'turbo' ? 'block' : 'none';
+          turboPanel.style.display = indType !== 'na' ? 'block' : 'none';
+        }
+        if (bovRow) {
+          bovRow.style.display = indType === 'turbo' ? 'flex' : 'none';
+        }
+        if (boostLabel) {
+          boostLabel.textContent = indType === 'supercharger' ? '機械增壓值 (SC Boost)' : '渦輪最大增壓值 (Max Boost)';
         }
         if (boostBadge) {
           boostBadge.textContent = indType === 'turbo'
@@ -262,7 +270,7 @@ class App {
       });
     });
 
-    // Boost Pressure Slider
+    // Boost Pressure Slider (Supported for both Turbo and Supercharger)
     const boostSlider = document.getElementById('boost-slider');
     const boostVal = document.getElementById('boost-val');
     if (boostSlider && boostVal) {
@@ -270,28 +278,17 @@ class App {
         const bar = Number(e.target.value) / 100;
         this.engine.setMaxBoost(bar);
         boostVal.textContent = `+${bar.toFixed(2)} bar`;
-        if (boostBadge && this.engine.forcedInduction === 'turbo') {
-          boostBadge.textContent = `TURBO (+${bar.toFixed(1)} bar)`;
+        if (boostBadge) {
+          if (this.engine.forcedInduction === 'turbo') {
+            boostBadge.textContent = `TURBO (+${bar.toFixed(1)} bar)`;
+          } else if (this.engine.forcedInduction === 'supercharger') {
+            boostBadge.textContent = `SUPERCHARGER (+${bar.toFixed(1)} bar)`;
+          }
         }
         this.updateDynoOverview();
       });
     }
 
-    // Gearing Mode Selector (R1 Racing Close-Ratio vs Standard Street)
-    const gearRacingBtn = document.getElementById('btn-gear-racing');
-    const gearStandardBtn = document.getElementById('btn-gear-standard');
-    if (gearRacingBtn && gearStandardBtn) {
-      gearRacingBtn.addEventListener('click', () => {
-        gearRacingBtn.classList.add('active');
-        gearStandardBtn.classList.remove('active');
-        this.drivetrain.setGearingMode('racing_close');
-      });
-      gearStandardBtn.addEventListener('click', () => {
-        gearStandardBtn.classList.add('active');
-        gearRacingBtn.classList.remove('active');
-        this.drivetrain.setGearingMode('standard');
-      });
-    }
 
     // Throttle Slider (continuous hold)
     const throttleSlider = document.getElementById('throttle-slider');
@@ -449,18 +446,6 @@ class App {
       redlineVal.textContent = `${this.engine.redlineRPM} RPM`;
     }
 
-    // Sync gearing buttons state
-    const gearRacingBtn = document.getElementById('btn-gear-racing');
-    const gearStandardBtn = document.getElementById('btn-gear-standard');
-    if (gearRacingBtn && gearStandardBtn) {
-      if (this.drivetrain.gearingMode === 'racing_close') {
-        gearRacingBtn.classList.add('active');
-        gearStandardBtn.classList.remove('active');
-      } else {
-        gearStandardBtn.classList.add('active');
-        gearRacingBtn.classList.remove('active');
-      }
-    }
   }
 
   selectExhaust(exhaustId) {
@@ -698,9 +683,13 @@ class App {
       specMapEl.textContent = `${engineStatus.manifoldPressure || '1.00'} bar`;
     }
 
-    // Boost & Turbo Spool Telemetry
+    // Boost & Turbo / Supercharger Spool Telemetry
     const liveBoostEl = document.getElementById('live-boost-val');
     const liveSpoolEl = document.getElementById('live-spool-val');
+    const liveSpoolLabel = document.getElementById('live-spool-label');
+    if (liveSpoolLabel) {
+      liveSpoolLabel.textContent = engineStatus.forcedInduction === 'supercharger' ? '機械轉速' : '渦輪轉速';
+    }
     if (liveBoostEl) {
       if (engineStatus.forcedInduction === 'na') {
         liveBoostEl.textContent = 'NA (0.00 bar)';

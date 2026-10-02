@@ -173,7 +173,7 @@
               <div class="telemetry-gauge">
                 <span class="telemetry-label">增壓狀態 BOOST LEVEL</span>
                 <div id="live-boost-val" class="telemetry-number cyan-glow">NA (0.0 bar)</div>
-                <div class="telemetry-peak">渦輪轉速: <strong id="live-spool-val">0%</strong></div>
+                <div class="telemetry-peak"><span id="live-spool-label">增壓轉速</span>: <strong id="live-spool-val">0%</strong></div>
               </div>
             </div>
           </div>
@@ -220,12 +220,6 @@
             <div class="trans-mode-bar">
               <button class="trans-btn active" data-mode="at">全自排 (AT Auto)</button>
               <button class="trans-btn" data-mode="amt">自手排 (AMT Manual)</button>
-            </div>
-
-            <!-- Gearing Profile Selector (R1 Racing Close-Ratio vs Standard) -->
-            <div class="gearing-mode-bar">
-              <button id="btn-gear-racing" class="gearing-btn active" title="R1 賽道密齒比：1檔153km/h、6檔尾速318km/h，換檔不掉轉">R1 密齒比 (6檔尾速318+)</button>
-              <button id="btn-gear-standard" class="gearing-btn" title="標準巡航齒比">標準街道齒比</button>
             </div>
 
             <!-- AT Selector (P-R-N-D) -->
@@ -397,7 +391,7 @@
 
               <div class="slider-group" style="margin-top: 8px;">
                 <div class="slider-label-group">
-                  <span>渦輪最大增壓值 (Max Boost)</span>
+                  <span id="boost-slider-title">渦輪最大增壓值 (Max Boost)</span>
                   <span id="boost-val">+1.40 bar</span>
                 </div>
                 <input type="range" id="boost-slider" min="40" max="250" step="5" value="140" title="自訂最大增壓值 (0.4 ~ 2.5 bar)">

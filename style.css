@@ -1889,42 +1889,6 @@ input[type="range"] {
 }
 
 /* ==========================================================================
-   Gearing Mode Selector (R1 Close-Ratio vs Standard)
-   ========================================================================== */
-.gearing-mode-bar {
-  display: flex;
-  gap: 8px;
-  margin: 6px 0 10px 0;
-}
-
-.gearing-btn {
-  flex: 1;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(30, 41, 59, 0.7);
-  color: #cbd5e1;
-  font-family: var(--font-display);
-  font-size: 0.78rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-align: center;
-}
-
-.gearing-btn:hover {
-  border-color: rgba(0, 240, 255, 0.4);
-  transform: translateY(-1px);
-}
-
-.gearing-btn.active {
-  background: linear-gradient(135deg, rgba(0, 240, 255, 0.25), rgba(59, 130, 246, 0.35));
-  border-color: #00f0ff;
-  color: #ffffff;
-  box-shadow: 0 0 12px rgba(0, 240, 255, 0.35);
-}
-
-/* ==========================================================================
    Forced Induction System (NA, Turbo, Supercharger)
    ========================================================================== */
 .induction-grid {

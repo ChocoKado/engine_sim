@@ -34,6 +34,8 @@ export class EngineModel {
     this.netTorque = 0;
     this.combustionTorque = 0;
     this.currentEngineDrag = 0;
+    this.lastBovTime = 0;
+    this.prevTorqueScale = 1;
   }
 
   setRunning(running) {
@@ -182,12 +184,15 @@ export class EngineModel {
     this.throttle = this.isIgnitionOn ? clamp(throttleInput, 0, 1) : 0;
     const fillRate = this.throttle >= this.manifoldThrottle ? 8 + this.config.revResponseSpeed * 2 : 18;
     this.manifoldThrottle += (this.throttle - this.manifoldThrottle) * (1 - Math.exp(-dt * fillRate));
-    if (this.isIgnitionOn && this.prevThrottle - this.throttle > 0.3 && this.rpm > this.idleRPM * 2.2) {
+
+    // Calculate throttle release drop for overrun crackles and BOV / Flutter
+    const throttleDrop = this.prevThrottle - this.throttle;
+
+    if (this.isIgnitionOn && throttleDrop > 0.25 && this.rpm > this.idleRPM * 2.2) {
       this.overrunTime = this.exhaust.overrunDuration;
       this.overrunLoad = this.manifoldThrottle;
       if (this.random() < this.exhaust.popChance) this.createPop('overrun', 1.15);
     }
-    this.prevThrottle = this.throttle;
     if (this.overrunTime > 0) {
       this.overrunTime = Math.max(0, this.overrunTime - dt);
       if (this.throttle < 0.1 && this.random() < 1 - Math.exp(-this.exhaust.crackleRate * dt)) {
@@ -221,23 +226,36 @@ export class EngineModel {
     this.bovEvents = [];
     if (this.forcedInduction === 'turbo') {
       const flow = Math.pow(Math.max(0, this.rpm) / this.redlineRPM, 1.25) * (0.15 + 0.85 * this.manifoldThrottle) * Math.sqrt(liters);
-      const targetSpool = this.isIgnitionOn ? clamp(flow * 1.5, 0, 1) : 0;
+      const targetSpool = this.isIgnitionOn ? clamp(flow * 1.55, 0, 1) : 0;
       // Turbo lag: physical turbine spool inertia
-      const spoolRate = targetSpool > this.turboSpool ? 0.30 : 0.60;
+      const spoolRate = targetSpool > this.turboSpool ? 0.32 : 0.65;
       this.turboSpool += (targetSpool - this.turboSpool) * (1 - Math.exp(-dt / spoolRate));
       const targetBoost = Math.pow(this.turboSpool, 1.45) * this.maxBoost * clamp(this.manifoldThrottle * 1.15, 0, 1);
       this.boostPressure += (targetBoost - this.boostPressure) * (1 - Math.exp(-dt * 16));
 
       // Trigger Blow-Off Valve (BOV) or Compressor Surge (Flutter / 貓叫聲)
-      const throttleDrop = this.prevThrottle - this.throttle;
-      if (this.isIgnitionOn && (throttleDrop > 0.20 || (this.isRevLimitingCut && this.throttle > 0.6)) && this.boostPressure > 0.18) {
+      const hasBoost = this.boostPressure > 0.12;
+      const isShiftLift = torqueScale < 0.25 && (this.prevTorqueScale || 1) > 0.55;
+      const isThrottleLift = throttleDrop > 0.18;
+      const isLimiterChirp = this.isRevLimitingCut && this.throttle > 0.6;
+
+      if (this.isIgnitionOn && hasBoost && (isThrottleLift || isShiftLift || isLimiterChirp) && (this.time - (this.lastBovTime || 0) > 0.22)) {
+        this.lastBovTime = this.time;
+        const intensity = clamp(this.boostPressure / this.maxBoost, 0.45, 1.6);
         this.bovEvents.push({
           type: this.bovType,
-          intensity: clamp(this.boostPressure / this.maxBoost, 0.4, 1.5),
+          intensity,
           timestamp: this.time
         });
-        this.boostPressure *= 0.15;
-        this.turboSpool = Math.max(0, this.turboSpool - 0.28);
+        if (this.bovType === 'flutter') {
+          // Compressor surge: air reversing stalls turbine blades
+          this.turboSpool = Math.max(0, this.turboSpool * 0.45);
+          this.boostPressure *= 0.25;
+        } else {
+          // BOV: vents atmospheric charge pipe, turbine continues free-wheeling
+          this.turboSpool = Math.max(0, this.turboSpool * 0.75);
+          this.boostPressure = 0;
+        }
       }
     } else if (this.forcedInduction === 'supercharger') {
       // Crankshaft direct belt drive (Zero lag)
@@ -250,7 +268,10 @@ export class EngineModel {
       this.superchargerSpool = 0;
     }
 
-    const boostTorqueMult = 1 + this.boostPressure * 0.88;
+    this.prevThrottle = this.throttle;
+    this.prevTorqueScale = torqueScale;
+
+    const boostTorqueMult = 1 + this.boostPressure * 0.90;
     const available = this.torqueAtRPM(this.rpm) * boostTorqueMult;
     this.combustionTorque = this.isIgnitionOn && !this.isRevLimitingCut
       ? (available + drag) * this.manifoldThrottle * torqueScale : 0;
