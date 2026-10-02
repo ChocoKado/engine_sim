@@ -206,3 +206,24 @@ test('backfire has one shared event schema, flames consume each event once', () 
   engine.createPop('limiter');
   assert.equal(engine.popEvents.length, 0);
 });
+
+test('turbo flutter/BOV events propagate through drivetrain update on throttle release', () => {
+  const { engine, drive } = setup('i4_flat', 'amt');
+  engine.setForcedInduction('turbo');
+  engine.setBovType('flutter');
+  drive.setAmtGear(0);
+  run(drive, 1.5, 1.0);
+  assert.ok(engine.boostPressure > 0.3, 'turbo should produce boost under throttle');
+
+  let bovEventsCollected = [];
+  for (let i = 0; i < 30; i++) {
+    const status = drive.update(1 / 60, 0, 0);
+    if (status.engine.bovEvents && status.engine.bovEvents.length > 0) {
+      bovEventsCollected.push(...status.engine.bovEvents);
+    }
+  }
+  assert.ok(bovEventsCollected.length > 0, 'throttle release under boost must yield bovEvents in drivetrain snapshot');
+  assert.equal(bovEventsCollected[0].type, 'flutter');
+  assert.ok(bovEventsCollected[0].intensity > 0.5);
+});
+

@@ -112,3 +112,21 @@ test('shifts retain resonant sound with continuous gain automation; limiter uses
   sound.update(state, ENGINE_CONFIGS.i4_flat, {});
   assert.equal(sound.limiterModGain.gain.value, 0);
 });
+
+test('shift cut maintains acoustic continuity without dead silence gap', async () => {
+  const sound = new SoundEngine(() => new Context());
+  await sound.init();
+  sound.update(state, ENGINE_CONFIGS.i4_flat, { isShifting: true, isUpshift: true });
+  assert.ok(sound.combustionGain.gain.value >= 0.20, 'combustion gain must remain audible during shift cut');
+  assert.ok(sound.subBassGain.gain.value >= 0.20, 'sub-bass must retain exhaust body');
+  assert.ok(sound.saturationDriveGain.gain.value >= 0.30, 'saturation drive retains presence');
+});
+
+test('playFlutterSound and playBovSound execute cleanly without exceptions', async () => {
+  const sound = new SoundEngine(() => new Context());
+  await sound.init();
+  sound.setRunning(true);
+  assert.doesNotThrow(() => sound.playFlutterSound(1.2));
+  assert.doesNotThrow(() => sound.playBovSound(1.0));
+});
+

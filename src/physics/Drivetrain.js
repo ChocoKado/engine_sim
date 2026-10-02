@@ -356,9 +356,11 @@ export class Drivetrain {
     this.brakeInput = clamp(Number(brakeInput) || 0, 0, 1);
     this.accumulator += clamp(Number(dt) || 0, 0, 0.25);
     const pops = [];
+    const bovs = [];
     while (this.accumulator + 1e-10 >= PHYSICS_STEP) {
       this.step(PHYSICS_STEP, throttle);
       pops.push(...this.engine.popEvents);
+      bovs.push(...this.engine.bovEvents);
       this.accumulator -= PHYSICS_STEP;
     }
     return { mode: this.mode, gearDisplay: this.getGearDisplay(), currentGear: this.currentGear,
@@ -366,6 +368,6 @@ export class Drivetrain {
       gearRatio: Math.abs(this.gearRatios[this.currentGear]), shiftEnvelope: this.shiftEnvelope,
       isShifting: this.shiftState === 'shifting', isUpshift: this.isUpshift, message: this.lastShiftMessage,
       vehicleMass: this.vehicleMass,
-      engine: this.engine.snapshot(pops) };
+      engine: this.engine.snapshot(pops, bovs) };
   }
 }

@@ -236,12 +236,11 @@ export class EngineModel {
       // Trigger Blow-Off Valve (BOV) or Compressor Surge (Flutter / 貓叫聲)
       const hasBoost = this.boostPressure > 0.08;
       const isShiftLift = torqueScale < 0.25 && (this.prevTorqueScale || 1) > 0.55;
-      const isThrottleLift = throttleDrop > 0.12;
-      const isLimiterChirp = this.isRevLimitingCut && this.throttle > 0.6;
+      const isThrottleLift = throttleDrop > 0.08 || (this.throttle < 0.20 && (this.prevThrottle || 0) >= 0.35);
 
-      if (this.isIgnitionOn && hasBoost && (isThrottleLift || isShiftLift || isLimiterChirp) && (this.time - (this.lastBovTime || 0) > 0.35)) {
+      if (this.isIgnitionOn && hasBoost && (isThrottleLift || isShiftLift) && (this.time - (this.lastBovTime || 0) > 0.25)) {
         this.lastBovTime = this.time;
-        const intensity = clamp(this.boostPressure / this.maxBoost, 0.55, 1.8);
+        const intensity = clamp(this.boostPressure / this.maxBoost, 0.65, 1.8);
         this.bovEvents.push({
           type: this.bovType,
           intensity,
@@ -249,8 +248,8 @@ export class EngineModel {
         });
         if (this.bovType === 'flutter') {
           // Compressor surge: air reversing stalls turbine blades
-          this.turboSpool = Math.max(0, this.turboSpool * 0.45);
-          this.boostPressure *= 0.25;
+          this.turboSpool = Math.max(0, this.turboSpool * 0.40);
+          this.boostPressure *= 0.20;
         } else {
           // BOV: vents atmospheric charge pipe, turbine continues free-wheeling
           this.turboSpool = Math.max(0, this.turboSpool * 0.75);
@@ -346,14 +345,14 @@ export class EngineModel {
     this.exhaustHeat += (heatTarget - this.exhaustHeat) * (1 - Math.exp(-dt * 0.5));
   }
 
-  snapshot(popEvents = this.popEvents) {
+  snapshot(popEvents = this.popEvents, bovEvents = this.bovEvents) {
     return { rpm: this.rpm, redlineRPM: this.redlineRPM, idleRPM: this.idleRPM,
       displacement: this.displacement,
       forcedInduction: this.forcedInduction,
       boostPressure: Number(this.boostPressure.toFixed(2)),
       turboSpool: Number(this.turboSpool.toFixed(2)),
       bovType: this.bovType,
-      bovEvents: this.bovEvents,
+      bovEvents,
       isIgnitionOn: this.isIgnitionOn, crankAngle: this.crankAngle, throttle: this.throttle,
       manifoldThrottle: this.manifoldThrottle, dyno: this.getCurrentDynoOutput(),
       cylinderStates: this.cylinderStates, isRevLimiting: this.isRevLimiting,
