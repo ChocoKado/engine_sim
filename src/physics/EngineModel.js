@@ -1,8 +1,10 @@
 import { ENGINE_CONFIGS } from './EngineConfigurations.js';
 import { EXHAUST_MODELS } from '../audio/ExhaustModels.js';
-import { InductionModel, ATMOSPHERE, chargeThermodynamics, steadyBoost } from './InductionModel.js';
+import { InductionModel, ATMOSPHERE, chargeThermodynamics, steadyBoost, superchargerDriveTorque, superchargerBypass } from './InductionModel.js';
 import { CamControl, camValveLift } from './CamControl.js';
 import { RevLimiter } from './RevLimiter.js';
+import { radialKinematics, radialCyclePhase, radialPistonTravel } from './RadialMechanics.js';
+import { rotaryChamberState } from './RotaryMechanics.js';
 
 export const PHYSICS_STEP = 1 / 240;
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
@@ -60,6 +62,7 @@ export class EngineModel {
     this.limiter?.reset();
     this.cam?.reset();
     this.netTorque = 0;
+    this.availableCrankTorque = 0;
     this.combustionTorque = 0;
     this.currentEngineDrag = 0;
     this.lastBovTime = 0;
@@ -234,17 +237,15 @@ export class EngineModel {
   }
 
   compressorTorque(rpm, displacement, boost) {
-    const thermo = chargeThermodynamics(boost, 0.68);
-    const flow = displacement / 1e6 * rpm / ((this.config.cycleDegrees || 720) / 6) * 0.9
-      * (ATMOSPHERE + boost * 100000) / (287.05 * thermo.intakeTemperature);
-    return flow * thermo.specificWork / Math.max(20, rpm / RPM_PER_RAD) / 0.94
-      + displacement / 1000 * 0.65 * rpm / Math.max(1000, this.config.ratedPowerRPM || this.config.defaultRedlineRPM * 0.92);
+    return superchargerDriveTorque(this.config, rpm, displacement, boost);
   }
 
   steadyTorqueAtRPM(rpm) {
-    const boost = steadyBoost(this.config, this.forcedInduction, this.turboSize, this.maxBoost, rpm, this.displacement);
-    const thermo = chargeThermodynamics(boost, this.forcedInduction === 'supercharger' ? 0.68 : 0.72);
+    let boost = steadyBoost(this.config, this.forcedInduction, this.turboSize, this.maxBoost, rpm, this.displacement);
     const base = this.torqueAtRPM(rpm) * this.cam.steadyFactor(rpm);
+    if (this.forcedInduction === 'supercharger') boost *= 1 - superchargerBypass(this.config, rpm,
+      this.displacement, boost, base, 1, this.idleRPM);
+    const thermo = chargeThermodynamics(boost, this.forcedInduction === 'supercharger' ? 0.68 : 0.72);
     return Math.max(0, base * (thermo.densityRatio - (this.forcedInduction === 'turbo' ? boost * 0.018 : 0))
       - (this.forcedInduction === 'supercharger' ? this.compressorTorque(rpm, this.displacement, boost) : 0));
   }
@@ -338,6 +339,7 @@ export class EngineModel {
       torqueScale: firingScale,
       running: this.isIgnitionOn,
       baseTorque: baseTorque * chargeThermodynamics(this.induction.chargeBoost).densityRatio,
+      unboostedTorque: baseTorque, idleRPM: this.idleRPM,
       bovType: this.bovType, time: this.time
     });
     this.bovEvents = induction.events;
@@ -353,6 +355,10 @@ export class EngineModel {
     this.combustionTorque = this.isIgnitionOn
       ? (available + drag) * this.manifoldThrottle * firingScale : 0;
     this.currentEngineDrag += induction.shaftTorque;
+    // Torque available if idle control admits additional air, after the
+    // current compressor work. Net torque can be zero at a balanced idle;
+    // that is not the engine's available reserve for initial clutch bite.
+    this.availableCrankTorque = Math.max(0, available + drag - this.currentEngineDrag);
     let idleTorque = 0;
     if (this.isIgnitionOn && !this.isRevLimitingCut && this.rpm < this.idleRPM + 100) {
       // Idle control admits additional air to carry accessory / clutch load,
@@ -371,9 +377,11 @@ export class EngineModel {
       this.rpm = Math.max(0, this.rpm + (this.netTorque - loadTorque) / this.inertia * RPM_PER_RAD * dt);
       if (!this.isIgnitionOn && this.rpm < 20) this.rpm = 0;
     }
-    if (!Number.isFinite(coupledRPM) && this.isIgnitionOn && previousRPM > 0 && this.rpm === 0) {
-      // A stopped crank cannot keep firing or restart merely because the pedal
-      // is pressed. Record the actual stall; the explicit starter action is
+    if (!Number.isFinite(coupledRPM) && this.isIgnitionOn && previousRPM > 0
+      && this.rpm < this.idleRPM * 0.25 && this.rpm < previousRPM) {
+      // Below the estimated minimum combustion-sustaining speed, a decelerating
+      // crank has stalled even if the inertia solver approaches zero asymptotically.
+      // Record that loss of combustion; the explicit starter action is
       // setRunning(true). Do not hide excessive load with an RPM floor.
       this.isIgnitionOn = false;
       this.isStalled = true;
@@ -392,32 +400,35 @@ export class EngineModel {
     const Vc = 1 / (rc - 1);
     const manifoldP = this.induction.intakePressure / 100000;
     this.manifoldPressure = manifoldP.toFixed(2);
+    const radialGeometry = this.config.layout === 'radial' ? radialKinematics(this.crankAngle, this.config.cylinders) : null;
+    const radialTravel = radialGeometry ? radialPistonTravel(this.config.cylinders) : null;
 
     for (const cyl of this.cylinderStates) {
       if (this.config.layout === 'rotary') {
         // Three faces each complete intake/compression/expansion/exhaust over
         // three shaft turns. Approximate port windows; no fictitious valve train.
         cyl.chambers = Array.from({ length: 3 }, (_, face) => {
-          const angle = (this.crankAngle + cyl.firingOffset + face * 360) % 1080;
-          const stage = Math.floor(angle / 270);
+          const chamber = rotaryChamberState(this.crankAngle + cyl.firingOffset, face);
+          const { phaseAngle: angle, stage, volume } = chamber;
           const u = angle % 270 / 270;
-          const volume = 0.10 + 0.90 * (stage % 2 === 0 ? u : 1 - u);
           const p = this.rpm < 1 ? manifoldP : stage === 1 ? manifoldP * (1 / volume) ** 1.3
             : stage === 2 ? manifoldP * (1 / volume) ** 1.25 * (1 + 2.5 * this.manifoldThrottle * this.torqueScale * (1 - this.revLimiterCutAmount))
             : stage === 3 ? 1.05 + 3 * Math.exp(-u * 8) * this.manifoldThrottle : manifoldP;
-          return { face, angle, stroke: ['intake', 'compression', 'power', 'exhaust'][stage], pressure: p };
+          return { ...chamber, angle, pressure: p };
         });
         cyl.phaseAngle = (this.crankAngle + cyl.firingOffset) % 1080;
         cyl.stroke = cyl.chambers[0].stroke;
         cyl.intakeValve = cyl.exhaustValve = 0;
         cyl.gasPressure = Math.max(...cyl.chambers.map(c => c.pressure));
         cyl.blowdownPulse = Math.max(0, ...cyl.chambers.filter(c => c.stroke === 'exhaust').map(c => c.pressure - 1));
-        cyl.isFiring = this.isIgnitionOn && !this.ignitionCut && cyl.chambers.some(c => c.stroke === 'power' && c.angle % 270 < 70);
+        cyl.isFiring = this.isIgnitionOn && !this.ignitionCut && cyl.chambers.some(c => c.isIgnitionPhase);
         maxP = Math.max(maxP, cyl.gasPressure);
         continue;
       }
-      const angle = (this.crankAngle + cyl.firingOffset) % 720;
-      const previous = (previousAngle + cyl.firingOffset) % 720;
+      const angle = radialGeometry ? radialCyclePhase(this.crankAngle, cyl.index, this.config.cylinders)
+        : (this.crankAngle + (this.config.firingAngleKind === 'absolute' ? 360 - cyl.firingOffset : cyl.firingOffset) + 720) % 720;
+      const previous = radialGeometry ? radialCyclePhase(previousAngle, cyl.index, this.config.cylinders)
+        : (previousAngle + (this.config.firingAngleKind === 'absolute' ? 360 - cyl.firingOffset : cyl.firingOffset) + 720) % 720;
       cyl.phaseAngle = angle;
       cyl.stroke = ['intake', 'compression', 'power', 'exhaust'][Math.floor(angle / 180)];
       const valves = camValveLift(angle, this.cam.blend);
@@ -430,6 +441,10 @@ export class EngineModel {
       const rad = angle * Math.PI / 180;
       const l = this.rodToCrankRatio;
       cyl.pistonPos = (1 + l - Math.cos(rad) - Math.sqrt(l * l - Math.sin(rad) ** 2)) / 2;
+      if (radialGeometry) {
+        const travel = radialTravel[cyl.index];
+        cyl.pistonPos = clamp((travel.max - radialGeometry[cyl.index].dist) / (travel.max - travel.min), 0, 1);
+      }
 
       // Thermodynamic gas pressure PV^gamma & combustion heat release
       const V = Vc + cyl.pistonPos;

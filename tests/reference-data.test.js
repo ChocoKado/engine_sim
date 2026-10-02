@@ -65,6 +65,45 @@ test('LFA counter reduction and Aventador drop gear cannot be silently omitted',
   assert.equal(VEHICLE_PROFILES.v12.finalDrive, 43 / 15);
 });
 
+test('S2000 AP1 retains Honda primary reduction as well as the rear axle', () => {
+  const config = ENGINE_CONFIGS.honda_f20c, profile = VEHICLE_PROFILES.honda_f20c;
+  assert.equal(profile.primaryRatio, 1.160);
+  assert.equal(profile.finalDrive, 4.100);
+  // Honda 1999 AP1: 225/50R16 rear tyre and 3.133 first, including 1.160 primary.
+  // With the documented 0.98 rolling-radius estimate this is 70.4 km/h at 9000.
+  assert.ok(Math.abs(gearSpeed(config, profile, 1, 9000) - 70.4) < 0.1);
+});
+
+test('2019 Mustang GT Performance Package pairs 6MT with the 3.73 axle', () => {
+  const config = ENGINE_CONFIGS.v8_cross, profile = VEHICLE_PROFILES.v8_cross;
+  assert.equal(profile.transmissionKind, 'manual');
+  assert.equal(profile.gearboxModel, 'MT82-D4');
+  assert.equal(profile.finalDrive, 3.73);
+  assert.equal(profile.gearRatios[4], 1);
+  assert.equal(profile.gearRatios[6], 0.622);
+  assert.ok(Math.abs(profile.curbMass - 1697.8) < 0.01);
+  assert.ok(Math.abs(gearSpeed(config, profile, 1, 7500) - 80.6) < 0.1);
+  // Sixth is a tall overdrive. This is kinematic speed, not attainable top speed.
+  assert.ok(Math.abs(gearSpeed(config, profile, 6, 7500) - 419.6) < 0.1);
+});
+
+test('OEM first-to-second drops vary by car instead of sharing a 61 percent target', () => {
+  // Targets independently calculated from the cited OEM first/second ratios
+  // in docs/gearing-audit.md, assuming the same road speed after engagement.
+  const expected = { i4_cross: 8371, i6: 6167, v6: 5673, rotary_2: 6037 };
+  for (const [id, rpmAfter] of Object.entries(expected)) {
+    const gears = VEHICLE_PROFILES[id].gearRatios;
+    assert.ok(Math.abs(10000 * gears[2] / gears[1] - rpmAfter) < 1, id);
+  }
+  assert.equal(VEHICLE_PROFILES.boxer4.gearRatios[2], 2.235, 'US 2016 STI, not a JDM ratio');
+});
+
+test('derived or unverified reverse ratios are not labelled as published tooth data', () => {
+  assert.equal(VEHICLE_PROFILES.w16.reverseGearingKind, 'assumed-first-gear');
+  assert.equal(VEHICLE_PROFILES.v8_cross.reverseGearingKind, 'carry-over-unverified');
+  assert.equal(VEHICLE_PROFILES.rotary_2.reverseGearingKind, 'same-generation-reference');
+});
+
 test('458, Aventador and Chiron have all seven published forward gears', () => {
   for (const id of ['v8_flat', 'v12', 'w16']) {
     assert.equal(VEHICLE_PROFILES[id].gearCount, 7);

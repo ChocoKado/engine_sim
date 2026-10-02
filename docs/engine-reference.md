@@ -1,6 +1,6 @@
 # 代表引擎與傳動校準資料
 
-查核日期：2026-10-02。預設值選定一款代表車；改裝滑桿是相對該基準的實驗設定。功率儲存為 **kW**，不是把 PS 和 SAE hp 混用。`1 PS = 0.73549875 kW`、`1 hp = 0.745699872 kW`。扭力是曲軸端 Nm，車輛質量包含 75 kg 駕駛。
+查核日期：2026-10-03。預設值選定一款代表車；改裝滑桿是相對該基準的實驗設定。功率儲存為 **kW**，不是把 PS 和 SAE hp 混用。`1 PS = 0.73549875 kW`、`1 hp = 0.745699872 kW`。扭力是曲軸端 Nm，車輛質量包含 75 kg 駕駛。
 
 本文件記錄資料來源及校準假設，不取代整合測試。功能與待驗證項目見 [1～20 修復對照](repair-status.md)。
 
@@ -15,9 +15,9 @@
 | i3 | 2021 Yamaha MT-09，歐規 | 890 | 87.5 / 10,000 | 93 / 7,000 | NA | [Yamaha 歐規型錄](https://cdn2.yamaha-motor.eu/prod/product-assets/2021/MT09DX/Factsheets/2021-MT09DX_sl-SI.pdf) |
 | i4_flat | 2017 CBR1000RR SC77 | 999 | 141 / 13,000 | 114 / 11,000 | NA | [Honda 原廠規格](https://global.honda/jp/news/2017/2170316-cbr1000rr.html) |
 | i4_cross | 2020 YZF-R1，歐規 | 998 | 147.1 / 13,500 | 113.3 / 11,500 | NA | [Yamaha 歐規型錄](https://cdn2.yamaha-motor.eu/prod/product-assets/2020/YZF1000R1/Factsheets/2020-YZF1000R1_en.pdf) |
-| i6 | 1993 Supra Turbo，美規 6MT | 2,997 | 239 / 5,600 | 427 / 4,000 | 序列雙 Turbo | [Toyota 發表](https://pressroom.toyota.com/toyota-supra-icon-half-century-in-making/)、[Toyota New Car Features，廠商文件鏡像](https://supra.vanderwaal.eu/manual/New%20Car%20Features.pdf) |
+| i6 | 1993 Supra Turbo，美規 6MT | 2,997 | 239 / 5,600 | 427 / 4,000 | 序列雙 Turbo | [Toyota 發表](https://pressroom.toyota.com/toyota-supra-icon-half-century-in-making/)、[Toyota 1993 美規型錄，廠商文件鏡像](https://xr793.com/wp-content/uploads/2024/12/1993-Toyota-Supra.pdf) |
 | v6 | 2017 GT-R Premium，美規 | 3,799 | 421.3 / 6,800 | 633.2 / 3,300～5,800 | 雙 Turbo | [Nissan 完整原廠規格](https://usa.nissannews.com/en-US/releases/us-2017-nissan-gt-r-press-kit) |
-| v8_cross | 2019 Mustang GT，第 3 代 Coyote，6MT | 5,038 | 343.0 / 7,000 | 569.4 / 4,600 | NA | [Ford Performance 2020 型錄](https://www.trackey.ford.com/download/PDFS/2020FPPcatalog.pdf) |
+| v8_cross | 2019 Mustang GT US Performance Package，第 3 代 Coyote，6MT | 5,038 | 343.0 / 7,000 | 569.4 / 4,600 | NA | [Ford Performance 第 3 代 Coyote 校準來源](https://www.performanceparts.ford.com/download/PDFS/2020FPPcatalog.pdf)、[Ford 2019 整車技術表，廠商文件鏡像](https://www.mustang6g.com/forums/attachments/2019-mustang-techspecs-pdf.576698/) |
 | v8_flat | 2010 Ferrari 458 Italia | 4,499 | 419 / 9,000 | 540 / 6,000 | NA | [Ferrari 型錄，廠商文件鏡像](https://brochureshub.com/wp-content/uploads/2020/04/Ferrari_int-458Italia.pdf) |
 | v10 | 2012 Lexus LFA | 4,805 | 412 / 8,700 | 480 / 6,800 | NA | [Lexus 原廠規格](https://media.lexus.co.uk/lexus-lfa/) |
 | v12 | 2012 Aventador LP700-4 | 6,498 | 515 / 8,250 | 690 / 5,500 | NA | [Dana／Graziano 原廠供應商資料](https://www.dana.com/globalassets/resource-library/light-vehicle/spec-sheets/dana-specsheet-longitudinaltransmission.pdf) |
@@ -25,7 +25,7 @@
 | radial_7 | Rotec R2800 | 2,800 | 82.0 / 3,700 | 約 220 / 3,200，估算 | NA | [Rotec 技術資料](https://www.rotecaerosport.com/_files/ugd/ef523b_cad71e078ddf483195daf43a05a0b5f2.pdf) |
 | honda_f20c | 1999 Honda S2000，日規 | 1,997 | 184 / 8,300 | 217.7 / 7,500 | NA、VTEC | [Honda 原廠規格](https://www.honda.co.jp/factbook/auto/s2000/199904/050.html) |
 | honda_k20a | 2007 Civic Type R FD2，日規 | 1,998 | 165 / 8,000 | 215 / 6,100 | NA、i-VTEC | [Honda 引擎與 VTEC](https://www.honda.co.jp/factbook/auto/CIVIC_TYPE_R/200703/04.html) |
-| boxer4 | 2016 Subaru WRX STI EJ257，美規 | 2,457 | 227.4 / 6,000 | 393.2 / 4,000 | Turbo | [Subaru 原廠規格](https://subarumedia.iconicweb.com/mediasite/specs/2016_Subaru_WRX_STI_specs.pdf) |
+| boxer4 | 2016 Subaru WRX STI EJ257，美規 | 2,457 | 227.4 / 6,000 | 393.2 / 4,000 | Turbo | [Subaru 原廠規格](https://s3.amazonaws.com/subarumedia.iconicweb.com/mediasite/specs/2016_Subaru_WRX_STI_specs.pdf) |
 | boxer6 | 2025 911 GT3 992.2，歐規 6MT | 3,996 | 375 / 8,500 | 450 / 6,250 | NA | [Porsche 原廠 6MT 規格](https://pnr-prd2-pub2.newsroom.porsche.com/dam/jcr:46cb0e24-ad5a-489c-a404-52c678071d03/pag-911-gt3-mt-en.pdf) |
 | rotary_2 | 2004 Mazda RX-8 RENESIS，美規 6MT | 654 × 2 | 177.5 / 8,500 | 215.6 / 5,500 | NA | [Mazda 原廠規格](https://news.mazdausa.com/download/RX-8-Spec-Sheet-Final.pdf) |
 
@@ -33,7 +33,7 @@
 
 怠速、部分 ECU 限轉值及改裝紅線上下限是操作模擬參數；原廠文件若只刊登最大馬力轉速，不能把該轉速直接當成斷油轉速。提高紅線也不等於無限提高馬力；既有扭力曲線須在高轉衰減。
 
-歐／日規有差異：MT-09 歐規為 890 cc、87.5 kW，日規型錄為 888 cc、88 kW；R7 歐規為 689 cc、日規為 688 cc。此處動力選歐規，該代變速箱齒比相同。Mustang 2019 基準採 Ford Performance 明列的 460 hp／7,000 RPM；部分 2020 技術表將功率轉速寫為 7,500，故不將它混作本基準。
+歐／日規有差異：MT-09 歐規為 890 cc、87.5 kW，日規型錄為 888 cc、88 kW；R7 歐規為 689 cc、日規為 688 cc。此處動力選歐規，該代變速箱齒比相同。Mustang 動力校準採 Ford Performance 同代第 3 代 Coyote M-6007-M50C 的 460 hp／7,000 RPM、420 lb-ft／4,600 RPM；Ford 2019 整車技術表則將功率轉速列為 7,500。兩份廠商文件有差異，模型保留前者作功率錨點，不把整車表的 7,500 RPM 稱為已證實的功率點或 ECU 斷油點。[Ford Performance 原廠型錄](https://www.performanceparts.ford.com/download/PDFS/2020FPPcatalog.pdf)、[Ford 2019 原廠技術表鏡像，PDF p.1](https://www.mustang6g.com/forums/attachments/2019-mustang-techspecs-pdf.576698/)
 
 ## 齒比與車輛負載
 
@@ -48,9 +48,9 @@
 | i3 | 6 | 79/47 | 45/16 | 2.571, 1.947, 1.619, 1.380, 1.190, 1.037 | [Yamaha 2021 原廠發表](https://global.yamaha-motor.com/jp/news/2021/0622/mt-09.html) |
 | i4_flat | 6 | 1.717 | 43/16 | 2.285, 1.777, 1.500, 1.333, 1.214, 1.137 | Honda 原廠規格，上表連結 |
 | i4_cross | 6 | 67/41 | 41/16 | 39/15, 37/17, 35/19, 30/19, 29/21, 30/24 | [Yamaha R1 原廠型錄](https://www.yamaha-motor.co.jp/mc/lineup/pdf/Catalog_YZF-R1_WGP60th_2021.pdf) |
-| i6 | 6 | 1 | 3.133 | 3.827, 2.360, 1.685, 1.312, 1, 0.793 | Toyota New Car Features，上表連結 |
+| i6 | 6 | 1 | 3.133 | 3.827, 2.360, 1.685, 1.312, 1, 0.793 | Toyota 1993 美規型錄，PDF p.16，上表連結；V160 6MT |
 | v6 | 6 | 1 | 3.700 | 4.056, 2.301, 1.595, 1.248, 1.001, 0.796 | Nissan 原廠規格，上表連結；採後軸等效總減速 |
-| v8_cross | 6 | 1 | 3.55 | 3.237, 2.104, 1.422, 1, 0.814, 0.622 | [Ford 同代 MT82-D4 技術表](https://media.ford.com/content/dam/fordmedia/North%20America/US/product/2020/mustang/2020-Mustang-Tech_Specs.pdf)；選 3.55 選配終傳 |
+| v8_cross | 6 | 1 | 3.73 | 3.237, 2.104, 1.422, 1, 0.814, 0.622 | [Ford 2019 MT82-D4 原廠技術表鏡像，PDF p.2、p.4](https://www.mustang6g.com/forums/attachments/2019-mustang-techspecs-pdf.576698/)；選 Performance Package 6MT 的 3.73 TORSEN，搭配 275/40R19 後胎 |
 | v8_flat | 7 | 1 | 5.143 | 3.077, 2.185, 1.626, 1.286, 1.028, 0.839, 0.693 | [Ferrari 458 車主手冊 p.27，廠商文件鏡像](https://www.manualslib.com/manual/900232/Ferrari-458-Italia.html?page=27) |
 | v10 | 6 | 1.259 | 3.417 | 3.231, 2.188, 1.609, 1.233, 0.970, 0.795 | Lexus 原廠規格，上表連結 |
 | v12 | 7 | 47/38 | 43/15 | 43/11, 39/16, 38/21, 35/24, 32/27, 29/30, 27/32 | Dana 原廠供應商資料，上表連結 |
@@ -64,9 +64,11 @@
 
 `VehicleProfiles.js` 以輪胎標示尺寸估算外半徑，再乘 0.98 作有效滾動半徑。輪胎實際載重、胎壓與高速膨脹未作逐款量測。Cd×A 亦為姿態及車身估算：有整流罩機車假設騎士趴低；裸車風阻較大。KTM 約 163 kg 運轉質量、Aventador 約 1,675 kg 為乾重加油水的估算。Ninja 400 採 168 kg 基準；原廠各地型錄有不同配備重量。所有車款另加 75 kg 駕駛。
 
+Mustang 統一為 2019 美規 GT Performance Package 6MT 的輪胎／終傳組合：275/40R19 後胎與 3.73 TORSEN。質量採該年原廠 **基礎 Fastback 6MT 的 3,743 lb ≈ 1,697.8 kg**，加 75 kg 駕駛後約 1,772.8 kg；該技術表未逐項提供 Performance Package 額外配備重量，因此不是已量測的 PP 整備質量。3.55 是其他合法選配，不能在未標示配置時混作這套 PP 基準。倒檔 3.32 尚未取得該年 MT82-D4 原廠表重新查證，保持獨立的未確認標記。[Ford 2019 原廠技術表鏡像，PDF p.2、p.4](https://www.mustang6g.com/forums/attachments/2019-mustang-techspecs-pdf.576698/)
+
 新增車款的原廠整備質量：F20C 1,240 kg、FD2 1,270 kg、STI 3,386 lb、GT3 6MT 1,462 kg、RX-8 6MT 3,029 lb；均另加駕駛。GT3 的 Cd×A = 0.72 m² 來自該代原廠表，其餘新車的 Cd×A 是估算。STI 的原廠最大增壓 14.7 psi 用作校準工作點，6,700 RPM 限轉值則為模擬設定，不聲稱來自該規格表。
 
-六檔 R1 的理論紅線輪速約 317 km/h，四檔約 251 km/h；這是**齒比容許的輪速**，不是保證實車在風阻下達到該速度。實際尾速由輪上功率與滾阻／風阻平衡決定。變速箱也不應為了強行達到某速度而調出假的齒比。
+六檔 R1 的理論紅線輪速約 317 km/h，四檔約 251 km/h；這是**齒比容許的輪速**，不是保證實車在風阻下達到該速度。實際尾速由輪上功率與滾阻／風阻平衡決定，亦受電子限速影響。Mustang 的六檔紅線理論輪速約 419.6 km/h，同樣不表示原廠可達尾速；Ford 2019 表列 GT 的電子限制為 155 mph，約 249.4 km/h。各款理論輪速、換檔落差及估算條件見 [20 款齒比查核](gearing-audit.md)。變速箱不應為了強行達到某速度而調出假的齒比。[Ford 2019 原廠性能表，PDF p.2](https://www.mustang6g.com/forums/attachments/2019-mustang-techspecs-pdf.576698/)
 
 AT／AMT 按鈕是使用者的操控模式；預設原型仍保留 `transmissionKind` 區分單離合、雙離合及手排來源。它不代表上述每一台實車原廠都提供液力 AT。機車與星型地面示範沒有原廠倒檔。
 

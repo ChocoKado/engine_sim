@@ -1,4 +1,5 @@
 import { PerformanceMeter, readPerformanceHistory, savePerformanceHistory } from '../physics/PerformanceMeter.js';
+import { performanceAssessment } from '../physics/PerformanceAnalysis.js';
 
 const seconds = value => value == null ? '—' : `${value.toFixed(2)} s`;
 export function capturePerformanceSetup(engine, drive) {
@@ -6,6 +7,7 @@ export function capturePerformanceSetup(engine, drive) {
     displacement: engine.displacement, redlineRPM: engine.redlineRPM,
     exhaust: engine.exhaust.id, induction: engine.forcedInduction, boost: engine.maxBoost,
     turboSize: engine.turboSize, bov: engine.bovType, mass: drive.vehicleMass, transmission: drive.mode,
+    finalDrive: drive.finalDrive, primaryRatio: drive.primaryRatio, gearRatios: { ...drive.gearRatios }, tireRadius: drive.tireRadius,
     ecu: engine.limiter.mode, limiterHz: engine.limiter.hz, limiterDepth: engine.limiter.depth,
     vtec: engine.cam.enabled, vtecRPM: engine.cam.engageRPM,
     peakHP: engine.dynoData.maxHp, peakTorque: engine.dynoData.maxTorque };
@@ -13,7 +15,8 @@ export function capturePerformanceSetup(engine, drive) {
 export function setupCaption(s) {
   const boost = s.induction === 'na' ? 'NA' : `${s.induction === 'turbo' ? `Turbo ${s.turboSize === 'large' ? '大' : '小'}` : 'TVS'} ${Number(s.boost).toFixed(2)} bar`;
   const release = s.induction === 'turbo' ? ` · ${s.bov === 'flutter' ? 'Flutter' : 'BOV'}` : '';
-  return `${s.displacement} cc · 上限 ${s.redlineRPM} RPM · ${s.transmission?.toUpperCase()} · ${Math.round(s.mass)} kg · ${s.exhaust} · ${boost}${release} · ${s.peakHP} HP · ECU ${s.ecu} ${s.limiterHz} Hz / ${Math.round(s.limiterDepth * 100)}%${s.vtecRPM ? ` · VTEC ${s.vtec ? s.vtecRPM : 'OFF'}` : ''}`;
+  const gearing = Number.isFinite(s.finalDrive) ? ` · 終傳 ${s.finalDrive.toFixed(3)}` : '';
+  return `${s.displacement} cc · 上限 ${s.redlineRPM} RPM · ${s.transmission?.toUpperCase()} · ${Math.round(s.mass)} kg · ${s.exhaust} · ${boost}${release}${gearing} · ${s.peakHP} HP · ECU ${s.ecu} ${s.limiterHz} Hz / ${Math.round(s.limiterDepth * 100)}%${s.vtecRPM ? ` · VTEC ${s.vtec ? s.vtecRPM : 'OFF'}` : ''}`;
 }
 
 export class PerformancePanel {
@@ -66,6 +69,11 @@ export class PerformancePanel {
     }
     const text = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
     text('perf-status', meter.message);
+    const assessment = performanceAssessment(this.engine, this.drive);
+    text('perf-limit', assessment.text);
+    text('perf-gearing-limit', `最高檔紅線輪速 ${assessment.theoreticalTop.toFixed(1)} km/h · 齒比上限，非實測尾速`);
+    text('perf-sc-load', this.engine.forcedInduction === 'supercharger'
+      ? `增壓器實際驅動耗功 ${assessment.shaftPowerKW.toFixed(1)} kW · 當前增壓 ${this.engine.boostPressure.toFixed(2)} bar` : '');
     text('perf-live-time', seconds(meter.elapsed));
     text('perf-zero-100', seconds(meter.metrics?.zeroTo100));
     text('perf-100-200', seconds(meter.metrics?.hundredTo200));

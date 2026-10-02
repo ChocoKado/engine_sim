@@ -30,6 +30,8 @@ export class Drivetrain {
     this.dragArea = profile.dragArea;
     this.tireRadius = profile.tireRadius || 0.33;
     this.finalDrive = profile.finalDrive || 3.65;
+    this.baseFinalDrive = this.finalDrive;
+    this.finalDriveScale = 1;
     this.primaryRatio = profile.primaryRatio || 1;
     this.driveEfficiency = profile.driveEfficiency || (this.engine.config.layout === "radial" ? 0.94 : profile.mass < 500 ? 0.965 : 0.94);
     this.vehicleProfile = profile;
@@ -40,6 +42,15 @@ export class Drivetrain {
 
   setVehicleMass(value) {
     if (Number.isFinite(Number(value))) this.vehicleMass = clamp(Number(value), 180, 3000);
+  }
+
+  setFinalDriveScale(value) {
+    const scale = Number(value);
+    if (!Number.isFinite(scale) || Math.abs(this.speedKmh) > 1 || this.shiftState === 'shifting') return false;
+    this.finalDriveScale = clamp(scale, 0.75, 1.25);
+    this.finalDrive = this.baseFinalDrive * this.finalDriveScale;
+    this.resetShift();
+    return true;
   }
 
   resetShift() {
@@ -175,7 +186,20 @@ export class Drivetrain {
     const rpm = this.engine.rpm;
     const redline = this.engine.redlineRPM;
     let gear = this.currentGear;
-    if (this.shiftState === 'locked' && rpm >= this.engine.idleRPM + (redline - this.engine.idleRPM) * (0.32 + 0.64 * throttle ** 1.4) && gear < this.maxGear) gear++;
+    const economyRPM = this.engine.idleRPM + (redline - this.engine.idleRPM) * (0.32 + 0.64 * throttle ** 1.4);
+    const nextRPM = this.calcRPMFromSpeed(gear + 1, this.speedKmh);
+    const currentThrust = this.engine.steadyTorqueAtRPM(rpm) * this.gearRatios[gear];
+    const nextThrust = nextRPM > this.engine.idleRPM
+      ? this.engine.steadyTorqueAtRPM(nextRPM) * (this.gearRatios[gear + 1] || 0) : 0;
+    // Full-throttle shifts follow each engine's power curve and its actual
+    // adjacent ratios. A margin avoids shifting back and forth at a crossover.
+    const powerShift = throttle > 0.85 && nextThrust > currentThrust * 1.035;
+    // Shift before the limiter starts reducing torque. Waiting until deep
+    // inside its control band can reach a torque/drag equilibrium and leave
+    // the AT stuck in a lower gear indefinitely at full throttle.
+    const approachingLimit = rpm >= redline - this.engine.revLimitControlRange * 1.05;
+    if (this.shiftState === 'locked' && gear < this.maxGear
+      && (throttle > 0.85 ? powerShift || approachingLimit : rpm >= economyRPM)) gear++;
     else if (gear > 1 && (rpm < redline * 0.26 || Math.abs(this.speedKmh) < 8
       || (throttle > 0.88 && rpm < redline * 0.48))) gear--;
     if (gear !== this.currentGear && this.startShift(gear)) this.atShiftCooldown = 0.7;
@@ -185,6 +209,11 @@ export class Drivetrain {
     const velocity = this.speedKmh / 3.6;
     return 0.5 * 1.225 * this.dragArea * velocity * velocity
       + this.vehicleMass * (9.81 * 0.014 + this.brakeInput * 12.0);
+  }
+
+  tireForceLimit() {
+    const velocity = Math.abs(this.speedKmh) / 3.6;
+    return this.vehicleMass * 8.95 + 0.5 * 1.225 * (this.dragArea * 0.5) * velocity * velocity;
   }
 
   moveVehicle(dt, wheelForce, effectiveMass = this.vehicleMass * 1.035) {
@@ -214,9 +243,7 @@ export class Drivetrain {
     const wheelRPM = this.calcRPMFromSpeed(gear, this.speedKmh);
     const slip = (e.rpm - wheelRPM) / RPM_PER_RAD;
     const roadTorque = this.roadResistance() * this.tireRadius / ratio / this.driveEfficiency;
-    const velocity = Math.abs(this.speedKmh) / 3.6;
-    const downforce = 0.5 * 1.225 * (this.dragArea * 0.5) * velocity * velocity;
-    const maxTireForce = this.vehicleMass * 8.95 + downforce;
+    const maxTireForce = this.tireForceLimit();
     const gripTorque = maxTireForce * this.tireRadius / ratio / this.driveEfficiency;
     // Simplified traction control: reduce source torque rather than clipping
     // vehicle speed or adding energy after the clutch locks.
@@ -225,6 +252,7 @@ export class Drivetrain {
     // after the converter had already reached the grip limit.
     const sourceGripTorque = Math.max(0, gripTorque - Math.max(0, turbine - pump));
     if (e.netTorque > sourceGripTorque) {
+      this.tractionReduction = Math.max(this.tractionReduction || 0, (e.netTorque - sourceGripTorque) / Math.max(1, e.netTorque));
       e.combustionTorque -= e.netTorque - sourceGripTorque;
       e.netTorque = sourceGripTorque;
     }
@@ -240,7 +268,12 @@ export class Drivetrain {
     const required = (slip / syncTime + (e.netTorque - pump) / e.inertia
       - (turbine - roadTorque) / reflectedInertia) / (1 / e.inertia + 1 / reflectedInertia);
     const maxTractiveTorque = Math.max(0, gripTorque - turbine);
-    const torque = clamp(required, -capacity, Math.min(capacity, maxTractiveTorque));
+    // The automatic clutch opens before its reaction can extinguish combustion.
+    // Limit the transmitted positive impulse, leaving the crank integration
+    // and the same equal-and-opposite wheel impulse intact.
+    const antiStallCapacity = Math.max(0, e.netTorque - pump
+      + (e.rpm - e.idleRPM * 0.90) * e.inertia / RPM_PER_RAD / dt);
+    const torque = clamp(required, -capacity, Math.min(capacity, maxTractiveTorque, antiStallCapacity));
     this.transmittedTorque = torque + turbine;
     this.moveVehicle(dt, this.transmittedTorque * ratio / this.tireRadius * direction * this.driveEfficiency, mass);
     e.advanceStep(dt, { loadTorque: torque + pump });
@@ -350,6 +383,7 @@ export class Drivetrain {
       if (this.mode === 'at') {
         const speedRatio = wheelRPM / Math.max(1, e.rpm);
         const wantLock = speedRatio > 0.86 && e.rpm > e.idleRPM * 1.4;
+        if (speedRatio < 0.65 || e.rpm < e.idleRPM * 1.25) this.lockup = 0;
         this.lockup = clamp(this.lockup + (wantLock ? dt / 0.35 : -dt / 0.18), 0, 1);
         const stallRPM = Math.max(e.idleRPM * 1.9,
           (e.config.ratedTorqueRPM || e.config.defaultRedlineRPM * 0.65) * 0.50);
@@ -358,7 +392,7 @@ export class Drivetrain {
         pump = e.torqueAtRPM(stallRPM) * (e.rpm / stallRPM) ** 2 * map.capacity
           * (1 - this.lockup) * creepScale;
         const ratio = Math.abs(this.gearRatios[this.currentGear] * this.finalDrive * this.primaryRatio);
-        const gripTorque = this.vehicleMass * 9.81 * 0.95 * this.tireRadius / ratio / this.driveEfficiency;
+        const gripTorque = this.tireForceLimit() * this.tireRadius / ratio / this.driveEfficiency;
         pump = Math.min(pump, gripTorque / map.torqueRatio);
         turbine = pump * map.torqueRatio;
         capacity = peak * 2 * this.lockup;
@@ -368,7 +402,7 @@ export class Drivetrain {
         // torque band. The old capacity curve could balance torque at idle
         // indefinitely, making full-throttle starts crawl for several seconds.
         const speedRatio = clamp(wheelRPM / Math.max(1, e.rpm), 0, 1);
-        const idleBite = peak * 0.12 * clamp(throttle / 0.25, 0, 1);
+        const idleBite = Math.min(peak * 0.12 * clamp(throttle / 0.25, 0, 1), e.availableCrankTorque * 0.65);
         const torqueBudget = Math.max(idleBite, Math.max(0, e.netTorque) * (0.68 + 0.42 * speedRatio ** 2));
         const flareGuard = peak * 1.8 * clamp((e.rpm - e.config.defaultRedlineRPM * 0.52)
           / (e.config.defaultRedlineRPM * 0.25), 0, 1);
@@ -392,6 +426,7 @@ export class Drivetrain {
   }
 
   update(dt, throttleInput, brakeInput) {
+    this.tractionReduction = 0;
     const throttle = clamp(Number(throttleInput) || 0, 0, 1);
     this.brakeInput = clamp(Number(brakeInput) || 0, 0, 1);
     this.accumulator += clamp(Number(dt) || 0, 0, 0.25);

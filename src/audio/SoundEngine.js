@@ -293,7 +293,9 @@ export class SoundEngine {
       const shockFront = 1.0 + 0.12 * Math.sin(Math.min(Math.PI, i * width));
 
       for (let cylinder = 0; cylinder < config.firingAngles.length; cylinder++) {
-        const phase = ((config.cycleDegrees || 720) / 2 - config.firingAngles[cylinder]) / (config.cycleDegrees || 720) * Math.PI * 2;
+        const eventAngle = config.firingAngleKind === 'absolute' ? config.firingAngles[cylinder]
+          : (config.cycleDegrees || 720) / 2 - config.firingAngles[cylinder];
+        const phase = eventAngle / (config.cycleDegrees || 720) * Math.PI * 2;
         const angle = i * phase;
         // Separate-bank exhaust paths contribute unequal pulse amplitudes.
         const bank = config.exhaustBanks?.[cylinder] ?? (cylinder % 2);

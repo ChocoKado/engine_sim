@@ -19,7 +19,7 @@ export function steadyBoost(config, type, size, boost, rpm, displacement = confi
   if (type === 'supercharger') {
     // Positive displacement Roots/TVS: displaced volume per revolution tracks
     // engine demand. Leakage matters at low shaft speed; boost is not RPM/redline.
-    return boost * clamp(1 - 240 / Math.max(400, rpm), 0, 1);
+    return boost * clamp(1 - 240 / Math.max(240, rpm), 0, 1);
   }
   const matching = (displacement / config.defaultDisplacement) ** 0.35;
   const threshold = referenceRPM * (size === 'large' ? 0.48 : 0.26) / matching;
@@ -27,6 +27,46 @@ export function steadyBoost(config, type, size, boost, rpm, displacement = confi
   const onset = x * x * (3 - 2 * x);
   const highFlow = Math.max(0, rpm / referenceRPM - (size === 'large' ? 1.32 : 0.97));
   return boost * onset / (1 + highFlow * (size === 'large' ? 0.45 : 1.3));
+}
+
+export function superchargerDriveTorque(config, rpm, displacement, boost, throttle = 1) {
+  if (rpm <= 0) return 0;
+  const thermo = chargeThermodynamics(boost, 0.68);
+  const demandVolume = displacement / 1e6 * rpm / ((config.cycleDegrees || 720) / 6) * 0.90;
+  const vacuum = 0.72 * (1 - throttle) * clamp(rpm / 500, 0, 1);
+  const manifoldPressure = ATMOSPHERE * (1 - vacuum) + boost * 100000 * throttle;
+  const flow = demandVolume * manifoldPressure / (287.05 * thermo.intakeTemperature);
+  const referenceRPM = config.ratedPowerRPM || config.defaultRedlineRPM * 0.92;
+  return flow * thermo.specificWork / Math.max(rpm * Math.PI / 30, 20) / 0.94
+    + displacement / 1000 * 0.65 * rpm / Math.max(1000, referenceRPM);
+}
+
+// Vacuum unloads a Roots/TVS blower at light load (Magnuson MOAB); Eaton also
+// supports an electronic bypass. This estimated idle torque-reserve control
+// opens that bypass if an extreme pulley/map extrapolation would consume the
+// engine's useful low-speed output. It changes air pressure, never crank RPM or
+// clutch reaction, and ignores ignition cuts: a turning blower still costs work.
+// Both the steady dyno and dynamic reservoir use this same operating point.
+export function superchargerBypass(config, rpm, displacement, nominalBoost, unboostedTorque, throttle = 1,
+  idleRPM = config.defaultIdleRPM) {
+  const vacuumBypass = clamp((0.40 - throttle) / 0.35, 0, 1);
+  const lowSpeed = clamp((idleRPM * 2.2 - rpm) / (idleRPM * 0.9), 0, 1);
+  if (vacuumBypass === 1 || lowSpeed === 0 || nominalBoost <= 0 || !(unboostedTorque > 0)) return vacuumBypass;
+  const targetBoost = nominalBoost * (1 - vacuumBypass);
+  const reserve = unboostedTorque * 0.85;
+  const outputAtBoost = boost => unboostedTorque * chargeThermodynamics(boost, 0.68).densityRatio
+    - superchargerDriveTorque(config, rpm, displacement, boost);
+  if (outputAtBoost(targetBoost) >= reserve) return vacuumBypass;
+  // Choose the best usable low-speed output rather than simply the first
+  // pressure that stops a stall. A large pulley demand can otherwise leave
+  // nearly all extra cylinder torque consumed by compressor work at launch.
+  let low = 0, high = targetBoost;
+  for (let iteration = 0; iteration < 16; iteration++) {
+    const a = low + (high - low) / 3, b = high - (high - low) / 3;
+    if (outputAtBoost(a) > outputAtBoost(b)) high = b; else low = a;
+  }
+  const unloaded = 1 - (low + high) / 2 / nominalBoost;
+  return vacuumBypass + (unloaded - vacuumBypass) * lowSpeed;
 }
 
 export class InductionModel {
@@ -53,12 +93,11 @@ export class InductionModel {
   }
 
   update(dt, { config, type, size, maxBoost, displacement, rpm, throttle,
-    pedalThrottle, torqueScale, running, baseTorque, bovType, time }) {
+    pedalThrottle, torqueScale, running, baseTorque, unboostedTorque, idleRPM, bovType, time }) {
     this.eventCooldown = Math.max(0, this.eventCooldown - dt);
     const events = [];
     const liters = displacement / 1000;
     const omega = rpm * Math.PI / 30;
-    const referenceRPM = config.ratedPowerRPM || config.defaultRedlineRPM * 0.92;
     const demandVolume = displacement / 1e6 * rpm / ((config.cycleDegrees || 720) / 6) * 0.90;
     const reservoirVolume = 0.0015 + displacement / 1e6 * 0.8;
     const nominalBoost = steadyBoost(config, type, size, maxBoost, rpm, displacement);
@@ -146,7 +185,8 @@ export class InductionModel {
       // change it. More boost means a smaller pulley / faster rotor.
       const pulleyRatio = 1.7 * Math.sqrt((1 + maxBoost) / 1.7);
       this.superchargerRPM = rpm * pulleyRatio;
-      this.bypassOpening = running ? clamp((0.40 - throttle) / 0.35, 0, 1) : 1;
+      this.bypassOpening = running ? superchargerBypass(config, rpm, displacement, nominalBoost,
+        unboostedTorque ?? baseTorque, throttle, idleRPM) : 1;
       const targetPressure = running ? nominalBoost * (1 - this.bypassOpening) : 0;
       this.chargeBoost += (targetPressure - this.chargeBoost) * (1 - Math.exp(-dt * 65));
       this.surgeTime = this.ventTime = 0;
@@ -163,10 +203,10 @@ export class InductionModel {
     const vacuum = 0.72 * (1 - throttle) * clamp(rpm / 500, 0, 1);
     this.intakePressure = ATMOSPHERE * (1 - vacuum) + this.chargeBoost * 100000 * throttle;
     this.boostPressure = Math.max(0, (this.intakePressure - ATMOSPHERE) / 100000);
-    this.airFlow = running ? demandVolume * this.intakePressure / (287.05 * this.intakeTemperature) : 0;
+    // A coasting crank still pumps air after ignition is switched off.
+    this.airFlow = demandVolume * this.intakePressure / (287.05 * this.intakeTemperature);
     this.shaftTorque = type === 'supercharger' && rpm > 0
-      ? (this.airFlow * thermo.specificWork / Math.max(omega, 20) / 0.94
-        + liters * 0.65 * (rpm / Math.max(1000, referenceRPM))) : 0;
+      ? superchargerDriveTorque(config, rpm, displacement, this.chargeBoost, throttle) : 0;
     return { densityRatio: thermo.densityRatio, shaftTorque: this.shaftTorque,
       boostPressure: this.boostPressure, events };
   }

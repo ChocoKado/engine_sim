@@ -256,3 +256,92 @@ test('induction changes cannot leak a previous valve event or stale shaft state 
     assert.equal(state.chargePressure, ATMOSPHERE);
   }
 });
+
+test('Roots pressure tends to zero with shaft speed instead of retaining boost at a stopped crank', () => {
+  const config = ENGINE_CONFIGS.i4_cross;
+  for (const rpm of [0, 1, 40, 100, 200]) {
+    assert.equal(steadyBoost(config, 'supercharger', 'small', 3, rpm), 0,
+      'leakage exceeds displacement flow at nearly stopped rotor speed');
+  }
+  const model = engine('supercharger', 'small', 3);
+  hold(model, 1, { rpm: 5000 });
+  model.setRunning(false);
+  const rotor = model.induction.superchargerRPM;
+  model.prepareStep(dt, 0);
+  assert.ok(model.induction.superchargerRPM > 0 && rotor > 0, 'switching off ignition does not stop a belt-connected rotor');
+  assert.ok(model.induction.shaftTorque > 0 && model.induction.airFlow > 0, 'coasting rotors retain physical drive and motored airflow');
+  hold(model, 0.5, { rpm: 0, throttle: 0 });
+  assert.equal(model.induction.superchargerRPM, 0);
+  assert.equal(model.induction.shaftTorque, 0);
+  assert.equal(model.induction.airFlow, 0);
+  assert.ok(Math.abs(model.induction.chargePressure - ATMOSPHERE) < 1);
+  assert.ok(Math.abs(model.induction.intakePressure - ATMOSPHERE) < 1);
+});
+
+test('an extreme pulley demand uses real low-speed bypass unloading with consistent live/dyno torque', () => {
+  for (const id of ['i4_cross', 'rotary_2']) {
+    const model = new EngineModel(id, 'oem');
+    model.setForcedInduction('supercharger'); model.setMaxBoost(3); model.setRunning(true);
+    hold(model, 1, { rpm: model.idleRPM });
+    assert.ok(model.induction.bypassOpening > 0.1 && model.induction.bypassOpening < 1,
+      `${id}: bypass changes pressure physically instead of clamping crank speed`);
+    assert.ok(model.induction.shaftTorque > 0.1, 'unloading cannot erase accessory/compression work');
+    assert.ok(model.netTorque > model.torqueAtRPM(model.rpm) * 0.80,
+      'excess compression demand cannot consume the whole useful low-speed torque reserve');
+    const steady = model.steadyTorqueAtRPM(model.rpm);
+    assert.ok(Math.abs(model.netTorque - steady) < 0.1,
+      'the low-speed dyno point includes the same bypass and shaft power as live physics');
+    const torque = steady;
+    model.setDisplacement(model.displacement * 1.1);
+    assert.ok(Math.abs(model.steadyTorqueAtRPM(model.rpm) / torque - 1.1) < 0.001,
+      'low-speed unloading preserves displacement-dependent torque rather than a fixed output cap');
+    hold(model, 1, { rpm: 5000 });
+    assert.equal(model.induction.bypassOpening, 0, 'useful high-speed operation still closes the bypass');
+    assert.ok(model.boostPressure > 2.7);
+    assert.equal(model.maxBoost, 3, 'the user-selected experimental boost is retained');
+  }
+});
+
+test('high-boost ignition cuts retain blower pressure and drive work with an open throttle', () => {
+  const model = engine('supercharger', 'small', 3);
+  hold(model, 1, { rpm: 4000 });
+  const pressure = model.induction.chargePressure, shaftTorque = model.induction.shaftTorque;
+  const events = hold(model, 0.1, { rpm: 4000, throttle: 1, torqueScale: 0.05 });
+  assert.equal(events.length, 0);
+  assert.equal(model.induction.bypassOpening, 0, 'a torque cut is not a physical throttle lift');
+  assert.ok(model.induction.chargePressure > pressure * 0.99);
+  assert.ok(model.induction.shaftTorque > shaftTorque * 0.99, 'an ignition cut does not give the crank a free blower');
+  assert.ok(model.netTorque < 0, 'the real shaft load consumes rotational energy during a cut');
+});
+
+test('bypass protection cannot hide a genuine excessive external crankshaft load or restart a stalled engine', () => {
+  const model = new EngineModel('i4_cross', 'oem');
+  model.setForcedInduction('supercharger'); model.setMaxBoost(3); model.setRunning(true);
+  for (let step = 0; step < 240 && model.rpm > 0; step++) {
+    model.prepareStep(dt, 1); model.advanceStep(dt, { loadTorque: 1000 });
+  }
+  assert.equal(model.rpm, 0);
+  assert.equal(model.isStalled, true);
+  assert.equal(model.isIgnitionOn, false);
+  for (let step = 0; step < 240; step++) { model.prepareStep(dt, 1); model.advanceStep(dt); }
+  assert.equal(model.rpm, 0, 'the unloaded blower cannot silently invoke the starter');
+  assert.equal(model.induction.chargePressure, ATMOSPHERE);
+  assert.equal(model.combustionTorque, 0);
+});
+
+test('a crank decaying toward zero records a real loss of combustion before floating-point zero', () => {
+  const model = new EngineModel('i4_cross', 'oem');
+  model.setForcedInduction('supercharger'); model.setMaxBoost(3); model.setRunning(true);
+  let lostCombustionAt = null;
+  for (let step = 0; step < 480 && model.rpm > 0; step++) {
+    model.prepareStep(dt, 1);
+    // Speed-proportional load approaches zero with RPM, so an exact-zero-only
+    // stall detector would leave a fictitious running engine indefinitely.
+    model.advanceStep(dt, { loadTorque: 100 * model.rpm / model.idleRPM });
+    if (model.isStalled && lostCombustionAt === null) lostCombustionAt = model.rpm;
+  }
+  assert.ok(lostCombustionAt > 0 && lostCombustionAt < model.idleRPM * 0.25);
+  assert.equal(model.isStalled, true);
+  assert.equal(model.isIgnitionOn, false);
+  assert.equal(model.rpm, 0);
+});

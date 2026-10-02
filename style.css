@@ -2161,6 +2161,14 @@ button:focus-visible, [role="button"]:focus-visible, summary:focus-visible, inpu
 .perf-button.primary { border-color: var(--accent-cyan); color: var(--accent-cyan); background: #00f0ff12; }
 .perf-button:disabled { opacity: .45; cursor: default; }
 .performance-status { min-height: 1.5em; color: var(--accent-cyan); margin: 10px 0; font-size: .85rem; }
+.performance-insight { padding: 10px 12px; border-left: 3px solid #fbbf24; background: #fbbf2408; font-size: .85rem; line-height: 1.5; }
+.performance-insight .meta-desc:empty { display: none; }
+.gearing-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+.gearing-details { margin-top: 10px; font-size: .8rem; }
+.gearing-details summary { cursor: pointer; padding: 8px 0; }
+.gearing-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: clamp(.6rem, 2vw, .8rem); font-variant-numeric: tabular-nums; }
+.gearing-table th, .gearing-table td { padding: 8px 3px; text-align: right; border-bottom: 1px solid #334155; overflow-wrap: anywhere; }
+.gearing-table th:first-child, .gearing-table td:first-child { width: 8%; text-align: left; }
 .performance-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
 .performance-metrics > div { background: #0d1625; border: 1px solid #334155; padding: 14px; border-radius: 10px; }
 .performance-metrics span, .performance-metrics small { display: block; color: #94a3b8; font-size: .8rem; }

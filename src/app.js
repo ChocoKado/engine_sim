@@ -6,6 +6,7 @@ import { EXHAUST_MODELS } from './audio/ExhaustModels.js';
 import { EngineModel } from './physics/EngineModel.js';
 import { Drivetrain } from './physics/Drivetrain.js';
 import { VEHICLE_PROFILES } from './physics/VehicleProfiles.js';
+import { gearingSummary } from './physics/PerformanceAnalysis.js';
 import { SoundEngine } from './audio/SoundEngine.js';
 import { EngineRenderer } from './visuals/EngineRenderer.js';
 import { GaugeRenderer } from './visuals/GaugeRenderer.js';
@@ -247,6 +248,14 @@ export class App {
       });
     }
     this.updateVehicleLoad();
+
+    const changeFinalDrive = value => {
+      this.drivetrain.setFinalDriveScale(Number(value) / 100);
+      this.syncGearingUI();
+      this.updateReferenceStatus();
+    };
+    document.getElementById('final-drive-slider')?.addEventListener('input', e => changeFinalDrive(e.target.value));
+    document.getElementById('final-drive-reset')?.addEventListener('click', () => changeFinalDrive(100));
 
     // Forced Induction Selection (NA, Turbo, Supercharger)
     const inductionBtns = document.querySelectorAll('.induction-btn');
@@ -496,6 +505,9 @@ export class App {
     const badge = document.getElementById('boost-status-badge');
     if (badge) badge.textContent = induction === 'na' ? '自然進氣 (NA)' :
       `${induction === 'turbo' ? `TURBO · ${this.engine.turboSize === 'large' ? '大渦輪' : '小渦輪'}` : 'ROOTS / TVS'} · ${this.engine.maxBoost.toFixed(2)} bar`;
+    const scRangeNote = document.getElementById('supercharger-range-note');
+    if (scRangeNote) scRangeNote.hidden = induction !== 'supercharger' || this.engine.maxBoost <= 1.5;
+    this.syncGearingUI();
     this.syncGearControls();
     this.syncECUControls();
     const rotaryControls = document.getElementById('rotary-idle-controls');
@@ -629,7 +641,8 @@ export class App {
       source.hidden = !config.referenceSource;
       if (config.referenceSource) source.href = config.referenceSource;
     }
-    const isStock = this.engine.displacement === config.defaultDisplacement
+    const isStock = Math.abs((this.drivetrain.finalDriveScale ?? 1) - 1) < 0.001
+      && this.engine.displacement === config.defaultDisplacement
       && this.engine.redlineRPM === config.defaultRedlineRPM
       && this.engine.forcedInduction === (config.defaultInduction || 'na')
       && (this.engine.forcedInduction === 'na' || Math.abs(this.engine.maxBoost - (config.defaultBoost || 0)) < 0.001)
@@ -666,6 +679,34 @@ export class App {
     if (peakTorqueEl) {
       peakTorqueEl.textContent = `${dyno.maxTorque} Nm @ ${dyno.maxTorqueRPM} RPM`;
     }
+  }
+
+  updateGearingAvailability() {
+    const unavailable = Math.abs(this.drivetrain.speedKmh) > 1 || this.drivetrain.shiftState === 'shifting';
+    for (const id of ['final-drive-slider', 'final-drive-reset']) {
+      const element = document.getElementById(id); if (element) element.disabled = unavailable;
+    }
+    const status = document.getElementById('gearing-edit-status');
+    if (status) status.textContent = unavailable ? '請先煞停，再調整終傳。' : '煞停後可調整。';
+  }
+
+  syncGearingUI() {
+    const drive = this.drivetrain;
+    const slider = document.getElementById('final-drive-slider');
+    if (slider) slider.value = Math.round((drive.finalDriveScale ?? 1) * 100);
+    const value = document.getElementById('final-drive-val');
+    if (value) value.textContent = `${Math.abs((drive.finalDriveScale ?? 1) - 1) < 0.001 ? '原廠' : '改裝'} ×${(drive.finalDriveScale ?? 1).toFixed(2)} · ${drive.finalDrive.toFixed(3)}`;
+    const rows = document.getElementById('gearing-rows');
+    if (rows) {
+      rows.replaceChildren(...gearingSummary(this.engine, drive).map(data => {
+        const row = document.createElement('tr');
+        for (const value of [data.gear, data.ratio.toFixed(3), data.redlineSpeed.toFixed(1), data.nextRPM === null ? '—' : Math.round(data.nextRPM)]) {
+          const cell = document.createElement('td'); cell.textContent = value; row.appendChild(cell);
+        }
+        return row;
+      }));
+    }
+    this.updateGearingAvailability();
   }
 
   initKeybindingsUI() {
@@ -783,6 +824,7 @@ export class App {
     const drivetrainStatus = this.drivetrain.update(dt, throttle, brake);
     const engineStatus = drivetrainStatus.engine;
     this.syncEnginePowerState();
+    this.updateGearingAvailability();
 
     // Web Audio Sound Engine update
     if (this.isEngineRunning) {

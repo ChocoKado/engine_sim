@@ -391,6 +391,21 @@
             <p class="meta-desc">切換引擎會套用對應的模擬車重；可自行加重，體驗負載對起步與拉轉的影響。</p>
           </div>
 
+          <!-- OEM gearing and stopped-vehicle final-drive tuning -->
+          <div class="config-field gearing-controls">
+            <div class="slider-label-group">
+              <label for="final-drive-slider">終傳比調整 (Final Drive)</label>
+              <span id="final-drive-val">原廠 ×1.00</span>
+            </div>
+            <input type="range" id="final-drive-slider" min="75" max="125" step="1" value="100">
+            <div class="gearing-actions"><button id="final-drive-reset" class="perf-button" type="button">恢復原廠終傳</button><span id="gearing-edit-status" class="meta-desc">煞停後可調整。</span></div>
+            <p class="meta-desc">左：較長，紅線輪速更高。右：較短，輪上扭力更大。尾速仍受功率與風阻限制。</p>
+            <details class="gearing-details"><summary>各檔齒比與紅線速度</summary>
+              <table class="gearing-table"><thead><tr><th>檔</th><th>齒比</th><th>紅線 km/h</th><th>升檔後 RPM</th></tr></thead><tbody id="gearing-rows"></tbody></table>
+              <p class="meta-desc">升檔轉速依同一輪速換算；表列速度是齒比上限，不是實測尾速。</p>
+            </details>
+          </div>
+
           <!-- Forced Induction System (NA, Turbo, Supercharger) -->
           <div class="config-field">
             <div class="slider-label-group">
@@ -421,7 +436,8 @@
                   <button class="turbo-size-btn" data-turbo-size="large" aria-pressed="false">改裝大渦輪</button>
                 </div>
               </div>
-              <p id="supercharger-note" class="meta-desc" hidden>Roots／TVS 容積式：轉子隨曲軸轉動，收油開啟旁通閥；輸出已扣除增壓器驅動耗功。</p>
+              <p id="supercharger-note" class="meta-desc" hidden>Roots／TVS 容積式：轉子隨曲軸轉動，低轉或收油由旁通卸載；輸出已扣除實際驅動耗功。</p>
+              <p id="supercharger-range-note" class="meta-desc" hidden>此設定超出常見單級 TVS 的公開工作範圍，此處採實驗估算，實車需另行匹配增壓器；設定壓力不代表每個 RPM 都能維持。</p>
               <div class="bov-selection-row">
                 <span class="bov-label">收油洩壓聲浪:</span>
                 <div class="bov-btn-group">
@@ -544,6 +560,11 @@
         </div>
         <p class="meta-desc">選 D 或 AMT 前進檔後準備，踩油門開始。也可按「回到起點並準備」重設車速與轉速；準備時自動煞住，踩油門釋放。可提前結束並保存已完成項目。</p>
         <p id="perf-status" class="performance-status" role="status" aria-live="polite">煞停後準備測試。</p>
+        <div class="performance-insight">
+          <p id="perf-limit">啟動引擎後可查看當前性能限制。</p>
+          <p id="perf-gearing-limit" class="meta-desc"></p>
+          <p id="perf-sc-load" class="meta-desc"></p>
+        </div>
         <div class="performance-metrics">
           <div><span>0–100 km/h</span><strong id="perf-zero-100">—</strong></div>
           <div><span>100–200 km/h</span><strong id="perf-100-200">—</strong></div>

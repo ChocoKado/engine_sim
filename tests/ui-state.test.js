@@ -15,6 +15,7 @@ class Element {
   }
   setAttribute(name, value) { this.attributes[name] = value; }
   replaceChildren(...children) { this.children = children; }
+  appendChild(child) { this.children.push(child); }
 }
 
 test('performance reset clears road momentum and held throttle, then selects a valid launch gear', () => {
@@ -125,7 +126,8 @@ for (const mode of ['at', 'amt']) {
 function fixture() {
   const ids = new Map(['displacement-slider', 'displacement-val', 'redline-slider', 'redline-val',
     'turbo-controls-panel', 'boost-slider', 'boost-val', 'boost-slider-title', 'boost-status-badge', 'supercharger-note',
-    'tuning-state-badge', 'vehicle-mass-slider', 'vehicle-mass-val', 'rotary-idle-controls', 'rotary-idle-mode']
+    'tuning-state-badge', 'vehicle-mass-slider', 'vehicle-mass-val', 'rotary-idle-controls', 'rotary-idle-mode',
+    'supercharger-range-note']
     .map(id => [id, new Element()]));
   const induction = ['na', 'turbo', 'supercharger'].map(value => new Element({ induction: value }));
   const sizes = ['small', 'large'].map(value => new Element({ turboSize: value }));
@@ -202,6 +204,44 @@ test('Roots/TVS shows SC explanation while hiding turbo-only configuration', () 
     assert.equal(state.ids.get('turbo-controls-panel').style.display, 'block');
     assert.ok(state.turboOnly.every(element => element.style.display === 'none'));
     assert.match(state.ids.get('boost-status-badge').textContent, /ROOTS \/ TVS/);
+    assert.equal(state.ids.get('supercharger-range-note').hidden, true);
+    state.app.engine.maxBoost = 3; state.app.syncTuningUI();
+    assert.equal(state.ids.get('supercharger-range-note').hidden, false);
+    state.app.engine.forcedInduction = 'turbo'; state.app.syncTuningUI();
+    assert.equal(state.ids.get('supercharger-range-note').hidden, true);
+  } finally { state.restore(); }
+});
+
+test('gear table follows selected engine, redline and final drive; changes require a stopped vehicle', () => {
+  const state = fixture();
+  try {
+    for (const id of ['final-drive-slider', 'final-drive-reset', 'final-drive-val', 'gearing-edit-status', 'gearing-rows']) {
+      state.ids.set(id, new Element());
+    }
+    const app = state.app;
+    app.engine = new EngineModel('i4_cross', 'oem'); app.drivetrain = new Drivetrain(app.engine);
+    app.syncGearingUI();
+    const rows = () => state.ids.get('gearing-rows').children;
+    assert.equal(rows().length, 6);
+    assert.deepEqual(rows()[0].children.map(cell => String(cell.textContent)), ['1', '2.600', '152.2', '11719']);
+    const speed = Number(rows()[5].children[2].textContent);
+    app.drivetrain.setFinalDriveScale(0.8); app.syncGearingUI();
+    assert.match(state.ids.get('final-drive-val').textContent, /×0.80/);
+    assert.ok(Math.abs(Number(rows()[5].children[2].textContent) - speed / 0.8) < 0.1);
+    App.prototype.updateReferenceStatus.call(app);
+    assert.equal(state.ids.get('tuning-state-badge').textContent, '自訂改裝');
+    app.drivetrain.speedKmh = 80; app.updateGearingAvailability();
+    assert.equal(state.ids.get('final-drive-slider').disabled, true);
+    assert.equal(state.ids.get('final-drive-reset').disabled, true);
+    assert.match(state.ids.get('gearing-edit-status').textContent, /煞停/);
+    app.drivetrain.speedKmh = 0; app.updateGearingAvailability();
+    assert.equal(state.ids.get('final-drive-slider').disabled, false);
+    app.engine.setConfig('v12'); app.drivetrain.configureVehicle(); app.syncGearingUI();
+    assert.equal(rows().length, 7);
+    assert.equal(state.ids.get('final-drive-slider').value, 100);
+    assert.equal(rows()[6].children[3].textContent, '—');
+    app.engine.setRedlineRPM(6000); app.syncGearingUI();
+    assert.equal(rows()[0].children[2].textContent, app.drivetrain.calcSpeedFromRPM(1, app.engine.redlineRPM).toFixed(1));
   } finally { state.restore(); }
 });
 

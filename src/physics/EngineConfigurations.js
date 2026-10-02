@@ -3,6 +3,7 @@
 // assumptions are recorded below and in docs/engine-reference.md.
 
 import { ADDITIONAL_ENGINES } from './AdditionalEngines.js';
+import { radialFiringAngles } from './RadialMechanics.js';
 
 export const ENGINE_CONFIGS = {
   // 1-Cylinder (Single)
@@ -157,7 +158,9 @@ export const ENGINE_CONFIGS = {
     cylinders: 4,
     layout: 'inline',
     bankAngle: 0,
-    firingAngles: [0, 270, 450, 540],
+    // Physical cylinder order 1–3–2–4; event gaps 270–180–90–180°.
+    firingAngles: [0, 450, 270, 540],
+    firingAngleKind: 'absolute',
     defaultDisplacement: 1000,
     minDisplacement: 998,
     maxDisplacement: 1300,
@@ -532,3 +535,6 @@ for (const [id, reference] of Object.entries(REFERENCES)) {
   ENGINE_CONFIGS[id].vehicleKind = ENGINE_CONFIGS[id].cylinders <= 4 ? 'motorcycle' : 'car';
 }
 Object.assign(ENGINE_CONFIGS, ADDITIONAL_ENGINES);
+// Articulated-rod TDC differs slightly from evenly spaced cylinder axes.
+ENGINE_CONFIGS.radial_7.firingAngles = [...radialFiringAngles(7)];
+ENGINE_CONFIGS.radial_7.firingAngleKind = 'absolute';

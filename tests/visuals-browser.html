@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="zh-TW">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>引擎機械動畫 QA</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 16px; background: #080d15; color: #cbd5e1; font: 14px system-ui; }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px; }
+  select, button, input { min-height: 36px; }
+  select, button, #download { background: #1e293b; color: white; padding: 6px; border: 1px solid #475569; }
+  #download { display: inline-flex; min-height: 36px; align-items: center; text-decoration: none; }
+  label { display: flex; gap: 6px; align-items: center; }
+  #main-frame { width: min(780px, 100%); height: 380px; }
+  #gallery { display: grid; grid-template-columns: repeat(auto-fit,minmax(280px,1fr)); gap: 12px; margin-top: 20px; }
+  article { min-width: 0; border: 1px solid #334155; border-radius: 8px; padding: 8px; cursor: pointer; }
+  article h2 { font-size: 12px; font-weight: 500; margin: 0 0 8px; }
+  .preview { height: 190px; width: 100%; overflow: hidden; }
+  #readout { margin: 12px 0; }
+</style>
+<header>
+  <label>引擎 <select id="engine"></select></label>
+  <label>視角 <select id="view"><option value="multi">完整機構</option><option value="focused">單缸／轉子詳細</option></select></label>
+  <label>汽缸 <input id="cylinder" type="number" min="1" max="16" value="1" style="width:60px"></label>
+  <label>畫面 <select id="size"><option value="780x380">780 × 380</option><option value="320x110">320 × 110 手機</option><option value="180x110">180 × 110 窄幅橫向</option><option value="390x210">390 × 210</option></select></label>
+  <label>相位 <input id="phase" type="range" min="0" max="1080" step="1" value="360"></label>
+  <button id="play">播放慢動作</button>
+  <a id="download" download="engine-cutaway.png">下載目前 PNG</a>
+  <label><input id="running" type="checkbox" checked>燃燒</label>
+  <label><input id="high-cam" type="checkbox">高凸輪</label>
+</header>
+<div id="main-frame"><canvas id="main-canvas"></canvas></div>
+<p id="readout"></p>
+<p>圖集使用相同曲軸相位，可直接比較所有 20 種配置。點選卡片切換到上方詳看；無聲音、無道路動力。</p>
+<section id="gallery"></section>
+<script type="module">
+import { EngineModel } from '/src/physics/EngineModel.js';
+import { ENGINE_CONFIGS } from '/src/physics/EngineConfigurations.js';
+import { EngineRenderer } from '/src/visuals/EngineRenderer.js';
+const byId = id => document.getElementById(id);
+const select = byId('engine');
+for (const c of Object.values(ENGINE_CONFIGS)) { const option = document.createElement('option'); option.value=c.id;option.textContent=c.shortName;select.append(option); }
+select.value='i4_cross';
+let engine = new EngineModel(select.value,'oem'), playing = false, last = 0;
+const renderer = new EngineRenderer(byId('main-canvas'));
+const gallery = [];
+for (const c of Object.values(ENGINE_CONFIGS)) {
+  const card=document.createElement('article'), title=document.createElement('h2'), frame=document.createElement('div'), canvas=document.createElement('canvas');
+  title.textContent=c.name; frame.className='preview';frame.append(canvas);card.append(title,frame);byId('gallery').append(card);
+  const r = new EngineRenderer(canvas); r.setCleanMode(true);
+  gallery.push({ engine: new EngineModel(c.id,'oem'), renderer:r });
+  card.addEventListener('click',()=>{select.value=c.id;engine=new EngineModel(c.id,'oem');draw();window.scrollTo({top:0,behavior:'smooth'});});
+}
+// auto-fit initially gives the first card the entire row. Measure all previews
+// after every card is attached, so no renderer retains that temporary width.
+gallery.forEach(item=>item.renderer.resize());
+function prepare(e) {
+  e.isIgnitionOn=byId('running').checked;e.rpm=e.isIgnitionOn?e.idleRPM:0;
+  e.manifoldThrottle=e.isIgnitionOn?0.5:0;e.crankAngle=Number(byId('phase').value) % (e.config.mechanicalCycleDegrees||720);
+  e.cam.blend=byId('high-cam').checked&&e.cam.spec?1:0;
+  // Refresh pressure/chamber telemetry at this exact phase without advancing
+  // time or simulating road load; 1x colour uses those physical states.
+  e.advanceStep(0,{coupledRPM:e.rpm});
+}
+function draw() {
+  prepare(engine); renderer.viewMode=byId('view').value;renderer.focusedCylIndex=Math.max(0,Number(byId('cylinder').value)-1);
+  renderer.render(engine,{},0);
+  byId('cylinder').max=engine.cylinderStates.length;
+  byId('readout').textContent=`${engine.config.name} · 曲軸 ${engine.crankAngle.toFixed(0)}° · ${engine.config.layout} · ${engine.cylinderStates.length} 汽缸／轉子`;
+  gallery.forEach(item=>{prepare(item.engine);item.renderer.render(item.engine,{},0);});
+  byId('download').href=renderer.canvas.toDataURL('image/png');
+  byId('download').download=`${engine.config.id}-${renderer.viewMode}-${engine.crankAngle.toFixed(0)}deg.png`;
+  window.engineVisualQA={ engine, renderer, draw, gallery };
+}
+select.addEventListener('change',()=>{engine=new EngineModel(select.value,'oem');draw();});
+['view','phase','cylinder','running','high-cam'].forEach(id=>byId(id).addEventListener('input',draw));
+byId('size').addEventListener('change',()=>{const [w,h]=byId('size').value.split('x').map(Number);byId('main-frame').style.width=w+'px';byId('main-frame').style.height=h+'px';renderer.resize();draw();});
+byId('play').addEventListener('click',()=>{playing=!playing;byId('play').textContent=playing?'暫停':'播放慢動作';});
+function animate(t) { if (playing&&t-last>50) {byId('phase').value=(Number(byId('phase').value)+12)%1080;draw();last=t;} requestAnimationFrame(animate); }
+draw();requestAnimationFrame(animate);
+</script>
+</html>

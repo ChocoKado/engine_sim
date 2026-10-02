@@ -3,7 +3,7 @@
 // Chassis load includes a 75 kg driver. Cd*A and effective rolling radius are
 // simulation estimates, not manufacturer acceleration or top-speed claims.
 // Full data provenance and the aviation demonstrator exception:
-// docs/engine-reference.md.
+// docs/engine-reference.md and docs/gearing-audit.md.
 const DRIVER_MASS = 75;
 const rollingRadius = (widthMM, aspectPercent, rimInches) =>
   ((rimInches * 25.4 / 2 + widthMM * aspectPercent / 100) / 1000) * 0.98;
@@ -35,7 +35,7 @@ export const VEHICLE_PROFILES = {
   boxer4: vehicle(3386 * 0.45359237, {
     dragArea: 0.74, tireRadius: rollingRadius(245, 40, 18), finalDrive: 3.90,
     gearRatios: ratios([3.636, 2.235, 1.521, 1.137, 0.971, 0.756], 3.545), transmissionKind: 'manual',
-    gearingKind: 'published', referenceSource: 'https://subarumedia.iconicweb.com/mediasite/specs/2016_Subaru_WRX_STI_specs.pdf',
+    gearingKind: 'published', referenceSource: 'https://s3.amazonaws.com/subarumedia.iconicweb.com/mediasite/specs/2016_Subaru_WRX_STI_specs.pdf',
   }),
   boxer6: vehicle(1462, {
     dragArea: 0.72, tireRadius: rollingRadius(315, 30, 21), finalDrive: 4.30,
@@ -60,6 +60,9 @@ export const VEHICLE_PROFILES = {
     dragArea: 0.36, tireRadius: rollingRadius(150, 60, 17), primaryRatio: 71 / 32, finalDrive: 41 / 14,
     gearRatios: ratios([41 / 14, 37 / 18, 34 / 21, 32 / 24, 30 / 26, 28 / 27]), transmissionKind: 'manual',
     gearingKind: 'published', referenceSource: 'https://www.kawasaki.cz/cs/products/Supersport___Sport/2019/Ninja_400/specifications?Uid=08AEXlgLWV5bDA0LWlFeXA1RXVBQXQoLUQ0LUApdX1xQClA',
+    // The regional archive mixes 172/174 kg and old suspension data into this
+    // page. Kawasaki's contemporary EU brochure gives this generation 168 kg.
+    massReferenceSource: 'https://storage.kawasaki.eu/repository/Global%20Repository/Brochures/MY18/18MY_Ninja_supersport-_sport_brochure.pdf',
   }),
   i2_270: vehicle(188, {
     dragArea: 0.36, tireRadius: rollingRadius(180, 55, 17), primaryRatio: 77 / 40, finalDrive: 42 / 16,
@@ -89,17 +92,29 @@ export const VEHICLE_PROFILES = {
   i6: vehicle(1549, {
     dragArea: 0.64, tireRadius: rollingRadius(255, 40, 17), finalDrive: 3.133,
     gearRatios: ratios([3.827, 2.360, 1.685, 1.312, 1.000, 0.793], 3.280), transmissionKind: 'manual',
-    gearingKind: 'published', referenceSource: 'https://supra.vanderwaal.eu/manual/New%20Car%20Features.pdf',
+    // Manufacturer-authored 1993 US brochure. The former NCF mirror actually
+    // contains 1997 updates, although the V160 forward ratios are unchanged.
+    gearboxModel: 'V160', gearingKind: 'published',
+    referenceSource: 'https://xr793.com/wp-content/uploads/2024/12/1993-Toyota-Supra.pdf',
   }),
   v6: vehicle(3929 * 0.45359237, {
     dragArea: 0.64, tireRadius: rollingRadius(285, 35, 20), finalDrive: 3.700,
     gearRatios: ratios([4.056, 2.301, 1.595, 1.248, 1.001, 0.796], 3.383), transmissionKind: 'dct',
     gearingKind: 'published', referenceSource: 'https://usa.nissannews.com/en-US/releases/us-2017-nissan-gt-r-press-kit',
   }),
-  v8_cross: vehicle(1681, {
-    dragArea: 0.72, tireRadius: rollingRadius(275, 40, 19), finalDrive: 3.55,
+  v8_cross: vehicle(3743 * 0.45359237, {
+    // Match the 19-inch staggered tyres to the 2019 GT Performance Package
+    // with 6MT. Its factory TORSEN axle is 3.73; 3.55 is another configuration.
+    // Ford publishes a base 6MT curb mass; option-specific PP mass is unknown.
+    referenceTrim: '2019 US GT Performance Package, 6MT',
+    massKind: 'published-base-6mt-options-not-measured',
+    dragArea: 0.72, tireRadius: rollingRadius(275, 40, 19), finalDrive: 3.73,
     gearRatios: ratios([3.237, 2.104, 1.422, 1.000, 0.814, 0.622], 3.32), transmissionKind: 'manual',
-    gearingKind: 'published', referenceSource: 'https://media.ford.com/content/dam/fordmedia/North%20America/US/product/2020/mustang/2020-Mustang-Tech_Specs.pdf',
+    gearboxModel: 'MT82-D4', gearingKind: 'published',
+    // Ford's 2019 press sheet (manufacturer-authored mirror) lists forward
+    // ratios and tyre/axle options, but omits reverse. Keep R separately tagged.
+    reverseGearingKind: 'carry-over-unverified',
+    referenceSource: 'https://www.mustang6g.com/forums/attachments/2019-mustang-techspecs-pdf.576698/',
   }),
   v8_flat: vehicle(1485, {
     dragArea: 0.62, tireRadius: rollingRadius(295, 35, 20), finalDrive: 5.143,
@@ -115,11 +130,13 @@ export const VEHICLE_PROFILES = {
     dragArea: 0.68, tireRadius: rollingRadius(335, 30, 20), primaryRatio: 47 / 38, finalDrive: 43 / 15,
     gearRatios: ratios([43 / 11, 39 / 16, 38 / 21, 35 / 24, 32 / 27, 29 / 30, 27 / 32], 41 / 14), transmissionKind: 'amt',
     gearingKind: 'published', referenceSource: 'https://www.dana.com/globalassets/resource-library/light-vehicle/spec-sheets/dana-specsheet-longitudinaltransmission.pdf',
+    tireReferenceSource: 'https://www.autoblog.gr/wp-content/uploads/2011/02/lamborghini_aventador_lp_700-4_-_technical_data.pdf',
   }),
   w16: vehicle(1995, {
     dragArea: 0.78, tireRadius: chironRadius, finalDrive: 1,
     gearRatios: ratios(chironRatios, chironRatios[0]), transmissionKind: 'dct',
     gearingKind: 'derived-from-published-speeds',
+    reverseGearingKind: 'assumed-first-gear',
     referenceSource: 'https://bugatti-newsroom.imgix.net/66703700d9bf8f4b7ce9211c/211122_BU_Chiron%20ENG.pdf',
   }),
   radial_7: vehicle(575, {

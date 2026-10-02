@@ -3,8 +3,10 @@
 // Pistons, connecting rods, crankshaft counterweights, camshaft valves,
 // spark plug electric arc ignition, combustion fireball, and glowing exhaust runners.
 
-import { radialKinematics, radialFiringAngles, wrapDegrees, cylinderViewLayout, rotaryHousingPoint, rotaryKinematics } from './MechanicalKinematics.js';
+import { radialKinematics, radialCyclePhase, cylinderViewLayout,
+  rotaryHousingPoint, rotaryCycleKinematics, rotaryChamberState, pistonKinematics, pistonCyclePhase, engineAssemblyLayout } from './MechanicalKinematics.js';
 import { camValveLift } from '../physics/CamControl.js';
+import { rotaryRotorFacePoint, rotarySparkPlugMounts } from '../physics/RotaryMechanics.js';
 
 export class EngineRenderer {
   constructor(canvas) {
@@ -19,6 +21,7 @@ export class EngineRenderer {
     // Allows user to inspect stroke cycles clearly even at 16,000 RPM!
     this.animationSpeed = 1.0;
     this.visualCrankAngle = 0;
+    this.visualConfigId = null;
 
     // Visual particles for sparks and flames
     this.sparkParticles = [];
@@ -45,6 +48,7 @@ export class EngineRenderer {
   resize() {
     const rect = this.canvas.parentElement.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
+    this.dpr = dpr;
     this.width = rect.width;
     this.height = Math.max(80, rect.height || 380);
 
@@ -58,7 +62,7 @@ export class EngineRenderer {
   }
 
   setAnimationSpeed(speed) {
-    this.animationSpeed = Math.max(0.05, Math.min(1.0, Number(speed)));
+    if (Number.isFinite(Number(speed))) this.animationSpeed = Math.max(0.05, Math.min(1.0, Number(speed)));
   }
 
   setViewMode(mode) {
@@ -77,9 +81,15 @@ export class EngineRenderer {
 
     // Advance visual crank angle scaled by animationSpeed:
     // Engine RPM stays full speed for sound & physics, while visual animation runs at user's chosen speed!
+    if (this.visualConfigId !== engine.config.id) {
+      this.visualConfigId = engine.config.id;
+      this.visualCrankAngle = engine.crankAngle;
+      this.sparkParticles.length = 0;
+    }
+    this.frameDt = Math.max(0, Math.min(0.1, Number(dt) || 0));
     const visualDegPerSec = engine.rpm * 6 * this.animationSpeed;
     this.visualCrankAngle = this.animationSpeed === 1 ? engine.crankAngle
-      : (this.visualCrankAngle + visualDegPerSec * dt) % (engine.config.mechanicalCycleDegrees || 720);
+      : (this.visualCrankAngle + visualDegPerSec * this.frameDt) % (engine.config.mechanicalCycleDegrees || 720);
 
     // Clear background with rich dark mechanical slate gradient
     const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
@@ -103,24 +113,16 @@ export class EngineRenderer {
       this.drawRotaryEngine(ctx, engine, w, h, hideText);
     } else if (config.layout === 'boxer' && this.viewMode !== 'focused') {
       this.drawBoxerEngine(ctx, engine, w, h, hideText);
-    } else if (config.layout === 'radial' && this.viewMode !== 'focused') {
+    } else if (config.layout === 'radial') {
       this.drawRadialEngine(ctx, engine, w, h, hideText);
+    } else if (this.viewMode !== 'focused') {
+      this.drawAssembledEngine(ctx, engine, w, h, hideText);
     } else {
       const layout = cylinderViewLayout(cylinders, config, w, h, {
         focusedIndex: this.viewMode === 'focused' ? this.focusedCylIndex : null,
         showLabels: !hideText,
       });
-      const labeledGroups = new Set();
       layout.forEach(cell => {
-        if (!hideText && this.viewMode !== 'focused' && !labeledGroups.has(cell.groupIndex)
-          && (config.layout === 'w' || config.layout === 'v' && cylinders.length > 6)) {
-          ctx.save();
-          ctx.font = '600 10px Rajdhani, sans-serif';
-          ctx.fillStyle = '#94a3b8';
-          ctx.fillText(`BANK ${cell.bankIndex + 1} · 汽缸剖面`, cell.group.left + 4, cell.group.top + 12);
-          ctx.restore();
-          labeledGroups.add(cell.groupIndex);
-        }
         ctx.save();
         ctx.translate(cell.x, cell.y);
         ctx.rotate(cell.angle * Math.PI / 180);
@@ -130,7 +132,7 @@ export class EngineRenderer {
     }
 
     // Update and draw floating fire/spark particles
-    this.renderParticles(ctx);
+    this.renderParticles(ctx, this.frameDt);
 
     // Draw Telemetry Overlay inside canvas (clean animation hides text)
     if (!hideText) {
@@ -138,11 +140,70 @@ export class EngineRenderer {
     }
   }
 
+  drawAssembledEngine(ctx, engine, w, h, hideText) {
+    const layout = engineAssemblyLayout(engine.cylinderStates, engine.config, w, h, { showLabels: !hideText });
+    this.drawCrankcase(ctx, layout.map(cell => cell.journal), layout[0].scale);
+    this.drawBankHeads(ctx, layout, engine);
+    // Draw distant stations before near stations so the banks resemble one
+    // cut-open block. Every cylinder keeps its own live firing phase.
+    [...layout].sort((a, b) => b.column - a.column || a.bankIndex - b.bankIndex).forEach(cell => {
+      ctx.save(); ctx.translate(cell.x, cell.y); ctx.rotate(cell.angle * Math.PI / 180);
+      this.drawSingleCylinder(ctx, cell.cylinder, engine, cell.scale, this.visualCrankAngle, true);
+      if (!hideText) {
+        ctx.fillStyle = '#cbd5e1'; ctx.font = `600 ${Math.max(9, 12 * cell.scale)}px Rajdhani, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText(`#${cell.cylinder.index + 1}`, 0, pistonKinematics(0, engine.rodToCrankRatio, cell.scale).cylinderTopY - 30 * cell.scale);
+      }
+      ctx.restore();
+    });
+  }
+
+  drawBankHeads(ctx, layout, engine) {
+    const banks = new Map();
+    for (const cell of layout) {
+      // W16 has four narrow-angle rows in two eight-cylinder blocks / heads.
+      const bank = engine.config.layout === 'w' ? Math.floor(cell.bankIndex / 2) : cell.bankIndex;
+      const group = banks.get(bank) || [];
+      const radians = cell.angle * Math.PI / 180;
+      const y = pistonKinematics(0, engine.rodToCrankRatio, cell.scale).cylinderTopY - 6 * cell.scale;
+      group.push({ x: cell.x - Math.sin(radians) * y, y: cell.y + Math.cos(radians) * y, scale: cell.scale });
+      banks.set(bank, group);
+    }
+    for (const heads of banks.values()) {
+      if (heads.length < 2) continue;
+      // The continuous translucent head casting makes the bank relationship
+      // readable while the valves and plugs remain visible in the cutaway.
+      const sorted = heads.sort((a, b) => a.x - b.x);
+      const first = sorted[0], last = sorted.at(-1), scale = first.scale;
+      const dx = last.x - first.x, dy = last.y - first.y;
+      ctx.save(); ctx.translate(first.x, first.y); ctx.rotate(Math.atan2(dy, dx));
+      ctx.fillStyle = 'rgba(71,85,105,.55)'; ctx.strokeStyle = '#64748b'; ctx.lineWidth = 1.5 * scale;
+      ctx.beginPath(); ctx.roundRect(-21 * scale, -18 * scale, Math.hypot(dx,dy) + 42 * scale, 36 * scale, 5 * scale);
+      ctx.fill(); ctx.stroke(); ctx.restore();
+    }
+  }
+
+  drawCrankcase(ctx, journals, scale) {
+    if (!journals.length) return;
+    const sorted = [...journals].sort((a, b) => a.x - b.x);
+    const first = sorted[0], last = sorted.at(-1);
+    const dx = last.x - first.x, dy = last.y - first.y;
+    ctx.save(); ctx.translate(first.x, first.y); ctx.rotate(Math.atan2(dy, dx));
+    const length = Math.hypot(dx, dy);
+    ctx.fillStyle = 'rgba(30,41,59,.74)'; ctx.strokeStyle = '#475569'; ctx.lineWidth = 2 * scale;
+    ctx.beginPath(); ctx.roundRect(-41 * scale, -24 * scale, length + 82 * scale, 64 * scale, 20 * scale);
+    ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 7 * scale;
+    ctx.beginPath(); ctx.moveTo(-24 * scale, 0); ctx.lineTo(length + 24 * scale, 0); ctx.stroke();
+    ctx.restore();
+  }
+
   drawBoxerEngine(ctx, engine, w, h, hideText) {
     const pairs = engine.config.boxerPairs || [[0, 1], [2, 3]];
     const top = hideText ? 4 : 65;
     const rowHeight = (h - top - 6) / pairs.length;
     const scale = Math.min((w - 12) / 425, rowHeight / 98);
+    this.drawCrankcase(ctx, pairs.map((_pair, row) => ({ x: w / 2, y: top + rowHeight * (row + 0.5) })), scale);
     pairs.forEach((pair, row) => {
       const cy = top + rowHeight * (row + 0.5);
       pair.forEach((index, side) => {
@@ -162,27 +223,34 @@ export class EngineRenderer {
 
   drawRotaryEngine(ctx, engine, w, h, hideText) {
     const focused = this.viewMode === 'focused';
-    const indices = focused ? [this.focusedCylIndex % engine.config.rotors] : [0, 1];
+    const count = engine.config.rotors || engine.cylinderStates.length;
+    const indices = focused ? [((this.focusedCylIndex % count) + count) % count]
+      : Array.from({ length: count }, (_, index) => index);
     const top = hideText ? 4 : 62;
     const cellWidth = w / indices.length;
-    const scale = Math.max(0.1, Math.min((cellWidth - 16) / 190, (h - top - 12) / 176));
+    const scale = Math.max(0.01, Math.min((cellWidth - 16) / 190, (h - top - 12) / 176));
     indices.forEach((index, column) => {
       const shaftAngle = this.visualCrankAngle + engine.config.firingAngles[index];
-      const geometry = rotaryKinematics(shaftAngle);
+      const geometry = rotaryCycleKinematics(shaftAngle);
       ctx.save(); ctx.translate(cellWidth * (column + 0.5), top + (h - top) * 0.5); ctx.scale(scale, scale);
       // Each face runs its own four stages over 1080 shaft degrees. Chamber
       // colours are illustrative gas states; the housing/apex geometry is exact.
       geometry.apexes.forEach((apex, face) => {
-        const phase = ((shaftAngle + face * 360) % 1080 + 1080) % 1080;
-        const stage = Math.floor(phase / 270);
+        const { stage } = rotaryChamberState(shaftAngle, face);
         const colors = ['rgba(56,189,248,.34)', 'rgba(167,139,250,.35)', 'rgba(255,115,35,.65)', 'rgba(148,163,184,.28)'];
         ctx.beginPath(); ctx.moveTo(apex.x, apex.y);
         for (let i = 1; i <= 48; i++) {
           const p = rotaryHousingPoint(apex.t + i / 48 * Math.PI * 2 / 3);
           ctx.lineTo(p.x, p.y);
         }
+        // The chamber closes along the same curved rotor face, rather than a
+        // straight chord hidden beneath an unrelated triangular silhouette.
+        for (let i = 23; i >= 0; i--) {
+          const p = rotaryRotorFacePoint(geometry, face, i / 24);
+          ctx.lineTo(p.x, p.y);
+        }
         ctx.closePath();
-        ctx.fillStyle = stage === 2 && (!engine.isIgnitionOn || engine.ignitionCut) ? colors[3] : colors[stage];
+        ctx.fillStyle = stage === 2 && !this.hasCombustion(engine) ? colors[3] : colors[stage];
         ctx.fill();
       });
       ctx.beginPath();
@@ -192,10 +260,22 @@ export class EngineRenderer {
       }
       ctx.closePath(); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 5; ctx.stroke();
       ctx.beginPath();
-      geometry.apexes.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+      ctx.moveTo(geometry.apexes[0].x, geometry.apexes[0].y);
+      for (let face = 0; face < 3; face++) for (let i = 1; i <= 24; i++) {
+        const p = rotaryRotorFacePoint(geometry, face, i / 24);
+        ctx.lineTo(p.x, p.y);
+      }
       ctx.closePath(); ctx.fillStyle = '#334155'; ctx.fill(); ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 2; ctx.stroke();
       geometry.apexes.forEach(p => {
         ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fillStyle = '#f8fafc'; ctx.fill();
+      });
+      // Mark the three faces so the real 1:3 rotor speed is observable even
+      // though the triangle itself repeats its silhouette each shaft turn.
+      geometry.apexes.forEach((p, face) => {
+        const next = geometry.apexes[(face + 1) % 3];
+        ctx.fillStyle = ['#38bdf8', '#c084fc', '#fbbf24'][face];
+        ctx.beginPath(); ctx.arc((p.x + next.x) * 0.5 * 0.72 + geometry.center.x * 0.28,
+          (p.y + next.y) * 0.5 * 0.72 + geometry.center.y * 0.28, 4, 0, Math.PI * 2); ctx.fill();
       });
       // Side intake/exhaust ports: no poppet valves or connecting rods.
       for (const [x, y, color] of [[-25, 42, '#38bdf8'], [25, 42, '#fb923c']]) {
@@ -207,14 +287,26 @@ export class EngineRenderer {
       ctx.lineWidth = 6; ctx.strokeStyle = '#fbbf24'; ctx.stroke();
       ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fillStyle = '#e2e8f0'; ctx.fill();
       // Two plugs in the stationary housing (leading / trailing).
-      ctx.fillStyle = engine.isIgnitionOn && !engine.ignitionCut ? '#fde68a' : '#64748b';
-      ctx.fillRect(-16, -59, 6, 13); ctx.fillRect(10, -59, 6, 13);
+      const firing = this.hasCombustion(engine)
+        && geometry.apexes.some((_p, face) => rotaryChamberState(shaftAngle, face).isIgnitionPhase);
+      for (const plug of rotarySparkPlugMounts()) {
+        ctx.save(); ctx.translate(plug.tip.x,plug.tip.y); ctx.rotate(plug.rotation);
+        ctx.fillStyle = '#cbd5e1'; ctx.fillRect(-2.5,-16,5,10);
+        ctx.fillStyle = '#64748b'; ctx.fillRect(-3,-6,6,5);
+        ctx.fillStyle = firing ? '#fde68a' : '#94a3b8'; ctx.fillRect(-1.5,-1,3,1);
+        ctx.restore();
+      }
       if (!hideText) {
         ctx.fillStyle = '#94a3b8'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
         ctx.fillText(`ROTOR ${index + 1} · 轉子 : 輸出軸 = 1 : 3`, 0, 78);
       }
       ctx.restore();
     });
+  }
+
+  hasCombustion(engine) {
+    return engine.rpm > 0 && engine.isIgnitionOn && !engine.isRevLimitingCut && !engine.ignitionCut
+      && ((engine.manifoldThrottle || 0) > 0.01 || engine.rpm < engine.idleRPM * 1.15);
   }
 
   drawTechnicalGrid(ctx, w, h) {
@@ -241,12 +333,19 @@ export class EngineRenderer {
   drawRadialEngine(ctx, engine, w, h, hideText = false) {
     const cylinders = engine.cylinderStates;
     const numCyls = cylinders.length;
+    const focused = this.viewMode === 'focused';
+    const focusedIndex = ((this.focusedCylIndex % numCyls) + numCyls) % numCyls;
+    const topInset = hideText ? 6 : 76;
+    const availableHeight = Math.max(1, h - topInset - 6);
+    const scale = Math.max(0.01, Math.min(1.4, focused
+      ? Math.min((w - 12) / 116, availableHeight / 210)
+      : Math.min((w - 12) / 316, availableHeight / 316)));
     const cx = w * 0.5;
-    const cy = h * 0.52;
-
-    // Responsive scaling
-    const maxRadius = Math.min(w * 0.46, h * 0.45);
-    const scale = Math.max(0.2, Math.min(1.4, maxRadius / 155));
+    const cy = focused ? topInset + 155 * scale : topInset + availableHeight / 2;
+    ctx.save();
+    if (focused) {
+      ctx.translate(cx, cy); ctx.rotate(-focusedIndex * Math.PI * 2 / numCyls); ctx.translate(-cx, -cy);
+    }
 
     const crankRadius = 24 * scale;
     const rodLength = 80 * scale;
@@ -282,7 +381,7 @@ export class EngineRenderer {
     }
 
     // Crankshaft counterweight rotating opposite to the crankpin
-    const cwAngle = crankAngleRad + Math.PI;
+    const cwAngle = Math.atan2(pinY - cy, pinX - cx) + Math.PI;
     ctx.fillStyle = '#1e293b';
     ctx.strokeStyle = '#475569';
     ctx.lineWidth = 1.5;
@@ -295,16 +394,12 @@ export class EngineRenderer {
     ctx.restore();
 
     const geometry = radialKinematics(this.visualCrankAngle, numCyls, crankRadius, rodLength, 13 * scale);
-    if (this.radialCylinderCount !== numCyls) {
-      this.radialCylinderCount = numCyls;
-      this.radialTiming = radialFiringAngles(numCyls);
-    }
     // All wrists and rod joints use the same rigid master-and-articulated geometry.
     const cylKinematics = [];
     for (let i = 0; i < numCyls; i++) {
       // Dynamic phase angle and stroke for this cylinder
       const cyl = cylinders[i];
-      const visualAngle = wrapDegrees(this.visualCrankAngle - this.radialTiming[i] + 360);
+      const visualAngle = radialCyclePhase(this.visualCrankAngle, i, numCyls);
       let stroke = 'intake';
       if (visualAngle >= 180 && visualAngle < 360) stroke = 'compression';
       else if (visualAngle >= 360 && visualAngle < 540) stroke = 'power';
@@ -319,13 +414,14 @@ export class EngineRenderer {
         jointY: cy + geometry[i].jointY,
         visualAngle,
         stroke,
-        isFiring: stroke === 'power' && visualAngle < 430 && engine.isIgnitionOn
-          && !engine.isRevLimitingCut && !engine.ignitionCut
+        isFiring: stroke === 'power' && visualAngle < 430 && this.hasCombustion(engine),
+        isSpark: visualAngle >= 350 && visualAngle < 375 && this.hasCombustion(engine),
       });
     }
 
     // 2. Draw Cylinder Barrels, Cooling Fins, Cylinder Heads & Combustion Fireballs
     cylKinematics.forEach(k => {
+      if (focused && k.index !== focusedIndex) return;
       ctx.save();
       ctx.translate(cx, cy);
       // Rotate so cylinder points along negative Y (upwards in local frame)
@@ -370,9 +466,16 @@ export class EngineRenderer {
       ctx.fillStyle = '#38bdf8';
       ctx.fillRect(-1.5 * scale, topY - 25 * scale, 3 * scale, 4 * scale);
 
+      // Valve lift uses the same four-stroke phase as the actual rod geometry.
+      // Rocker valves enter the cylinder head; they are not static decorative
+      // ports disconnected from the slow-motion cycle.
+      const valves = camValveLift(k.visualAngle, engine.cam?.blend || 0);
+      this.drawValves(ctx, topY, bore, { stroke: k.stroke, intakeValve: valves.intake,
+        exhaustValve: valves.exhaust, blowdownPulse: k.stroke === 'exhaust' ? 0.5 : 0 }, scale * 0.6);
+
       // Combustion Fireball & Spark Arc
       if (k.isFiring) {
-        const fireHeight = Math.max(8 * scale, crownLocalY - topY);
+        const fireHeight = Math.max(0, crownLocalY - topY);
         const fireGrad = ctx.createRadialGradient(0, topY + 4 * scale, 2, 0, topY + fireHeight * 0.5, fireHeight);
         fireGrad.addColorStop(0, 'rgba(255, 255, 255, 0.98)');
         fireGrad.addColorStop(0.25, 'rgba(255, 210, 60, 0.95)');
@@ -380,10 +483,10 @@ export class EngineRenderer {
         fireGrad.addColorStop(1, 'rgba(200, 20, 0, 0.2)');
 
         ctx.fillStyle = fireGrad;
-        ctx.fillRect(-halfBore + 2, topY, bore - 4, fireHeight);
+        ctx.fillRect(-halfBore + 2 * scale, topY, bore - 4 * scale, fireHeight);
 
         // Electric Spark Arc
-        ctx.strokeStyle = '#00ffff';
+        ctx.strokeStyle = k.isSpark ? '#00ffff' : 'transparent';
         ctx.lineWidth = 2;
         ctx.shadowColor = '#00ffff';
         ctx.shadowBlur = 10;
@@ -393,17 +496,6 @@ export class EngineRenderer {
         ctx.stroke();
         ctx.shadowBlur = 0;
 
-        // Spark particles
-        if (Math.random() < 0.4) {
-          this.sparkParticles.push({
-            x: k.wristX + (Math.random() - 0.5) * 10,
-            y: k.wristY + (Math.random() - 0.5) * 10,
-            vx: (Math.random() - 0.5) * 40,
-            vy: (Math.random() - 0.5) * 40,
-            life: 0.18,
-            color: '#fbbf24'
-          });
-        }
       }
 
       // Piston Assembly
@@ -411,7 +503,7 @@ export class EngineRenderer {
       ctx.strokeStyle = '#475569';
       ctx.lineWidth = 1.5 * scale;
       ctx.beginPath();
-      ctx.roundRect(-halfBore + 1.5, crownLocalY, bore - 3, pistonHeight, 2 * scale);
+      ctx.roundRect(-halfBore + 1.5 * scale, crownLocalY, bore - 3 * scale, pistonHeight, 2 * scale);
       ctx.fill();
       ctx.stroke();
 
@@ -421,8 +513,8 @@ export class EngineRenderer {
       for (let r = 0; r < 2; r++) {
         const ringY = crownLocalY + (4 + r * 3) * scale;
         ctx.beginPath();
-        ctx.moveTo(-halfBore + 2, ringY);
-        ctx.lineTo(halfBore - 2, ringY);
+        ctx.moveTo(-halfBore + 2 * scale, ringY);
+        ctx.lineTo(halfBore - 2 * scale, ringY);
         ctx.stroke();
       }
 
@@ -451,6 +543,7 @@ export class EngineRenderer {
     // Articulated Rods (Cylinders 1..6)
     for (let i = 1; i < numCyls; i++) {
       const k = cylKinematics[i];
+      if (focused && i !== focusedIndex) continue;
       // Knuckle pin offset on the master rod hub
       const kx = k.jointX;
       const ky = k.jointY;
@@ -483,6 +576,7 @@ export class EngineRenderer {
 
     // Master Rod (Cylinder 0)
     ctx.save();
+    if (focused && focusedIndex !== 0) ctx.globalAlpha = 0.32;
     // Master Rod Big-End Hub Ring (houses the crankpin bearing + knuckle pins)
     ctx.fillStyle = '#64748b';
     ctx.strokeStyle = '#cbd5e1';
@@ -528,6 +622,7 @@ export class EngineRenderer {
     ctx.arc(cx, cy, 6 * scale, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
+    ctx.restore();
   }
 
   // Draw a single complete cylinder assembly
@@ -535,57 +630,12 @@ export class EngineRenderer {
     // Mechanical Dimensions
     const bore = 70 * scale; // cylinder bore diameter
     const strokeHeight = 110 * scale;
-    const crankRadius = 32 * scale;
-    const rodLength = crankRadius * engine.rodToCrankRatio;
-    const pistonHeight = 44 * scale;
-
-    const crankCenterY = 90 * scale;
-    const cylinderTopY = crankCenterY - rodLength - crankRadius - 20 * scale;
-
-    // Dynamic visual angle for this cylinder:
-    const cylVisualAngle = (visualCrankAngle + cyl.firingOffset) % 720;
-
-    // Crank pin position
-    const crankAngleRad = (cylVisualAngle * Math.PI) / 180;
-    const crankPinX = Math.sin(crankAngleRad) * crankRadius;
-    const crankPinY = crankCenterY - Math.cos(crankAngleRad) * crankRadius;
-
-    // Kinematic piston position for visual angle
-    const r = 1.0;
-    const l = engine.rodToCrankRatio;
-    const cosA = Math.cos(crankAngleRad);
-    const sinA = Math.sin(crankAngleRad);
-    const distFromCrankCenter = r * cosA + Math.sqrt(l * l - r * r * sinA * sinA);
-    const maxDist = r + l;
-    const minDist = -r + Math.sqrt(l * l);
-    const visualPistonPos = (maxDist - distFromCrankCenter) / (maxDist - minDist);
-
-    const wristPinY = crankCenterY - distFromCrankCenter * crankRadius;
-    const wristPinX = 0;
-
-    // Visual 4-stroke cycle phases:
-    let visualStroke = 'intake';
-    let visualIntakeValve = 0;
-    let visualExhaustValve = 0;
-    let visualIsFiring = false;
-
-    if (cylVisualAngle < 180) {
-      visualStroke = 'intake';
-      visualIntakeValve = Math.sin((cylVisualAngle / 180) * Math.PI);
-    } else if (cylVisualAngle < 360) {
-      visualStroke = 'compression';
-    } else if (cylVisualAngle < 540) {
-      visualStroke = 'power';
-    } else {
-      visualStroke = 'exhaust';
-      visualExhaustValve = Math.sin(((cylVisualAngle - 540) / 180) * Math.PI);
-    }
-
-    // Spark fires at TDC (around 360 degrees)
-    if (cylVisualAngle >= 350 && cylVisualAngle <= 375 && engine.isIgnitionOn
-      && !engine.isRevLimitingCut && !engine.ignitionCut) {
-      visualIsFiring = true;
-    }
+    const cylVisualAngle = pistonCyclePhase(visualCrankAngle, cyl, engine.config);
+    const geometry = pistonKinematics(cylVisualAngle, engine.rodToCrankRatio, scale);
+    const { crankRadius, crankCenterY, cylinderTopY, crankPinX, crankPinY,
+      wristPinX, wristPinY, pistonHeight, crownY, pistonPos: visualPistonPos } = geometry;
+    const visualStroke = ['intake', 'compression', 'power', 'exhaust'][Math.floor(cylVisualAngle / 180)];
+    const visualIsFiring = cylVisualAngle >= 350 && cylVisualAngle <= 375 && this.hasCombustion(engine);
 
     const valves = camValveLift(cylVisualAngle, engine.cam?.blend || 0);
     const visualCyl = {
@@ -598,7 +648,7 @@ export class EngineRenderer {
       isFiring: visualIsFiring,
       // Live pressure belongs to the physical phase, not the slowed visual phase.
       gasPressure: this.animationSpeed === 1 ? cyl.gasPressure : undefined,
-      blowdownPulse: cyl.blowdownPulse || 0,
+      blowdownPulse: this.animationSpeed === 1 ? cyl.blowdownPulse || 0 : visualStroke === 'exhaust' ? 0.5 : 0,
       gasTorque: cyl.gasTorque || 0
     };
 
@@ -606,7 +656,7 @@ export class EngineRenderer {
     this.drawCylinderSleeve(ctx, cylinderTopY, bore, strokeHeight + 50 * scale, engine.exhaustHeat, scale);
 
     // 2. Draw Combustion Chamber & Fireball
-    this.drawCombustionChamber(ctx, cylinderTopY, wristPinY - 15 * scale, bore, visualCyl, engine);
+    this.drawCombustionChamber(ctx, cylinderTopY, crownY, bore, visualCyl, engine, scale);
 
     // 3. Draw Valves & Camshaft
     this.drawValves(ctx, cylinderTopY, bore, visualCyl, scale);
@@ -670,15 +720,15 @@ export class EngineRenderer {
   }
 
   // Draw Combustion Fireball / Gas in chamber
-  drawCombustionChamber(ctx, topY, pistonCrownY, bore, cyl, engine) {
-    const chamberHeight = Math.max(8, pistonCrownY - topY);
-    const halfBore = (bore / 2) - 2;
+  drawCombustionChamber(ctx, topY, pistonCrownY, bore, cyl, engine, scale = 1) {
+    const chamberHeight = Math.max(0, pistonCrownY - topY);
+    const halfBore = (bore / 2) - 2 * scale;
 
     ctx.save();
-    if (cyl.stroke === 'power' && engine.isIgnitionOn && !engine.isRevLimitingCut && !engine.ignitionCut) {
+    if (cyl.stroke === 'power' && this.hasCombustion(engine)) {
       // Fireball explosion!
       const intensity = 1.0 - (cyl.phaseAngle - 360) / 180;
-      const fireGrad = ctx.createRadialGradient(0, topY + 10, 2, 0, topY + chamberHeight * 0.5, chamberHeight);
+      const fireGrad = ctx.createRadialGradient(0, topY + 10 * scale, 2 * scale, 0, topY + chamberHeight * 0.5, chamberHeight);
       fireGrad.addColorStop(0, `rgba(255, 255, 255, ${0.95 * intensity})`);
       fireGrad.addColorStop(0.2, `rgba(255, 200, 50, ${0.9 * intensity})`);
       fireGrad.addColorStop(0.6, `rgba(255, 70, 10, ${0.75 * intensity})`);
@@ -817,17 +867,8 @@ export class EngineRenderer {
       ctx.arc(0, topY + 3 * scale, 12 * scale, 0, Math.PI * 2);
       ctx.fill();
 
-      // Spawn spark particles occasionally
-      if (Math.random() < 0.4) {
-        this.sparkParticles.push({
-          x: 0,
-          y: topY + 4 * scale,
-          vx: (Math.random() - 0.5) * 80,
-          vy: Math.random() * 90 + 30,
-          life: 0.25,
-          color: '#38bdf8'
-        });
-      }
+      // The electrical discharge belongs inside this chamber. Do not emit
+      // free-floating sparks into the outer canvas at local cylinder coordinates.
     }
 
     ctx.restore();
@@ -835,7 +876,7 @@ export class EngineRenderer {
 
   // Draw Piston with Rings and Wrist Pin
   drawPiston(ctx, x, y, bore, height, scale) {
-    const halfB = (bore / 2) - 2;
+    const halfB = (bore / 2) - 2 * scale;
     const crownY = y - height * 0.35;
     const skirtY = crownY + height;
 
@@ -850,7 +891,7 @@ export class EngineRenderer {
 
     ctx.fillStyle = pGrad;
     ctx.strokeStyle = '#334155';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1.5 * scale;
 
     // Piston Crown & Skirt Path
     ctx.beginPath();
@@ -1038,7 +1079,7 @@ export class EngineRenderer {
 
     ctx.font = '500 12px Rajdhani, sans-serif';
     ctx.fillStyle = '#94a3b8';
-    ctx.fillText(`排氣量: ${engine.displacement} cc | 點火循環: 720° 四行程 | 排氣系統: ${engine.exhaust.brand}`, 20, 50);
+    ctx.fillText(`排氣量: ${engine.displacement} cc | ${engine.config.layout === 'rotary' ? '每面循環 1080° · 轉子 1:3' : '四行程循環 720°'} | ${engine.exhaust.brand}`, 20, 50);
 
     // Top Right: Firing status & Crank angle & Slow-mo indicator
     ctx.textAlign = 'right';
@@ -1058,12 +1099,12 @@ export class EngineRenderer {
   }
 
   // Floating spark & smoke particles
-  renderParticles(ctx) {
+  renderParticles(ctx, dt = 0.016) {
     for (let i = this.sparkParticles.length - 1; i >= 0; i--) {
       const p = this.sparkParticles[i];
-      p.x += p.vx * 0.016;
-      p.y += p.vy * 0.016;
-      p.life -= 0.016;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.life -= dt;
 
       if (p.life <= 0) {
         this.sparkParticles.splice(i, 1);
