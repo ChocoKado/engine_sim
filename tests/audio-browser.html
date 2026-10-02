@@ -6,6 +6,7 @@
 <h1>Web Audio 音效回歸檢查</h1>
 <p>離線渲染實際聲音，不透過喇叭播放；此檢查驗證音訊連續性與數值，並不代表錄音級實車還原。</p>
 <pre id="results">檢查中…</pre>
+<div id="rotary-previews"></div>
 <script type="module">
 import { SoundEngine } from '../src/audio/SoundEngine.js';
 import { ENGINE_CONFIGS } from '../src/physics/EngineConfigurations.js';
@@ -105,6 +106,79 @@ async function renderLimiter() {
   await context.resume();
   return { data: (await rendering).getChannelData(0), backend: sound.acousticBackend };
 }
+async function renderRotaryIdle({ rotaryIdleMode = 'stock', exhaust = EXHAUST_MODELS.oem, rpm = 850, throttle = 0.045, muted = false, stopped = false } = {}) {
+  const context = new OfflineAudioContext(1, sampleRate * 4, sampleRate);
+  const sound = new SoundEngine(() => context);
+  sound.setVolume(muted ? 0 : 0.5);
+  sound.setEngineConfig(ENGINE_CONFIGS.rotary_2);
+  sound.setExhaustModel(exhaust);
+  sound.setRotaryIdleMode(rotaryIdleMode);
+  await sound.init(); sound.setRunning(true);
+  const state = { rpm, redlineRPM: 9000, displacement: 1308, manifoldThrottle: throttle,
+    forcedInduction: 'na', torqueScale: 1, revLimiterCutAmount: 0 };
+  sound.update(state, ENGINE_CONFIGS.rotary_2, { currentGear: 0 });
+  let data;
+  if (stopped) {
+    const suspended = context.suspend(2);
+    const rendering = context.startRendering();
+    await suspended;
+    sound.setRunning(false); sound.setRotaryIdleMode('stock'); sound.setExhaustModel(EXHAUST_MODELS.straight);
+    await context.resume(); data = (await rendering).getChannelData(0);
+  } else data = (await context.startRendering()).getChannelData(0);
+  return { data, backend: sound.acousticBackend };
+}
+async function renderRotaryModeChanges() {
+  const context = new OfflineAudioContext(1, sampleRate * 12, sampleRate);
+  const sound = new SoundEngine(() => context);
+  const config = ENGINE_CONFIGS.rotary_2;
+  sound.setVolume(0.5); sound.setEngineConfig(config); sound.setExhaustModel(EXHAUST_MODELS.straight);
+  await sound.init(); sound.setRunning(true);
+  const idle = { rpm: 850, redlineRPM: 9000, displacement: 1308, manifoldThrottle: 0.045,
+    forcedInduction: 'na', torqueScale: 1, revLimiterCutAmount: 0 };
+  sound.update(idle, config, { currentGear: 0 });
+  let suspended = context.suspend(2);
+  const rendering = context.startRendering();
+  await suspended;
+  sound.setRotaryIdleMode('brap');
+  suspended = context.suspend(5); await context.resume(); await suspended;
+  sound.setRotaryIdleMode('stock');
+  suspended = context.suspend(8); await context.resume(); await suspended;
+  sound.setRotaryIdleMode('brap');
+  sound.update({ ...idle, rpm: 6000, manifoldThrottle: 0.8 }, config, { currentGear: 0 });
+  suspended = context.suspend(10); await context.resume(); await suspended;
+  sound.setRotaryIdleMode('stock');
+  await context.resume();
+  return { data: (await rendering).getChannelData(0), backend: sound.acousticBackend };
+}
+const envelopeVariation = (data, from = 0.5, to = 4) => {
+  const levels = [];
+  for (let t = from; t + 0.05 <= to; t += 0.05) levels.push(rms(data, t, t + 0.05));
+  const mean = levels.reduce((sum, value) => sum + value, 0) / levels.length;
+  return Math.sqrt(levels.reduce((sum, value) => sum + (value - mean) ** 2, 0) / levels.length) / mean;
+};
+function normalizedTone(data, hz, from, to) {
+  const start = Math.round(from * sampleRate), end = Math.round(to * sampleRate);
+  let real = 0, imag = 0;
+  for (let i = start; i < end; i++) {
+    const angle = 2 * Math.PI * hz * i / sampleRate;
+    real += data[i] * Math.cos(angle); imag += data[i] * Math.sin(angle);
+  }
+  return 2 * Math.hypot(real, imag) / (end - start) / rms(data, from, to);
+}
+function addAudioPreview(data, label, filename) {
+  // Export the same tested Web Audio samples as a small mono PCM WAV.
+  const bytes = new ArrayBuffer(44 + data.length * 2), view = new DataView(bytes);
+  const word = (offset, text) => { [...text].forEach((char, i) => view.setUint8(offset + i, char.charCodeAt(0))); };
+  word(0, 'RIFF'); view.setUint32(4, 36 + data.length * 2, true); word(8, 'WAVE'); word(12, 'fmt ');
+  view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * 2, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+  word(36, 'data'); view.setUint32(40, data.length * 2, true);
+  data.forEach((value, i) => view.setInt16(44 + i * 2, Math.round(Math.max(-1, Math.min(1, value)) * 32767), true));
+  const url = URL.createObjectURL(new Blob([bytes], { type: 'audio/wav' }));
+  const row = document.createElement('p'), audio = document.createElement('audio'), link = document.createElement('a');
+  audio.controls = true; audio.src = url; link.href = url; link.download = filename; link.textContent = `下載 ${label}`;
+  row.append(label + '（直通排氣、850 RPM） ', audio, ' ', link); document.getElementById('rotary-previews').append(row);
+}
 try {
   const shiftRatios = {};
   for (const mode of ['at', 'amt']) {
@@ -183,6 +257,56 @@ try {
   const { data: lowCam } = await render({ config: ENGINE_CONFIGS.honda_k20a, camBlend: 0, isolate: 'intakeGain' });
   check('VTEC 高凸輪實際增強進氣聲', rms(highCam, 0.3, 0.4) > rms(lowCam, 0.3, 0.4) * 1.20 && finite(highCam),
     '高 / 低凸輪 RMS = ' + (rms(highCam, 0.3, 0.4) / rms(lowCam, 0.3, 0.4)).toFixed(3));
+  const rotaryIdle = {};
+  for (const rotaryIdleMode of ['stock', 'brap']) {
+    for (const id of ['oem', 'akrapovic', 'sc_project', 'straight']) {
+      const { data, backend } = await renderRotaryIdle({ rotaryIdleMode, exhaust: EXHAUST_MODELS[id] });
+      rotaryIdle[`${rotaryIdleMode}:${id}`] = data;
+      check(`轉子 ${rotaryIdleMode} / ${id} 怠速音訊穩定且無削波`, backend === 'pressure-worklet' && finite(data) && rms(data, 0.5, 3.9) > 0.001,
+        'RMS = ' + rms(data, 0.5, 3.9).toFixed(4));
+    }
+  }
+  const stockVariation = envelopeVariation(rotaryIdle['stock:straight']);
+  const brapVariation = envelopeVariation(rotaryIdle['brap:straight']);
+  check('改裝 Brap 的怠速強弱段落大於原廠', brapVariation > stockVariation * 1.5,
+    `包絡變異係數：原廠 ${stockVariation.toFixed(3)} / Brap ${brapVariation.toFixed(3)}`);
+  const { data: silentRotary } = await renderRotaryIdle({ rotaryIdleMode: 'brap', muted: true });
+  check('Brap 怠速遵守靜音', rms(silentRotary) === 0, 'RMS = ' + rms(silentRotary));
+  const { data: stoppedRotary } = await renderRotaryIdle({ rotaryIdleMode: 'brap', stopped: true });
+  check('Brap 熄火後切模式／排氣保持靜音', rms(stoppedRotary, 2.5, 3.9) < 0.00001,
+    'RMS = ' + rms(stoppedRotary, 2.5, 3.9).toExponential(3));
+  const { data: highRotary } = await renderRotaryIdle({ rotaryIdleMode: 'brap', rpm: 6000, throttle: 0.8 });
+  check('Brap 拉轉後保持連續音訊', finite(highRotary) && envelopeVariation(highRotary) < brapVariation * 0.6,
+    '高轉包絡變異 = ' + envelopeVariation(highRotary).toFixed(3));
+  const { data: switchedRotary, backend: switchedBackend } = await renderRotaryModeChanges();
+  const firstIdleRms = rms(switchedRotary, 0.5, 1.9);
+  let transitionFloor = Infinity;
+  for (const when of [2, 5, 8, 10]) {
+    for (let t = when - 0.12; t <= when + 0.12; t += 0.01) {
+      transitionFloor = Math.min(transitionFloor, rms(switchedRotary, t, t + 0.02));
+    }
+  }
+  check('運轉中切換原廠／Brap 聲浪不產生靜音空白', switchedBackend === 'pressure-worklet' && finite(switchedRotary)
+    && firstIdleRms > 0.001 && transitionFloor > firstIdleRms * 0.01,
+    `切換附近最小 20ms RMS = ${transitionFloor.toFixed(5)}`);
+  const firstIdleVariation = envelopeVariation(switchedRotary, 0.5, 1.9);
+  const switchedBrapVariation = envelopeVariation(switchedRotary, 2.5, 4.9);
+  const recoveredIdleVariation = envelopeVariation(switchedRotary, 5.5, 7.9);
+  const recoveredPulse = normalizedTone(switchedRotary, 850 / 30, 5.5, 7.9);
+  const recoveredLevel = rms(switchedRotary, 5.5, 7.9) / firstIdleRms;
+  check('切回原廠後恢復正確怠速脈衝並解除 Brap 段落', switchedBrapVariation > firstIdleVariation * 1.5
+    && recoveredIdleVariation < switchedBrapVariation * 0.55 && recoveredIdleVariation < firstIdleVariation + 0.08
+    && recoveredPulse > 0.05 && recoveredLevel > 0.8 && recoveredLevel < 1.2,
+    `包絡 CV ${firstIdleVariation.toFixed(3)} → ${switchedBrapVariation.toFixed(3)} → ${recoveredIdleVariation.toFixed(3)}；28.33Hz 脈衝 ${recoveredPulse.toFixed(3)}`);
+  const switchedHighVariation = envelopeVariation(switchedRotary, 8.5, 9.9);
+  const stockHighVariation = envelopeVariation(switchedRotary, 10.5, 11.9);
+  const highLevelRatio = rms(switchedRotary, 8.5, 9.9) / rms(switchedRotary, 10.5, 11.9);
+  check('切換後高轉負載不殘留 Brap 包絡或音量偏差', switchedHighVariation < switchedBrapVariation * 0.25
+    && stockHighVariation < switchedBrapVariation * 0.25 && Math.abs(switchedHighVariation - stockHighVariation) < 0.03
+    && highLevelRatio > 0.9 && highLevelRatio < 1.1,
+    `6000 RPM 包絡 CV ${switchedHighVariation.toFixed(3)} / ${stockHighVariation.toFixed(3)}；音量比 ${highLevelRatio.toFixed(3)}`);
+  addAudioPreview(rotaryIdle['stock:straight'], '原廠轉子怠速', 'rotary-stock-idle.wav');
+  addAudioPreview(rotaryIdle['brap:straight'], '改裝 Brap 怠速', 'rotary-brap-idle.wav');
   lines.push('全部 ' + count + ' 項音訊渲染檢查通過');
   output.textContent = lines.join('\n');
   document.body.dataset.result = 'passed';

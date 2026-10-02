@@ -2143,6 +2143,8 @@ button:focus-visible, [role="button"]:focus-visible, summary:focus-visible, inpu
 }
 
 [hidden] { display: none !important; }
+.status-badge.stalled { color: #fbbf24; border-color: #fbbf2466; background: #fbbf2412; }
+.rotary-idle-controls { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; padding: 12px; border: 1px solid #00f0ff44; border-radius: 8px; }
 .vtec-live-badge { position: absolute; right: 10px; top: 8px; padding: 4px 8px; border-radius: 6px; background: #101722; border: 1px solid #475569; color: #94a3b8; font: 700 11px var(--font-display); }
 .vtec-live-badge.high-cam { color: #fb923c; border-color: #fb923c; box-shadow: 0 0 10px #fb923c44; }
 .vtec-controls { padding: 12px; margin-top: 8px; border: 1px solid #fb923c66; border-radius: 8px; }

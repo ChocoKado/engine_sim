@@ -49,7 +49,7 @@ export class App {
     this.powerChanging = true;
     if (button) button.disabled = true;
     try {
-      const running = !this.isEngineRunning;
+      const running = !this.engine.isIgnitionOn;
       if (running) {
         await this.sound.init();
         this.sound.setEngineConfig(this.engine.config);
@@ -91,8 +91,22 @@ export class App {
         <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
         <span>啟動引擎 (START)</span>
       `;
-      statusText.textContent = 'STANDBY';
-      statusText.className = 'status-badge standby';
+      const stalled = Boolean(this.engine.isStalled);
+      if (stalled) btn.querySelector('span').textContent = '引擎失速 · 重新發動 (START)';
+      statusText.textContent = stalled ? 'ENGINE STALLED' : 'STANDBY';
+      statusText.className = `status-badge ${stalled ? 'stalled' : 'standby'}`;
+    }
+  }
+
+  syncEnginePowerState() {
+    if (this.isEngineRunning === this.engine.isIgnitionOn) return;
+    this.isEngineRunning = this.engine.isIgnitionOn;
+    this.sound.setRunning(this.isEngineRunning);
+    this.updatePowerButtonUI(this.isEngineRunning);
+    if (this.engine.isStalled) {
+      const message = '引擎已失速，按啟動重新發動。';
+      this.drivetrain.lastShiftMessage = message;
+      this.performancePanel?.meter.cancel(message);
     }
   }
 
@@ -184,6 +198,9 @@ export class App {
     });
 
     // Tone Warmth / Anti-Harshness Low-Pass Slider
+    document.getElementById('rotary-idle-mode')?.addEventListener('change', e => {
+      this.sound.setRotaryIdleMode(e.target.value);
+    });
     const warmthSlider = document.getElementById('warmth-slider');
     const warmthVal = document.getElementById('warmth-val');
     if (warmthSlider && warmthVal) {
@@ -412,6 +429,7 @@ export class App {
     if (this.drivetrain.mode === 'at') this.drivetrain.setAtSelector('N');
     else this.drivetrain.setAmtGear(0);
     this.engine.setConfig(configId);
+    this.updatePowerButtonUI(this.engine.isIgnitionOn);
     this.drivetrain.configureVehicle();
     this.updateVehicleLoad();
     this.sound.setEngineConfig(this.engine.config);
@@ -480,6 +498,10 @@ export class App {
       `${induction === 'turbo' ? `TURBO · ${this.engine.turboSize === 'large' ? '大渦輪' : '小渦輪'}` : 'ROOTS / TVS'} · ${this.engine.maxBoost.toFixed(2)} bar`;
     this.syncGearControls();
     this.syncECUControls();
+    const rotaryControls = document.getElementById('rotary-idle-controls');
+    if (rotaryControls) rotaryControls.hidden = config.layout !== 'rotary';
+    const rotaryMode = document.getElementById('rotary-idle-mode');
+    if (rotaryMode) rotaryMode.value = this.sound?.rotaryIdleMode || 'stock';
     this.updateReferenceStatus();
     this.updateDynoOverview();
   }
@@ -568,7 +590,7 @@ export class App {
     const slider = document.getElementById('throttle-slider'); if (slider) slider.value = 0;
     const value = document.getElementById('throttle-val'); if (value) value.textContent = '0%';
     this.engine.resetCombustion();
-    this.engine.rpm = this.isEngineRunning ? this.engine.idleRPM : 0;
+    this.engine.rpm = this.engine.isIgnitionOn ? this.engine.idleRPM : 0;
     this.drivetrain.speedKmh = 0;
     this.drivetrain.accumulator = 0;
     if (this.drivetrain.mode === 'at') { this.drivetrain.setAtSelector('N'); this.drivetrain.setAtSelector('D'); }
@@ -760,6 +782,7 @@ export class App {
     this.performancePanel?.beforeStep();
     const drivetrainStatus = this.drivetrain.update(dt, throttle, brake);
     const engineStatus = drivetrainStatus.engine;
+    this.syncEnginePowerState();
 
     // Web Audio Sound Engine update
     if (this.isEngineRunning) {

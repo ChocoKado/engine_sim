@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { App } from '../src/app.js';
-import { EngineModel } from '../src/physics/EngineModel.js';
+import { EngineModel, PHYSICS_STEP } from '../src/physics/EngineModel.js';
 import { Drivetrain } from '../src/physics/Drivetrain.js';
+import { PerformanceMeter } from '../src/physics/PerformanceMeter.js';
 
 class Element {
   constructor(dataset = {}) {
@@ -38,10 +39,93 @@ test('performance reset clears road momentum and held throttle, then selects a v
   } finally { globalThis.document = original; }
 });
 
+for (const mode of ['at', 'amt']) {
+  test(`${mode}: a real load stall stops App/audio, cancels timing and restarts with one power action`, async () => {
+    const original = globalThis.document;
+    const button = new Element(), status = new Element(), caption = new Element();
+    button.classList.add = name => { button.attributes[`class:${name}`] = true; };
+    button.classList.remove = name => { button.attributes[`class:${name}`] = false; };
+    button.querySelector = selector => selector === 'span' ? caption : null;
+    globalThis.document = { getElementById: id => id === 'btn-start-engine' ? button
+      : id === 'engine-status-badge' ? status : null };
+    try {
+      const app = Object.create(App.prototype);
+      app.engine = new EngineModel('i4_cross', 'oem');
+      app.drivetrain = new Drivetrain(app.engine);
+      app.engine.setRunning(true);
+      app.drivetrain.setMode(mode);
+      mode === 'at' ? app.drivetrain.setAtSelector('D') : app.drivetrain.setAmtGear(1);
+      app.isEngineRunning = true;
+      const audioStates = [], starts = [], snapshots = [];
+      app.sound = {
+        running: true,
+        async init() { starts.push('init'); },
+        setEngineConfig(config) { assert.equal(config, app.engine.config); },
+        setExhaustModel(exhaust) { assert.equal(exhaust, app.engine.exhaust); },
+        setRunning(running) { this.running = running; audioStates.push(running); },
+        update(snapshot) { snapshots.push(snapshot); },
+      };
+      const meter = new PerformanceMeter();
+      meter.arm({ time: 0, speed: 0, distance: 0, gear: 1, running: true }, { model: 'R1' });
+      app.performancePanel = { meter };
+      app.updatePowerButtonUI(true);
+      assert.equal(status.textContent, 'ENGINE ACTIVE');
+      // Stall the real crank inertia with external resisting torque; no direct
+      // RPM assignment or fabricated stopped/running flags in this fixture.
+      for (let step = 0; step < 240 && app.engine.rpm > 0; step++) {
+        app.engine.prepareStep(PHYSICS_STEP, 0);
+        app.engine.advanceStep(PHYSICS_STEP, { loadTorque: 100 });
+      }
+      assert.equal(app.engine.rpm, 0);
+      assert.equal(app.engine.isStalled, true);
+      app.syncEnginePowerState();
+      assert.equal(app.isEngineRunning, false);
+      assert.equal(app.sound.running, false);
+      assert.deepEqual(audioStates, [false]);
+      assert.equal(meter.state, 'cancelled');
+      assert.match(meter.message, /失速.*重新發動/);
+      assert.match(app.drivetrain.lastShiftMessage, /失速.*重新發動/);
+      assert.equal(status.textContent, 'ENGINE STALLED');
+      assert.equal(button.attributes['class:running'], false);
+      assert.match(caption.textContent, /失速.*重新發動.*START/);
+      app.syncEnginePowerState();
+      assert.deepEqual(audioStates, [false], 'steady stalled frames do not repeatedly reset audio');
+
+      await app.toggleEnginePower();
+      assert.equal(app.engine.isIgnitionOn, true);
+      assert.equal(app.engine.isStalled, false);
+      assert.equal(app.engine.rpm, app.engine.idleRPM);
+      assert.equal(app.isEngineRunning, true);
+      assert.equal(app.sound.running, true);
+      assert.equal(starts.length, 1, 'one deliberate action starts the engine');
+      assert.deepEqual(audioStates, [false, true]);
+      assert.equal(snapshots.length, 1);
+      assert.equal(snapshots[0].isStalled, false);
+      assert.equal(status.textContent, 'ENGINE ACTIVE');
+      assert.match(button.innerHTML, /引擎運轉中 \(STOP\)/);
+      assert.equal(button.disabled, false);
+      assert.equal(app.powerChanging, false);
+      assert.equal(app.drivetrain.lastShiftMessage, '');
+      for (let step = 0; step < 240; step++) app.drivetrain.update(PHYSICS_STEP, 1, 0);
+      assert.ok(app.drivetrain.speedKmh > 8, 'the restarted engine drives the vehicle');
+
+      await app.toggleEnginePower();
+      assert.equal(app.engine.isIgnitionOn, false);
+      assert.equal(app.engine.isStalled, false, 'deliberate shutdown is distinct from a stall');
+      assert.equal(app.isEngineRunning, false);
+      assert.equal(app.sound.running, false);
+      assert.deepEqual(audioStates, [false, true, false]);
+      assert.equal(status.textContent, 'STANDBY');
+      assert.match(button.innerHTML, /啟動引擎 \(START\)/);
+      assert.equal(starts.length, 1, 'stopping does not initialize the audio engine again');
+    } finally { globalThis.document = original; }
+  });
+}
+
 function fixture() {
   const ids = new Map(['displacement-slider', 'displacement-val', 'redline-slider', 'redline-val',
     'turbo-controls-panel', 'boost-slider', 'boost-val', 'boost-slider-title', 'boost-status-badge', 'supercharger-note',
-    'tuning-state-badge', 'vehicle-mass-slider', 'vehicle-mass-val']
+    'tuning-state-badge', 'vehicle-mass-slider', 'vehicle-mass-val', 'rotary-idle-controls', 'rotary-idle-mode']
     .map(id => [id, new Element()]));
   const induction = ['na', 'turbo', 'supercharger'].map(value => new Element({ induction: value }));
   const sizes = ['small', 'large'].map(value => new Element({ turboSize: value }));
@@ -82,6 +166,19 @@ test('preset reset replaces every visible induction setting with current model s
     assert.equal(state.ids.get('turbo-controls-panel').style.display, 'none');
     assert.equal(state.bov[1].attributes['aria-pressed'], 'true');
     assert.equal(state.ids.get('boost-status-badge').textContent, '自然進氣 (NA)');
+  } finally { state.restore(); }
+});
+
+test('rotary idle mode is visible only on a rotary and preserves the chosen acoustic mode', () => {
+  const state = fixture();
+  try {
+    state.app.sound = { rotaryIdleMode: 'brap' };
+    state.app.engine.config.layout = 'rotary'; state.app.syncTuningUI();
+    assert.equal(state.ids.get('rotary-idle-controls').hidden, false);
+    assert.equal(state.ids.get('rotary-idle-mode').value, 'brap');
+    state.app.engine.config.layout = 'inline'; state.app.syncTuningUI();
+    assert.equal(state.ids.get('rotary-idle-controls').hidden, true);
+    assert.equal(state.app.sound.rotaryIdleMode, 'brap');
   } finally { state.restore(); }
 });
 

@@ -62,6 +62,8 @@ export class SoundEngine {
     this.pressureGain = null;
     this.activeBursts = new Set();
     this.acousticBackend = 'oscillator-fallback';
+    this.rotaryIdleMode = 'stock';
+    this.lastAudioState = null;
   }
 
   // Initialize Web Audio graph upon user gesture
@@ -285,7 +287,7 @@ export class SoundEngine {
     imag[0] = 0;
 
     for (let i = 1; i < numHarmonics; i++) {
-      const width = (character === 'screamer' ? 0.22 : 0.36) / config.cylinders;
+      const width = (config.layout === 'rotary' ? 0.20 : character === 'screamer' ? 0.22 : 0.36) / config.cylinders;
       const decay = Math.exp(-i * 0.012) / (1 + (i * width) ** 2);
       // Fourier fallback approximates a steep pressure rise and slower decay.
       const shockFront = 1.0 + 0.12 * Math.sin(Math.min(Math.PI, i * width));
@@ -331,6 +333,15 @@ export class SoundEngine {
     this.combustionGain.gain.setValueAtTime(0.55, t);
     this.combustionOsc.connect(this.combustionGain);
     this.combustionGain.connect(this.saturationDriveGain);
+
+    // Fallback Brap only modulates cylinder-pressure strength. It never gates
+    // intake, exhaust decay or the master output, and its minimum stays > 0.
+    this.rotaryIdleOsc = this.ctx.createOscillator();
+    this.rotaryIdleOsc.type = 'sine';
+    this.rotaryIdleModGain = this.ctx.createGain();
+    this.rotaryIdleModGain.gain.setValueAtTime(0, t);
+    this.rotaryIdleOsc.connect(this.rotaryIdleModGain);
+    this.rotaryIdleModGain.connect(this.combustionGain.gain);
 
     // 2. Higher Harmonic Order (2nd / 3rd firing harmonic)
     this.harmonicOsc = this.ctx.createOscillator();
@@ -434,6 +445,7 @@ export class SoundEngine {
 
     // Start all continuous generators
     this.combustionOsc.start();
+    this.rotaryIdleOsc.start();
     this.harmonicOsc.start();
     this.subBassOsc.start();
     this.camshaftOsc.start();
@@ -658,6 +670,7 @@ export class SoundEngine {
   // Real-time audio frame update
   update(engineState, config, drivetrainState = {}) {
     if (!this.ctx || !this.isStarted) return;
+    this.lastAudioState = { engineState, config, drivetrainState };
 
     const t = this.ctx.currentTime;
     this.setEngineConfig(config);
@@ -718,8 +731,8 @@ export class SoundEngine {
       camshaftFreq = cycleFreq * 6.0;
     }
 
-    this.subBassOsc.frequency.setTargetAtTime(Math.max(14, subBassFreq), t, smoothTime);
-    this.camshaftOsc.frequency.setTargetAtTime(Math.max(12, camshaftFreq), t, smoothTime);
+    this.subBassOsc.frequency.setTargetAtTime(Math.max(config.layout === 'rotary' ? 0.1 : 14, subBassFreq), t, smoothTime);
+    this.camshaftOsc.frequency.setTargetAtTime(Math.max(config.layout === 'rotary' ? 0.1 : 12, camshaftFreq), t, smoothTime);
 
     // 4. Transmission Straight-Cut Gear Whine
     if (speedKmh > 5 && drivetrainState.currentGear !== 0) {
@@ -750,12 +763,18 @@ export class SoundEngine {
       ?? (engineState.isRevLimiting ? 1 : 0)));
     const displacement = engineState.displacement || (config && config.defaultDisplacement) || 1000;
     const dispLiters = Math.max(0.125, displacement / 1000);
+    const pressureLoad = Math.min(1.6, throttle * Math.sqrt(1 + Math.max(0, engineState.boostPressure || 0)));
+    const rotaryIdleBlend = config.layout === 'rotary'
+      ? Math.max(0, Math.min(1, (3000 - rpm) / 1600))
+        * Math.max(0, Math.min(1, (0.40 - pressureLoad) / 0.30))
+      : 0;
+    const rotaryBrapBlend = this.rotaryIdleMode === 'brap' ? rotaryIdleBlend : 0;
+    this.exhaustHighpass.frequency.setTargetAtTime(22 - rotaryIdleBlend * 12, t, 0.025);
     this.currentDisplacement = displacement;
     if (`${config.id}:${displacement}:${this.soundProfile}` !== this.pressureConfigurationKey) {
       this.configurePressureGenerator(displacement);
     }
     if (this.pressureNode) {
-      const pressureLoad = Math.min(1.6, throttle * Math.sqrt(1 + Math.max(0, engineState.boostPressure || 0)));
       this.pressureNode.parameters.get('rpm').setTargetAtTime(rpm, t, 0.0025);
       this.pressureNode.parameters.get('load').setTargetAtTime(pressureLoad, t, 0.006);
       this.pressureNode.parameters.get('ignitionCut').setTargetAtTime(cutAmount, t, 0.001);
@@ -764,6 +783,8 @@ export class SoundEngine {
       this.pressureNode.parameters.get('limiterMode')?.setValueAtTime(({ soft: 0, hard: 1, sequential: 2 })[engineState.ecuMode] ?? 1, t);
       this.pressureNode.parameters.get('limiterDepth')?.setTargetAtTime(engineState.limiterDepth ?? 0.85, t, 0.01);
       this.pressureNode.parameters.get('camBlend')?.setTargetAtTime(engineState.camBlend || 0, t, 0.015);
+      this.pressureNode.parameters.get('rotaryBrap')?.setTargetAtTime(
+        config.layout === 'rotary' && this.rotaryIdleMode === 'brap' ? 1 : 0, t, 0.040);
     }
 
     let blowdownBoost = 0;
@@ -781,7 +802,10 @@ export class SoundEngine {
 
     // Primary combustion pulse softens into a muffled hollow ignition-cut tone (never 0 dead air!)
     const combustionVol = this.pressureNode ? 0 : 0.07 + 0.48 * (1 - cutAmount);
-    this.combustionGain.gain.setTargetAtTime(combustionVol, t, isShiftCut ? 0.0015 : 0.007);
+    this.combustionGain.gain.setTargetAtTime(combustionVol * (1 - rotaryBrapBlend * 0.20), t, isShiftCut ? 0.0015 : 0.007);
+    this.rotaryIdleOsc.frequency.setTargetAtTime(Math.max(0.1, rpm / 180), t, 0.010);
+    this.rotaryIdleModGain.gain.setTargetAtTime(
+      this.pressureNode ? 0 : combustionVol * rotaryBrapBlend * 0.55, t, 0.040);
 
     // Sub-bass thump (30-80 Hz) physically scales with displacement volume:
     // Large displacement engines deliver deep chest-thumping bass; small engines have tighter pulse
@@ -792,7 +816,8 @@ export class SoundEngine {
     const baseCamVol = (this.soundProfile === 'muscle' ? 0.035 : this.soundProfile === 'screamer' ? 0.010 : 0.019) * Math.min(1.8, 0.65 + 0.35 * Math.sqrt(dispLiters));
     const orderLayerScale = this.pressureNode ? 0.18 : 1;
     this.subBassGain.gain.setTargetAtTime(baseSubBassVol * orderLayerScale * (1 - cutAmount * 0.18), t, 0.005);
-    this.camshaftGain.gain.setTargetAtTime(baseCamVol * orderLayerScale * (1 - cutAmount * 0.18), t, 0.005);
+    this.camshaftGain.gain.setTargetAtTime(config.layout === 'rotary' ? 0
+      : baseCamVol * orderLayerScale * (1 - cutAmount * 0.18), t, 0.005);
 
     // -------------------------------------------------------------
     // 3. Dynamic Intake Induction Roar
@@ -884,6 +909,15 @@ export class SoundEngine {
   setVolume(vol) {
     this.volume = Math.max(0, Math.min(1, Number(vol) || 0));
     this.applyVolume();
+  }
+
+  setRotaryIdleMode(mode) {
+    if (!['stock', 'brap'].includes(mode)) return;
+    this.rotaryIdleMode = mode;
+    if (this.lastAudioState && this.isStarted) {
+      const { engineState, config, drivetrainState } = this.lastAudioState;
+      this.update(engineState, config, drivetrainState);
+    }
   }
 
   applyVolume() {

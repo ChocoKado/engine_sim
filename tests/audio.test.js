@@ -197,3 +197,50 @@ test('playFlutterSound and playBovSound execute cleanly without exceptions', asy
   assert.doesNotThrow(() => sound.playFlutterSound(1.2));
   assert.doesNotThrow(() => sound.playBovSound(1.0));
 });
+
+test('rotary idle sound mode persists before init and fallback uses a nonzero pressure envelope at the correct order', async () => {
+  const sound = new SoundEngine(() => new Context());
+  assert.equal(sound.rotaryIdleMode, 'stock');
+  sound.setEngineConfig(ENGINE_CONFIGS.rotary_2);
+  sound.setRotaryIdleMode('brap');
+  sound.setVolume(0);
+  await sound.init();
+  assert.equal(sound.rotaryIdleMode, 'brap');
+  sound.update({ rpm: 850, manifoldThrottle: 0, displacement: 1308 }, ENGINE_CONFIGS.rotary_2, {});
+  assert.equal(sound.rotaryIdleOsc.frequency.value, 850 / 180);
+  assert.equal(sound.camshaftOsc.frequency.value, 850 / 180, 'rotor order is not clamped to a fabricated 12 Hz');
+  assert.equal(sound.camshaftGain.gain.value, 0, 'rotary engine has no camshaft tone');
+  assert.ok(sound.combustionGain.gain.value - sound.rotaryIdleModGain.gain.value > 0,
+    'weakest fallback group remains audible and does not gate the whole engine');
+  assert.ok(sound.rotaryIdleModGain.connections.includes(sound.combustionGain.gain));
+  assert.equal(sound.masterGain.gain.value, 0, 'mode change never overrides mute');
+  sound.setRotaryIdleMode('invalid');
+  assert.equal(sound.rotaryIdleMode, 'brap');
+  sound.setRotaryIdleMode('stock');
+  assert.equal(sound.rotaryIdleModGain.gain.value, 0);
+});
+
+test('Worklet receives rotary sound selection, fallback fades under load, and nonrotary ignores the mode', async () => {
+  const sound = new SoundEngine(() => new Context());
+  sound.setEngineConfig(ENGINE_CONFIGS.rotary_2);
+  await sound.init();
+  sound.setRotaryIdleMode('brap');
+  sound.update({ rpm: 4000, manifoldThrottle: 0 }, ENGINE_CONFIGS.rotary_2, {});
+  assert.equal(sound.rotaryIdleModGain.gain.value, 0);
+  sound.update({ rpm: 850, manifoldThrottle: 0.9 }, ENGINE_CONFIGS.rotary_2, {});
+  assert.equal(sound.rotaryIdleModGain.gain.value, 0);
+  const parameters = new Map(['rpm', 'load', 'ignitionCut', 'limiter', 'rotaryBrap'].map(name => [name, new Parameter()]));
+  sound.pressureNode = { parameters, port: { postMessage() {} } };
+  sound.update({ rpm: 850, manifoldThrottle: 0 }, ENGINE_CONFIGS.rotary_2, {});
+  assert.equal(parameters.get('rotaryBrap').value, 1);
+  assert.equal(sound.rotaryIdleModGain.gain.value, 0, 'Worklet owns its envelope without duplicate fallback modulation');
+  sound.setRotaryIdleMode('stock');
+  assert.equal(parameters.get('rotaryBrap').value, 0);
+  sound.setRotaryIdleMode('brap');
+  sound.update({ rpm: 850, manifoldThrottle: 0 }, ENGINE_CONFIGS.i4_flat, {});
+  assert.equal(parameters.get('rotaryBrap').value, 0);
+  assert.equal(sound.exhaustHighpass.frequency.value, 22);
+  sound.setRunning(false);
+  sound.setRotaryIdleMode('stock');
+  assert.equal(sound.outputGain.gain.value, 0, 'mode change cannot restart engine audio');
+});

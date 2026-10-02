@@ -36,6 +36,7 @@ export class EngineModel {
     this.random = random;
     this.exhaust = EXHAUST_MODELS[exhaustId] || EXHAUST_MODELS.akrapovic;
     this.isIgnitionOn = false;
+    this.isStalled = false;
     this.rpm = 0;
     this.crankAngle = 0;
     this.rodToCrankRatio = 3.5;
@@ -76,6 +77,7 @@ export class EngineModel {
 
   setRunning(running) {
     this.isIgnitionOn = Boolean(running);
+    this.isStalled = false;
     this.resetCombustion(false);
     if (!running) this.boostPressure = 0;
     if (running) this.rpm = Math.max(this.rpm, this.idleRPM);
@@ -87,6 +89,7 @@ export class EngineModel {
 
   setConfig(configId) {
     this.config = ENGINE_CONFIGS[configId] || ENGINE_CONFIGS.i4_flat;
+    this.isStalled = false;
     this.powerPoints = this.config.torquePoints?.map(([rpm, torque]) => [rpm, torque * rpm]);
     this.displacement = this.config.defaultDisplacement;
     this.idleRPM = this.config.defaultIdleRPM;
@@ -362,10 +365,23 @@ export class EngineModel {
   }
 
   advanceStep(dt, { coupledRPM, loadTorque = 0 } = {}) {
+    const previousRPM = this.rpm;
     if (Number.isFinite(coupledRPM)) this.rpm = Math.max(0, coupledRPM);
     else {
       this.rpm = Math.max(0, this.rpm + (this.netTorque - loadTorque) / this.inertia * RPM_PER_RAD * dt);
       if (!this.isIgnitionOn && this.rpm < 20) this.rpm = 0;
+    }
+    if (!Number.isFinite(coupledRPM) && this.isIgnitionOn && previousRPM > 0 && this.rpm === 0) {
+      // A stopped crank cannot keep firing or restart merely because the pedal
+      // is pressed. Record the actual stall; the explicit starter action is
+      // setRunning(true). Do not hide excessive load with an RPM floor.
+      this.isIgnitionOn = false;
+      this.isStalled = true;
+      this.resetCombustion(false);
+      for (const cyl of this.cylinderStates) {
+        cyl.isFiring = false;
+        cyl.sparkTimer = 0;
+      }
     }
     // Never independently clamp coupled RPM: it must match road speed and gear.
     const deltaDeg = this.rpm * 6 * dt;
@@ -463,7 +479,8 @@ export class EngineModel {
       turboSpool: Number(this.turboSpool.toFixed(2)),
       bovType: this.bovType,
       bovEvents,
-      isIgnitionOn: this.isIgnitionOn, crankAngle: this.crankAngle, throttle: this.throttle,
+      isIgnitionOn: this.isIgnitionOn, isStalled: this.isStalled,
+      crankAngle: this.crankAngle, throttle: this.throttle,
       manifoldThrottle: this.manifoldThrottle, dyno: this.getCurrentDynoOutput(),
       cylinderStates: this.cylinderStates, isRevLimiting: this.isRevLimiting,
       isRevLimitingCut: this.isRevLimitingCut, revLimiterCutAmount: this.revLimiterCutAmount,
