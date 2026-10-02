@@ -234,14 +234,14 @@ export class EngineModel {
       this.boostPressure += (targetBoost - this.boostPressure) * (1 - Math.exp(-dt * 16));
 
       // Trigger Blow-Off Valve (BOV) or Compressor Surge (Flutter / 貓叫聲)
-      const hasBoost = this.boostPressure > 0.12;
+      const hasBoost = this.boostPressure > 0.08;
       const isShiftLift = torqueScale < 0.25 && (this.prevTorqueScale || 1) > 0.55;
-      const isThrottleLift = throttleDrop > 0.18;
+      const isThrottleLift = throttleDrop > 0.12;
       const isLimiterChirp = this.isRevLimitingCut && this.throttle > 0.6;
 
-      if (this.isIgnitionOn && hasBoost && (isThrottleLift || isShiftLift || isLimiterChirp) && (this.time - (this.lastBovTime || 0) > 0.22)) {
+      if (this.isIgnitionOn && hasBoost && (isThrottleLift || isShiftLift || isLimiterChirp) && (this.time - (this.lastBovTime || 0) > 0.35)) {
         this.lastBovTime = this.time;
-        const intensity = clamp(this.boostPressure / this.maxBoost, 0.45, 1.6);
+        const intensity = clamp(this.boostPressure / this.maxBoost, 0.55, 1.8);
         this.bovEvents.push({
           type: this.bovType,
           intensity,

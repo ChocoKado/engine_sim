@@ -49,6 +49,8 @@ export class SoundEngine {
     this.mufflerLowpass1 = null; // Primary acoustic muffler
     this.mufflerLowpass2 = null; // Secondary anti-harshness steep filter
     this.intakeFilter = null;    // 180 - 450 Hz induction roar
+    this.turboAirFilter = null;  // Pressurized intake airflow rush under boost
+    this.turboAirGain = null;
 
     // Sound Character & Tone
     this.soundProfile = 'deep'; // 'deep', 'screamer', 'muscle'
@@ -232,6 +234,22 @@ export class SoundEngine {
     return this.ctx.createPeriodicWave(real, imag, { disableNormalization: false });
   }
 
+  // Harmonic aerodynamic profile for turbocharger compressor blade passing whistle
+  createTurboWhistleWave() {
+    const numHarmonics = 16;
+    const real = new Float32Array(numHarmonics);
+    const imag = new Float32Array(numHarmonics);
+    real[0] = 0;
+    imag[0] = 0;
+    // Fundamental compressor blade pass
+    real[1] = 0.85;
+    // Housing scroll aerodynamic harmonics
+    real[2] = 0.32;
+    real[3] = 0.12;
+    real[4] = 0.05;
+    return this.ctx.createPeriodicWave(real, imag, { disableNormalization: false });
+  }
+
   setupAcousticGenerators() {
     const t = this.ctx.currentTime;
     const combustionWave = this.createCombustionPulseWave(this.soundProfile);
@@ -300,19 +318,31 @@ export class SoundEngine {
     this.intakeFilter.connect(this.intakeGain);
     this.intakeGain.connect(this.helmholtzFilter);
 
-    // 7. Turbocharger Turbine Spool Whistle (1.2 kHz - 4.5 kHz)
+    // 7A. Turbocharger Turbine Spool Whistle (1.2 kHz - 4.6 kHz with blade harmonics)
     this.turboSpoolOsc = this.ctx.createOscillator();
-    this.turboSpoolOsc.type = 'sine';
+    const turboWave = this.createTurboWhistleWave();
+    this.turboSpoolOsc.setPeriodicWave(turboWave);
     this.turboSpoolFilter = this.ctx.createBiquadFilter();
     this.turboSpoolFilter.type = 'peaking';
     this.turboSpoolFilter.frequency.setValueAtTime(1400, t);
-    this.turboSpoolFilter.Q.setValueAtTime(3.8, t);
+    this.turboSpoolFilter.Q.setValueAtTime(3.5, t);
     this.turboSpoolFilter.gain.setValueAtTime(6.0, t);
     this.turboSpoolGain = this.ctx.createGain();
     this.turboSpoolGain.gain.setValueAtTime(0.0, t);
     this.turboSpoolOsc.connect(this.turboSpoolFilter);
     this.turboSpoolFilter.connect(this.turboSpoolGain);
     this.turboSpoolGain.connect(this.masterGain);
+
+    // 7B. Turbocharger Pressurized Intake Air Suction Rush (1.5 kHz - 4.2 kHz roaring whoosh)
+    this.turboAirFilter = this.ctx.createBiquadFilter();
+    this.turboAirFilter.type = 'bandpass';
+    this.turboAirFilter.frequency.setValueAtTime(1800, t);
+    this.turboAirFilter.Q.setValueAtTime(1.8, t);
+    this.turboAirGain = this.ctx.createGain();
+    this.turboAirGain.gain.setValueAtTime(0.0, t);
+    this.intakeNoiseNode.connect(this.turboAirFilter);
+    this.turboAirFilter.connect(this.turboAirGain);
+    this.turboAirGain.connect(this.masterGain);
 
     // 8. Supercharger Screw Screaming Whine (800 Hz - 3500 Hz)
     this.scWhineOsc = this.ctx.createOscillator();
@@ -503,60 +533,81 @@ export class SoundEngine {
     node.onended = () => { node.disconnect(); filter.disconnect(); gain.disconnect(); };
   }
 
-  // Play Compressor Surge / Flutter ("Stututututu / 貓叫聲 / 鳥叫聲 / 咻咻聲")
+  // Play Compressor Surge / Flutter ("Stutututu / Supra 2JZ 經典放油門反串流 / 貓叫鳥叫聲")
   playFlutterSound(intensity = 1.0) {
     if (!this.ctx || !this.isStarted || !this.running) return;
     const t = this.ctx.currentTime;
-    const duration = 0.62;
+    const duration = 0.88;
     const sampleRate = this.ctx.sampleRate;
     const bufLen = Math.floor(sampleRate * duration);
     const buf = this.ctx.createBuffer(1, bufLen, sampleRate);
     const data = buf.getChannelData(0);
-    const numPulses = 7;
-    const pulseInterval = 0.056; // ~18 Hz flutter frequency
+    const numPulses = 10;
+    const pulseInterval = 0.068; // ~14.7 Hz authentic Supra 2JZ big turbo flutter cadence
     for (let i = 0; i < bufLen; i++) {
       const time = i / sampleRate;
       let val = 0;
       for (let p = 0; p < numPulses; p++) {
         const pStart = p * pulseInterval;
         const pTime = time - pStart;
-        if (pTime >= 0 && pTime < 0.085) {
-          // Decreasing amplitude per pulse: 1.0, 0.80, 0.64, 0.51, 0.40, 0.32, 0.25
+        if (pTime >= 0 && pTime < 0.078) {
+          // Decreasing amplitude per pulse: 1.0, 0.80, 0.64, 0.51, 0.40, 0.32, 0.25, 0.18, 0.12, 0.06
           const pAmplitude = Math.pow(0.80, p);
-          const pDecay = Math.exp(-pTime * 48) * pAmplitude;
-          // Characteristic JDM "cat-chirp" downward carrier sweep:
-          // Starts higher on first pulse (~2600 Hz down to 1350 Hz), dropping on each subsequent pulse
-          const startFreq = (2550 - p * 120);
-          const endFreq = (1300 - p * 80);
-          const freq = startFreq - (startFreq - endFreq) * (pTime / 0.085);
-          const phase = 2 * Math.PI * Math.max(600, freq) * pTime;
-          // Combination of high-Q acoustic chirp whistle, blade turbulence, and low-end pressure thump (~160 Hz)
-          const chirp = Math.sin(phase) * 0.65;
-          const airNoise = (Math.random() * 2 - 1) * 0.25;
-          const pressureThump = Math.sin(2 * Math.PI * 160 * pTime) * 0.40;
-          val += (chirp + airNoise + pressureThump) * pDecay;
+          const pDecay = Math.exp(-pTime * 42) * pAmplitude;
+
+          // 1. Cavitation shockwave transient slap on compressor wheel (first 10ms of each chop)
+          const transient = pTime < 0.010
+            ? (Math.random() * 2 - 1) * Math.cos(pTime * 2800 * Math.PI) * Math.exp(-pTime * 300) * 0.85
+            : 0;
+
+          // 2. Hollow aluminum intercooler charge pipe cavity thump ("DOO / TU")
+          // 260 Hz fundamental pipe cavity resonance dropping slightly per pulse
+          const pipeFreq = Math.max(180, 260 - p * 8);
+          const pipeThump = Math.sin(2 * Math.PI * pipeFreq * pTime) * 0.72;
+
+          // 3. Compressor impeller blade stall chirp ("TSHU / bird chirp")
+          // Exponential downward pitch sweep from ~2350 Hz down to ~1100 Hz
+          const startFreq = 2350 - p * 75;
+          const endFreq = 1100 - p * 45;
+          const chirpFreq = Math.max(650, startFreq - (startFreq - endFreq) * (pTime / 0.078));
+          const bladeChop = Math.sin(2 * Math.PI * chirpFreq * pTime) * 0.65;
+
+          // 4. Intercooler charge pipe air turbulence
+          const turbulence = (Math.random() * 2 - 1) * 0.28;
+
+          val += (transient + pipeThump + bladeChop + turbulence) * pDecay;
         }
       }
-      data[i] = val;
+      data[i] = val * 0.65;
     }
     const node = this.ctx.createBufferSource();
     node.buffer = buf;
-    const filter = this.ctx.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(1900, t);
-    filter.Q.setValueAtTime(3.6, t);
+
+    // Acoustic filtering: Preserves the deep hollow pipe thumps (200-450 Hz) while accentuating
+    // the metallic blade chirp at 1950 Hz, with a gentle lowpass at 5200 Hz to prevent harshness
+    const peakFilter = this.ctx.createBiquadFilter();
+    peakFilter.type = 'peaking';
+    peakFilter.frequency.setValueAtTime(1950, t);
+    peakFilter.Q.setValueAtTime(2.2, t);
+    peakFilter.gain.setValueAtTime(4.0, t);
+
+    const lowpass = this.ctx.createBiquadFilter();
+    lowpass.type = 'lowpass';
+    lowpass.frequency.setValueAtTime(5200, t);
+    lowpass.Q.setValueAtTime(0.85, t);
 
     const gain = this.ctx.createGain();
-    const vol = Math.min(0.95, 0.58 * intensity);
+    const vol = Math.min(0.95, 0.72 * intensity);
     gain.gain.setValueAtTime(vol, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
 
-    node.connect(filter);
-    filter.connect(gain);
+    node.connect(peakFilter);
+    peakFilter.connect(lowpass);
+    lowpass.connect(gain);
     gain.connect(this.masterGain);
 
     node.start(t);
-    node.onended = () => { node.disconnect(); filter.disconnect(); gain.disconnect(); };
+    node.onended = () => { node.disconnect(); peakFilter.disconnect(); lowpass.disconnect(); gain.disconnect(); };
   }
 
   // Real-time audio frame update
@@ -714,13 +765,24 @@ export class SoundEngine {
 
     if (this.turboSpoolOsc && this.turboSpoolGain) {
       if (forcedInduction === 'turbo' && turboSpool > 0.03) {
-        const turboPitch = Math.min(4900, 1350 + Math.pow(turboSpool, 1.35) * 3350);
+        // High turbine whistling siren: 1300 Hz to 4600 Hz
+        const turboPitch = Math.min(4600, 1300 + Math.pow(turboSpool, 1.35) * 3200);
         this.turboSpoolOsc.frequency.setTargetAtTime(turboPitch, t, smoothTime);
         this.turboSpoolFilter.frequency.setTargetAtTime(turboPitch, t, smoothTime);
-        const turboVol = Math.pow(turboSpool, 1.3) * (0.12 + 0.16 * throttle);
-        this.turboSpoolGain.gain.setTargetAtTime(isShiftCut ? turboVol * 0.45 : turboVol, t, smoothTime);
+        const turboVol = Math.pow(turboSpool, 1.25) * (0.05 + 0.13 * throttle);
+        this.turboSpoolGain.gain.setTargetAtTime(isShiftCut ? turboVol * 0.4 : turboVol, t, smoothTime);
+
+        // High-velocity pressurized intake air suction whoosh (roaring airflow under boost)
+        if (this.turboAirFilter && this.turboAirGain) {
+          const airFreq = Math.min(3800, 1500 + turboSpool * 2000);
+          this.turboAirFilter.frequency.setTargetAtTime(airFreq, t, smoothTime);
+          const boostFactor = Math.min(1.8, Math.sqrt((engineState.boostPressure || 0) + 0.20));
+          const airVol = Math.pow(turboSpool, 1.15) * Math.pow(throttle, 0.90) * 0.20 * boostFactor;
+          this.turboAirGain.gain.setTargetAtTime(isShiftCut ? 0.01 : airVol, t, smoothTime);
+        }
       } else {
         this.turboSpoolGain.gain.setTargetAtTime(0.0, t, 0.04);
+        if (this.turboAirGain) this.turboAirGain.gain.setTargetAtTime(0.0, t, 0.04);
       }
     }
 
