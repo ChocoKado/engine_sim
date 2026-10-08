@@ -1,5 +1,6 @@
 import { PerformanceMeter, readPerformanceHistory, savePerformanceHistory } from '../physics/PerformanceMeter.js';
 import { performanceAssessment } from '../physics/PerformanceAnalysis.js';
+import { MODIFICATION_CATALOG, createStockModifications } from '../physics/Modifications.js';
 
 const seconds = value => value == null ? '—' : `${value.toFixed(2)} s`;
 export function capturePerformanceSetup(engine, drive) {
@@ -10,13 +11,17 @@ export function capturePerformanceSetup(engine, drive) {
     finalDrive: drive.finalDrive, primaryRatio: drive.primaryRatio, gearRatios: { ...drive.gearRatios }, tireRadius: drive.tireRadius,
     ecu: engine.limiter.mode, limiterHz: engine.limiter.hz, limiterDepth: engine.limiter.depth,
     vtec: engine.cam.enabled, vtecRPM: engine.cam.engageRPM,
+    modifications: { ...createStockModifications(), ...engine.modifications },
     peakHP: engine.dynoData.maxHp, peakTorque: engine.dynoData.maxTorque };
 }
 export function setupCaption(s) {
   const boost = s.induction === 'na' ? 'NA' : `${s.induction === 'turbo' ? `Turbo ${s.turboSize === 'large' ? '大' : '小'}` : 'TVS'} ${Number(s.boost).toFixed(2)} bar`;
   const release = s.induction === 'turbo' ? ` · ${s.bov === 'flutter' ? 'Flutter' : 'BOV'}` : '';
   const gearing = Number.isFinite(s.finalDrive) ? ` · 終傳 ${s.finalDrive.toFixed(3)}` : '';
-  return `${s.displacement} cc · 上限 ${s.redlineRPM} RPM · ${s.transmission?.toUpperCase()} · ${Math.round(s.mass)} kg · ${s.exhaust} · ${boost}${release}${gearing} · ${s.peakHP} HP · ECU ${s.ecu} ${s.limiterHz} Hz / ${Math.round(s.limiterDepth * 100)}%${s.vtecRPM ? ` · VTEC ${s.vtec ? s.vtecRPM : 'OFF'}` : ''}`;
+  const parts = MODIFICATION_CATALOG.filter(part => s.modifications?.[part.id] && s.modifications[part.id] !== 'stock')
+    .map(part => part.name);
+  const modified = parts.length ? ` · 改裝 ${parts.join('／')}` : '';
+  return `${s.displacement} cc · 上限 ${s.redlineRPM} RPM · ${s.transmission?.toUpperCase()} · ${Math.round(s.mass)} kg · ${s.exhaust} · ${boost}${release}${gearing} · ${s.peakHP} HP · ECU ${s.ecu} ${s.limiterHz} Hz / ${Math.round(s.limiterDepth * 100)}%${s.vtecRPM ? ` · VTEC ${s.vtec ? s.vtecRPM : 'OFF'}` : ''}${modified}`;
 }
 
 export class PerformancePanel {

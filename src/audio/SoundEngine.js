@@ -826,8 +826,12 @@ export class SoundEngine {
     // -------------------------------------------------------------
     // Airflow volume is proportional to displacement * RPM
     const intakeAirflow = Math.min(2.4, Math.sqrt(dispLiters));
-    const camRoar = (engineState.camBlend || 0) * Math.min(1, rpm / (engineState.redlineRPM || 9000));
-    const intakeVol = Math.pow(throttle, 1.35) * (0.020 + 0.045 * intakeAirflow) * (1 + 0.9 * camRoar);
+    const vtecBlend = Math.max(0, Math.min(1, engineState.camBlend || 0));
+    const valveProfileBlend = engineState.modifications?.camshaft === 'sport'
+      ? vtecBlend + (1 - vtecBlend) * 0.25 : vtecBlend;
+    const camRoar = valveProfileBlend * Math.min(1, rpm / (config.ratedPowerRPM || config.defaultRedlineRPM || 9000));
+    const intakeHardwareGain = Math.max(1, Math.min(1.3, Number(engineState.intakeGain) || 1));
+    const intakeVol = Math.pow(throttle, 1.35) * (0.020 + 0.045 * intakeAirflow) * (1 + 0.9 * camRoar) * intakeHardwareGain;
     this.intakeGain.gain.setTargetAtTime(intakeVol, t, 0.015);
     // Induction formant shifts with displacement and revs
     const intakeCenterFreq = Math.max(110, Math.min(1600, (220 + rpm * 0.028) * Math.pow(1.0 / dispLiters, 0.14) * (1 + camRoar * 0.25)));

@@ -34,19 +34,29 @@ const silenceEngine = sound => {
     sound[name].gain.setValueAtTime(0, 0);
   }
 };
-async function render({ mode = 'at', muted = false, stopped = false, config = ENGINE_CONFIGS.i4_flat, induction = 'na', isolate = '', ecuMode = 'soft', limiterCut = 0, limiterHz = 18, camBlend = 0 } = {}) {
+async function render({ mode = 'at', muted = false, stopped = false, config = ENGINE_CONFIGS.i4_flat, induction = 'na', isolate = '', ecuMode = 'soft', limiterCut = 0, limiterHz = 18, camBlend = 0, intakeHardwareGain = 1 } = {}) {
   const context = new OfflineAudioContext(1, 76800, sampleRate);
   const sound = new SoundEngine(() => context);
   sound.setVolume(muted ? 0 : 0.5);
   sound.setEngineConfig(config);
   await sound.init();
+  if (isolate === 'intakeGain') {
+    // A/B tests use the same airflow excitation so random noise energy cannot
+    // masquerade as a hardware gain or a VTEC difference.
+    const noise = sound.intakeNoiseNode.buffer.getChannelData(0);
+    let seed = 8173;
+    for (let index = 0; index < noise.length; index++) {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      noise[index] = (seed / 4294967296 * 2 - 1) * 0.6;
+    }
+  }
   sound.setRunning(true);
   const isolateLayer = () => { if (!isolate) return; for (const name of ['pressureGain', 'combustionGain', 'harmonicGain', 'subBassGain', 'camshaftGain', 'gearWhineGain', 'intakeGain']) { if (name !== isolate && sound[name]) { sound[name].gain.cancelScheduledValues(context.currentTime); sound[name].gain.setValueAtTime(0, context.currentTime); } } };
   const state = { rpm: 6000, redlineRPM: 14500, displacement: config.defaultDisplacement,
     manifoldThrottle: 0.85, isRevLimiting: false, forcedInduction: induction,
     turboRPM: 130000, superchargerRPM: 14100, inductionLoad: 0.8,
     bypassOpening: 0, airFlow: 0.30, boostPressure: induction === 'na' ? 0 : 1.0,
-    ecuMode, revLimiterCutAmount: limiterCut, limiterHz, limiterDepth: 1, camBlend };
+    ecuMode, revLimiterCutAmount: limiterCut, limiterHz, limiterDepth: 1, camBlend, intakeGain: intakeHardwareGain };
   sound.update(state, config, { mode, currentGear: 1, gearRatio: 3.5 });
   isolateLayer();
   const suspended = context.suspend(0.45);
@@ -257,6 +267,11 @@ try {
   const { data: lowCam } = await render({ config: ENGINE_CONFIGS.honda_k20a, camBlend: 0, isolate: 'intakeGain' });
   check('VTEC 高凸輪實際增強進氣聲', rms(highCam, 0.3, 0.4) > rms(lowCam, 0.3, 0.4) * 1.20 && finite(highCam),
     '高 / 低凸輪 RMS = ' + (rms(highCam, 0.3, 0.4) / rms(lowCam, 0.3, 0.4)).toFixed(3));
+  const { data: stockIntake } = await render({ isolate: 'intakeGain' });
+  const { data: sportIntake } = await render({ isolate: 'intakeGain', intakeHardwareGain: 1.2 });
+  const intakeRatio = rms(sportIntake, 0.3, 0.4) / rms(stockIntake, 0.3, 0.4);
+  check('高流量進氣改裝增強實際進氣聲且無削波', intakeRatio > 1.10 && intakeRatio < 1.30 && finite(sportIntake),
+    '改裝 / 原廠進氣 RMS = ' + intakeRatio.toFixed(3));
   const rotaryIdle = {};
   for (const rotaryIdleMode of ['stock', 'brap']) {
     for (const id of ['oem', 'akrapovic', 'sc_project', 'straight']) {

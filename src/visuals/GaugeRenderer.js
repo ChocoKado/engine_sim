@@ -30,7 +30,7 @@ export class GaugeRenderer {
     if (this.tachoCanvas) {
       const rect = this.tachoCanvas.parentElement.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
-      const size = Math.min(rect.width, 360);
+      const size = Math.min(rect.width, rect.height || 360, 360);
       this.tachoSize = size;
       this.tachoCanvas.width = size * dpr;
       this.tachoCanvas.height = size * dpr;
@@ -101,9 +101,13 @@ export class GaugeRenderer {
 
   // Render Racing Tachometer
   renderTachometer(engine, drivetrain, dt = 1 / 60) {
-    if (!this.tachoCtx) return;
+    if (!this.tachoCtx || !this.tachoSize) return;
     const ctx = this.tachoCtx;
-    const s = this.tachoSize;
+    // Keep the dial's fonts, tick lengths and hub proportional in the compact
+    // garage cockpit instead of squeezing fixed-size labels into a tiny ring.
+    const s = Math.max(240, this.tachoSize);
+    ctx.save();
+    ctx.scale(this.tachoSize / s, this.tachoSize / s);
     const cx = s / 2;
     const cy = s / 2;
     const radius = s * 0.42;
@@ -185,7 +189,9 @@ export class GaugeRenderer {
       const labelR = radius - 26;
       ctx.font = '700 13px Orbitron, Rajdhani, sans-serif';
       ctx.fillStyle = isRedlineTick ? '#ef4444' : '#e2e8f0';
-      ctx.fillText(`${i}`, cx + cos * labelR, cy + sin * labelR);
+      if (this.tachoSize >= 180 || numTicks <= 8 || i % 2 === 0) {
+        ctx.fillText(`${i}`, cx + cos * labelR, cy + sin * labelR);
+      }
 
       // Minor tick mark (500 RPM)
       if (i < numTicks) {
@@ -258,6 +264,7 @@ export class GaugeRenderer {
     ctx.arc(cx, cy, 5, 0, Math.PI * 2);
     ctx.fill();
 
+    ctx.restore();
     ctx.restore();
   }
 

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-02T22:18:09.458Z",
+  "generatedAt": "2026-10-08T10:51:04.313Z",
   "cases": 120,
   "method": "OEM exhaust and preset induction; default CC, maximum CC, maximum CC with final-drive ratio ×0.85. Same mass/redline. 240 Hz physics for 90 s at full throttle. AT automatic, AMT test driver requests shifts at 94% redline. Interpolated PerformanceMeter timings, no rollout. Speed at 90 s is not a verified terminal speed; null metrics mean not reached.",
   "results": [
@@ -37,6 +37,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 72,
         "peakTorque": 74
       },
@@ -88,6 +96,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 84,
         "peakTorque": 85
       },
@@ -139,6 +155,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 84,
         "peakTorque": 85
       },
@@ -190,6 +214,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 72,
         "peakTorque": 74
       },
@@ -241,6 +273,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 84,
         "peakTorque": 85
       },
@@ -292,6 +332,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 84,
         "peakTorque": 85
       },
@@ -343,6 +391,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 45,
         "peakTorque": 38
       },
@@ -394,6 +450,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 73,
         "peakTorque": 62
       },
@@ -445,6 +509,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 73,
         "peakTorque": 62
       },
@@ -496,6 +568,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 45,
         "peakTorque": 38
       },
@@ -547,6 +627,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 73,
         "peakTorque": 62
       },
@@ -598,6 +686,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 73,
         "peakTorque": 62
       },
@@ -649,6 +745,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 72,
         "peakTorque": 67
       },
@@ -700,6 +804,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 126,
         "peakTorque": 117
       },
@@ -751,6 +863,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 126,
         "peakTorque": 117
       },
@@ -802,6 +922,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 72,
         "peakTorque": 67
       },
@@ -853,6 +981,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 126,
         "peakTorque": 117
       },
@@ -904,6 +1040,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 126,
         "peakTorque": 117
       },
@@ -955,6 +1099,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 153,
         "peakTorque": 104
       },
@@ -1006,6 +1158,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 208,
         "peakTorque": 142
       },
@@ -1057,6 +1217,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 208,
         "peakTorque": 142
       },
@@ -1108,6 +1276,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 153,
         "peakTorque": 104
       },
@@ -1159,6 +1335,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 208,
         "peakTorque": 142
       },
@@ -1210,6 +1394,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 208,
         "peakTorque": 142
       },
@@ -1261,6 +1453,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 117,
         "peakTorque": 93
       },
@@ -1312,6 +1512,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 198,
         "peakTorque": 157
       },
@@ -1363,6 +1571,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 198,
         "peakTorque": 157
       },
@@ -1414,6 +1630,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 117,
         "peakTorque": 93
       },
@@ -1465,6 +1689,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 198,
         "peakTorque": 157
       },
@@ -1516,6 +1748,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 198,
         "peakTorque": 157
       },
@@ -1567,6 +1807,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 189,
         "peakTorque": 114
       },
@@ -1618,6 +1866,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 473,
         "peakTorque": 285
       },
@@ -1669,6 +1925,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 473,
         "peakTorque": 285
       },
@@ -1720,6 +1984,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 189,
         "peakTorque": 114
       },
@@ -1771,6 +2043,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 473,
         "peakTorque": 285
       },
@@ -1822,6 +2102,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 473,
         "peakTorque": 285
       },
@@ -1873,6 +2161,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 197,
         "peakTorque": 113
       },
@@ -1924,6 +2220,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 257,
         "peakTorque": 148
       },
@@ -1975,6 +2279,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 257,
         "peakTorque": 148
       },
@@ -2026,6 +2338,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 197,
         "peakTorque": 113
       },
@@ -2077,6 +2397,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 257,
         "peakTorque": 148
       },
@@ -2128,6 +2456,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 257,
         "peakTorque": 148
       },
@@ -2179,6 +2515,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 321,
         "peakTorque": 427
       },
@@ -2230,6 +2574,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 428,
         "peakTorque": 570
       },
@@ -2281,6 +2633,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 428,
         "peakTorque": 570
       },
@@ -2332,6 +2692,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 321,
         "peakTorque": 427
       },
@@ -2383,6 +2751,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 428,
         "peakTorque": 570
       },
@@ -2434,6 +2810,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 428,
         "peakTorque": 570
       },
@@ -2485,6 +2869,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 565,
         "peakTorque": 633
       },
@@ -2536,6 +2928,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 625,
         "peakTorque": 700
       },
@@ -2587,6 +2987,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 625,
         "peakTorque": 700
       },
@@ -2638,6 +3046,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 565,
         "peakTorque": 633
       },
@@ -2689,6 +3105,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 625,
         "peakTorque": 700
       },
@@ -2740,6 +3164,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 625,
         "peakTorque": 700
       },
@@ -2791,6 +3223,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 460,
         "peakTorque": 569
       },
@@ -2805,7 +3245,7 @@
       "gear": 5,
       "rpm": 7330.754392334258,
       "highestGearRedlineWheelSpeed": 419.5632019429562,
-      "finalRestriction": "power",
+      "finalRestriction": "limiter",
       "sawTractionControl": true
     },
     {
@@ -2842,6 +3282,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 657,
         "peakTorque": 814
       },
@@ -2893,6 +3341,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 657,
         "peakTorque": 814
       },
@@ -2944,6 +3400,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 460,
         "peakTorque": 569
       },
@@ -2995,6 +3459,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 657,
         "peakTorque": 814
       },
@@ -3046,6 +3518,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 657,
         "peakTorque": 814
       },
@@ -3098,6 +3578,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 562,
         "peakTorque": 540
       },
@@ -3150,6 +3638,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 649,
         "peakTorque": 624
       },
@@ -3202,6 +3698,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 649,
         "peakTorque": 624
       },
@@ -3254,6 +3758,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 562,
         "peakTorque": 540
       },
@@ -3306,6 +3818,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 649,
         "peakTorque": 624
       },
@@ -3358,6 +3878,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 649,
         "peakTorque": 624
       },
@@ -3409,6 +3937,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 553,
         "peakTorque": 480
       },
@@ -3460,6 +3996,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 690,
         "peakTorque": 599
       },
@@ -3511,6 +4055,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 690,
         "peakTorque": 599
       },
@@ -3562,6 +4114,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 553,
         "peakTorque": 480
       },
@@ -3613,6 +4173,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 690,
         "peakTorque": 599
       },
@@ -3664,6 +4232,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 690,
         "peakTorque": 599
       },
@@ -3716,6 +4292,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 691,
         "peakTorque": 690
       },
@@ -3768,6 +4352,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 797,
         "peakTorque": 796
       },
@@ -3820,6 +4412,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 797,
         "peakTorque": 796
       },
@@ -3872,6 +4472,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 691,
         "peakTorque": 690
       },
@@ -3924,6 +4532,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 797,
         "peakTorque": 796
       },
@@ -3976,6 +4592,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 797,
         "peakTorque": 796
       },
@@ -4028,6 +4652,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 1479,
         "peakTorque": 1600
       },
@@ -4080,6 +4712,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 1851,
         "peakTorque": 2187
       },
@@ -4132,6 +4772,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 1851,
         "peakTorque": 2187
       },
@@ -4184,6 +4832,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 1479,
         "peakTorque": 1600
       },
@@ -4236,6 +4892,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 1851,
         "peakTorque": 2187
       },
@@ -4288,6 +4952,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 1851,
         "peakTorque": 2187
       },
@@ -4339,6 +5011,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 110,
         "peakTorque": 220
       },
@@ -4390,6 +5070,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 244,
         "peakTorque": 487
       },
@@ -4441,6 +5129,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 244,
         "peakTorque": 487
       },
@@ -4492,6 +5188,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 110,
         "peakTorque": 220
       },
@@ -4543,6 +5247,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 244,
         "peakTorque": 487
       },
@@ -4594,6 +5306,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 244,
         "peakTorque": 487
       },
@@ -4645,6 +5365,14 @@
         "limiterDepth": 0.85,
         "vtec": true,
         "vtecRPM": 6000,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 247,
         "peakTorque": 218
       },
@@ -4696,6 +5424,14 @@
         "limiterDepth": 0.85,
         "vtec": true,
         "vtecRPM": 6000,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 297,
         "peakTorque": 262
       },
@@ -4747,6 +5483,14 @@
         "limiterDepth": 0.85,
         "vtec": true,
         "vtecRPM": 6000,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 297,
         "peakTorque": 262
       },
@@ -4798,6 +5542,14 @@
         "limiterDepth": 0.85,
         "vtec": true,
         "vtecRPM": 6000,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 247,
         "peakTorque": 218
       },
@@ -4849,6 +5601,14 @@
         "limiterDepth": 0.85,
         "vtec": true,
         "vtecRPM": 6000,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 297,
         "peakTorque": 262
       },
@@ -4900,6 +5660,14 @@
         "limiterDepth": 0.85,
         "vtec": true,
         "vtecRPM": 6000,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 297,
         "peakTorque": 262
       },
@@ -4951,6 +5719,14 @@
         "limiterDepth": 0.85,
         "vtec": true,
         "vtecRPM": 5800,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 221,
         "peakTorque": 215
       },
@@ -5002,6 +5778,14 @@
         "limiterDepth": 0.85,
         "vtec": true,
         "vtecRPM": 5800,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 266,
         "peakTorque": 258
       },
@@ -5053,6 +5837,14 @@
         "limiterDepth": 0.85,
         "vtec": true,
         "vtecRPM": 5800,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 266,
         "peakTorque": 258
       },
@@ -5104,6 +5896,14 @@
         "limiterDepth": 0.85,
         "vtec": true,
         "vtecRPM": 5800,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 221,
         "peakTorque": 215
       },
@@ -5155,6 +5955,14 @@
         "limiterDepth": 0.85,
         "vtec": true,
         "vtecRPM": 5800,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 266,
         "peakTorque": 258
       },
@@ -5206,6 +6014,14 @@
         "limiterDepth": 0.85,
         "vtec": true,
         "vtecRPM": 5800,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 266,
         "peakTorque": 258
       },
@@ -5257,6 +6073,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 305,
         "peakTorque": 393
       },
@@ -5308,12 +6132,20 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 372,
         "peakTorque": 480
       },
       "metrics": {
-        "zeroTo100": 4.934226436236026,
-        "hundredTo200": 10.230593609284572,
+        "zeroTo100": 4.934226436236018,
+        "hundredTo200": 10.230593609284579,
         "quarterMile": 12.994161928322916,
         "finishSpeed": 184.6126810312634
       },
@@ -5359,6 +6191,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 372,
         "peakTorque": 480
       },
@@ -5410,6 +6250,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 305,
         "peakTorque": 393
       },
@@ -5461,6 +6309,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 372,
         "peakTorque": 480
       },
@@ -5512,6 +6368,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 372,
         "peakTorque": 480
       },
@@ -5563,6 +6427,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 503,
         "peakTorque": 450
       },
@@ -5614,6 +6486,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 566,
         "peakTorque": 507
       },
@@ -5665,6 +6545,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 566,
         "peakTorque": 507
       },
@@ -5716,6 +6604,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 503,
         "peakTorque": 450
       },
@@ -5767,6 +6663,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 566,
         "peakTorque": 507
       },
@@ -5818,6 +6722,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 566,
         "peakTorque": 507
       },
@@ -5869,6 +6781,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 238,
         "peakTorque": 216
       },
@@ -5920,6 +6840,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 364,
         "peakTorque": 330
       },
@@ -5971,6 +6899,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 364,
         "peakTorque": 330
       },
@@ -6022,6 +6958,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 238,
         "peakTorque": 216
       },
@@ -6073,6 +7017,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 364,
         "peakTorque": 330
       },
@@ -6124,6 +7076,14 @@
         "limiterDepth": 0.85,
         "vtec": false,
         "vtecRPM": 0,
+        "modifications": {
+          "intake": "stock",
+          "headers": "stock",
+          "camshaft": "stock",
+          "flywheel": "stock",
+          "intercooler": "stock",
+          "pulley": "stock"
+        },
         "peakHP": 364,
         "peakTorque": 330
       },

@@ -5,6 +5,8 @@ import { CamControl, camValveLift } from './CamControl.js';
 import { RevLimiter } from './RevLimiter.js';
 import { radialKinematics, radialCyclePhase, radialPistonTravel } from './RadialMechanics.js';
 import { rotaryChamberState } from './RotaryMechanics.js';
+import { MODIFICATION_CATALOG, createStockModifications, isModificationSupported,
+  sanitizeModifications, modificationEffects } from './Modifications.js';
 
 export const PHYSICS_STEP = 1 / 240;
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
@@ -64,6 +66,7 @@ export class EngineModel {
     this.netTorque = 0;
     this.availableCrankTorque = 0;
     this.combustionTorque = 0;
+    this.idleTorque = 0;
     this.currentEngineDrag = 0;
     this.lastBovTime = 0;
     this.prevTorqueScale = 1;
@@ -92,6 +95,7 @@ export class EngineModel {
 
   setConfig(configId) {
     this.config = ENGINE_CONFIGS[configId] || ENGINE_CONFIGS.i4_flat;
+    this.modifications = createStockModifications();
     this.isStalled = false;
     this.powerPoints = this.config.torquePoints?.map(([rpm, torque]) => [rpm, torque * rpm]);
     this.displacement = this.config.defaultDisplacement;
@@ -124,6 +128,7 @@ export class EngineModel {
   setForcedInduction(type) {
     if (['na', 'turbo', 'supercharger'].includes(type)) {
       this.forcedInduction = type;
+      this.modifications = sanitizeModifications(this.config, type, this.modifications);
       this.induction.reset();
       this.boostPressure = this.turboSpool = this.superchargerSpool = 0;
       this.turboRPM = this.superchargerRPM = 0;
@@ -163,6 +168,19 @@ export class EngineModel {
     this.dynoData = this.calculateDynoCurve();
   }
 
+  setModification(kind, value) {
+    const part = MODIFICATION_CATALOG.find(part => part.id === kind);
+    if (!part || !part.options.some(option => option.value === value)
+      || !isModificationSupported(this.config, this.forcedInduction, kind)) return false;
+    this.modifications = { ...this.modifications, [kind]: value };
+    this.dynoData = this.calculateDynoCurve();
+    return true;
+  }
+
+  get modificationEffects() {
+    return modificationEffects(this.config, this.modifications, this.rpm, this.displacement);
+  }
+
   setDisplacement(value) {
     if (!Number.isFinite(Number(value))) return;
     this.displacement = clamp(Number(value), this.config.minDisplacement, this.config.maxDisplacement);
@@ -183,10 +201,15 @@ export class EngineModel {
     // Large displacement engines have heavy pistons, massive counterweights, and heavy flywheels.
     const liters = this.displacement / 1000;
     const motorcycle = this.config.vehicleKind === 'motorcycle';
-    const crank = motorcycle ? this.config.flywheelInertia * 0.30 + 0.004
-      : this.config.flywheelInertia + 0.02;
+    // The legacy inertia anchors are estimates. Split the replaceable flywheel
+    // from the fixed crank/accessory allowance so its upgrade cannot lighten
+    // pistons, counterweights or the mechanically driven compressor.
+    const flywheel = this.config.flywheelInertia * (motorcycle ? 0.30 : 1);
+    const crankAccessories = motorcycle ? 0.004 : 0.02;
     const reciprocating = Math.pow(liters, 1.1) * (motorcycle ? 0.009 : this.config.layout === 'radial' ? 0.055 : this.config.layout === 'rotary' ? 0.012 : 0.024);
-    return crank + reciprocating + (this.forcedInduction === 'supercharger' ? liters * 0.004 : 0);
+    const effects = this.modificationEffects;
+    return flywheel * effects.inertiaFactor + crankAccessories + reciprocating
+      + (this.forcedInduction === 'supercharger' ? liters * 0.004 * effects.pulleyRatio ** 2 : 0);
   }
 
   get revLimitControlRange() {
@@ -215,13 +238,14 @@ export class EngineModel {
       // Published torque is already boosted. Recover an underlying naturally
       // aspirated curve before applying a user's actual dynamic induction state.
       const stockSC = stockType === 'supercharger'
-        ? this.compressorTorque(rpm, this.config.defaultDisplacement, stockBoost) : 0;
+        ? superchargerDriveTorque(this.config, rpm, this.config.defaultDisplacement, stockBoost) : 0;
       torque = (torque + stockSC) / Math.max(1, thermo.densityRatio - (stockType === 'turbo' ? stockBoost * 0.018 : 0));
       const fraction = rpm / (this.config.ratedPowerRPM || this.config.defaultRedlineRPM * 0.92);
       const blend = clamp((fraction - 0.4) / 0.55, 0, 1);
       const tuning = this.exhaust.backpressureTorqueMod
         + (this.exhaust.backpressureHpMod - this.exhaust.backpressureTorqueMod) * blend * blend * (3 - 2 * blend);
-      return Math.max(0, torque * (this.displacement / this.config.defaultDisplacement) * tuning);
+      return Math.max(0, torque * (this.displacement / this.config.defaultDisplacement) * tuning
+        * modificationEffects(this.config, this.modifications, rpm, this.displacement).torqueFactor);
     }
     const specificTorque = (this.config && this.config.specificTorque) || 108;
     const peak = (this.displacement / 1000) * specificTorque * this.exhaust.backpressureTorqueMod;
@@ -233,19 +257,24 @@ export class EngineModel {
     // jump as the engine crossed 65% of redline.
     const blend = clamp((fraction - 0.45) / 0.35, 0, 1);
     const topEnd = 1 + (this.exhaust.backpressureHpMod - 1) * blend * blend * (3 - 2 * blend);
-    return peak * breathing * topEnd;
+    return peak * breathing * topEnd
+      * modificationEffects(this.config, this.modifications, rpm, this.displacement).torqueFactor;
   }
 
   compressorTorque(rpm, displacement, boost) {
-    return superchargerDriveTorque(this.config, rpm, displacement, boost);
+    return superchargerDriveTorque(this.config, rpm, displacement, boost, 1,
+      modificationEffects(this.config, this.modifications, rpm, displacement));
   }
 
   steadyTorqueAtRPM(rpm) {
-    let boost = steadyBoost(this.config, this.forcedInduction, this.turboSize, this.maxBoost, rpm, this.displacement);
+    const effects = modificationEffects(this.config, this.modifications, rpm, this.displacement);
+    let boost = steadyBoost(this.config, this.forcedInduction, this.turboSize, this.maxBoost, rpm,
+      this.displacement, effects.pulleyRatio);
     const base = this.torqueAtRPM(rpm) * this.cam.steadyFactor(rpm);
     if (this.forcedInduction === 'supercharger') boost *= 1 - superchargerBypass(this.config, rpm,
-      this.displacement, boost, base, 1, this.idleRPM);
-    const thermo = chargeThermodynamics(boost, this.forcedInduction === 'supercharger' ? 0.68 : 0.72);
+      this.displacement, boost, base, 1, this.idleRPM, effects);
+    const thermo = chargeThermodynamics(boost, this.forcedInduction === 'supercharger' ? 0.68 : 0.72,
+      effects.intercoolerEffectiveness);
     return Math.max(0, base * (thermo.densityRatio - (this.forcedInduction === 'turbo' ? boost * 0.018 : 0))
       - (this.forcedInduction === 'supercharger' ? this.compressorTorque(rpm, this.displacement, boost) : 0));
   }
@@ -295,7 +324,9 @@ export class EngineModel {
     this.time += dt;
     this.popEvents = [];
     this.throttle = this.isIgnitionOn ? clamp(throttleInput, 0, 1) : 0;
-    const fillRate = this.throttle >= this.manifoldThrottle ? 8 + this.config.revResponseSpeed * 2 : 18;
+    const effects = this.modificationEffects;
+    const fillRate = (this.throttle >= this.manifoldThrottle ? 8 + this.config.revResponseSpeed * 2 : 18)
+      * effects.fillRateFactor;
     this.manifoldThrottle += (this.throttle - this.manifoldThrottle) * (1 - Math.exp(-dt * fillRate));
 
     // Calculate throttle release drop for overrun crackles and BOV / Flutter
@@ -338,8 +369,11 @@ export class EngineModel {
       throttle: this.manifoldThrottle, pedalThrottle: this.throttle,
       torqueScale: firingScale,
       running: this.isIgnitionOn,
-      baseTorque: baseTorque * chargeThermodynamics(this.induction.chargeBoost).densityRatio,
+      baseTorque: baseTorque * chargeThermodynamics(this.induction.chargeBoost,
+        this.forcedInduction === 'supercharger' ? 0.68 : 0.72, effects.intercoolerEffectiveness).densityRatio,
       unboostedTorque: baseTorque, idleRPM: this.idleRPM,
+      intercoolerEffectiveness: effects.intercoolerEffectiveness,
+      chargeVolumeFactor: effects.chargeVolumeFactor, pulleyRatio: effects.pulleyRatio,
       bovType: this.bovType, time: this.time
     });
     this.bovEvents = induction.events;
@@ -352,22 +386,30 @@ export class EngineModel {
     this.prevTorqueScale = this.torqueScale;
     const boostLoss = this.forcedInduction === 'turbo' ? this.induction.chargeBoost * 0.018 : 0;
     const available = baseTorque * (induction.densityRatio - boostLoss);
+    const firingCapacity = Math.max(0, available + drag) * firingScale;
     this.combustionTorque = this.isIgnitionOn
-      ? (available + drag) * this.manifoldThrottle * firingScale : 0;
+      ? firingCapacity * this.manifoldThrottle : 0;
     this.currentEngineDrag += induction.shaftTorque;
     // Torque available if idle control admits additional air, after the
     // current compressor work. Net torque can be zero at a balanced idle;
     // that is not the engine's available reserve for initial clutch bite.
     this.availableCrankTorque = Math.max(0, available + drag - this.currentEngineDrag);
-    let idleTorque = 0;
-    if (this.isIgnitionOn && !this.isRevLimitingCut && this.rpm < this.idleRPM + 100) {
+    this.idleTorque = 0;
+    if (this.isIgnitionOn && !this.isRevLimitingCut) {
       // Idle control admits additional air to carry accessory / clutch load,
-      // but cannot produce more than the engine's full available torque.
-      idleTorque = clamp(this.currentEngineDrag + idleLoad - this.combustionTorque
+      // but its combustion shares the same ignition / limiter cut as the pedal.
+      // More air cannot recover torque beyond the remaining firing capacity. Let
+      // the speed error and the zero-admission bound determine the catch range:
+      // a fixed idle + 100 RPM switch caused a step in coast-down torque.
+      this.idleTorque = clamp(this.currentEngineDrag + idleLoad - this.combustionTorque
         + (this.idleRPM - this.rpm) * this.inertia * 12 / RPM_PER_RAD,
-      0, Math.max(0, available + drag - this.combustionTorque));
+      0, Math.max(0, firingCapacity - this.combustionTorque));
     }
-    this.netTorque = this.combustionTorque + idleTorque - this.currentEngineDrag;
+    // Report all actual combustion, including idle air, before subtracting the
+    // mechanical and compressor losses once. The uncut admission reserve above
+    // is only a drivetrain planning limit, never a source of physical torque.
+    this.combustionTorque += this.idleTorque;
+    this.netTorque = this.combustionTorque - this.currentEngineDrag;
   }
 
   advanceStep(dt, { coupledRPM, loadTorque = 0 } = {}) {
@@ -431,7 +473,8 @@ export class EngineModel {
         : (previousAngle + (this.config.firingAngleKind === 'absolute' ? 360 - cyl.firingOffset : cyl.firingOffset) + 720) % 720;
       cyl.phaseAngle = angle;
       cyl.stroke = ['intake', 'compression', 'power', 'exhaust'][Math.floor(angle / 180)];
-      const valves = camValveLift(angle, this.cam.blend);
+      const valves = camValveLift(angle, this.cam.blend + (1 - this.cam.blend)
+        * (this.modifications.camshaft === 'sport' ? 0.25 : 0));
       cyl.intakeValve = valves.intake;
       cyl.exhaustValve = valves.exhaust;
       const crossesSpark = Math.floor((previous + deltaDeg - 360) / 720) > Math.floor((previous - 360) / 720);
@@ -484,11 +527,14 @@ export class EngineModel {
   snapshot(popEvents = this.popEvents, bovEvents = this.bovEvents) {
     return { rpm: this.rpm, redlineRPM: this.redlineRPM, idleRPM: this.idleRPM,
       simTime: this.time, torqueScale: this.torqueScale, ignitionCut: this.ignitionCut,
+      combustionTorque: this.combustionTorque, idleTorque: this.idleTorque,
       turboSize: this.turboSize, turboRPM: this.induction.turboRPM, superchargerRPM: this.induction.superchargerRPM,
       chargePressure: this.induction.chargePressure, intakePressure: this.induction.intakePressure,
       airFlow: this.induction.airFlow, exhaustEnergy: this.induction.exhaustEnergy,
       inductionLoad: this.manifoldThrottle, bypassOpening: this.induction.bypassOpening,
       displacement: this.displacement,
+      modifications: { ...this.modifications }, modificationEffects: { ...this.modificationEffects },
+      intakeGain: this.modificationEffects.intakeGain, intakeTemperature: this.induction.intakeTemperature,
       forcedInduction: this.forcedInduction,
       boostPressure: Number(this.boostPressure.toFixed(2)),
       turboSpool: Number(this.turboSpool.toFixed(2)),

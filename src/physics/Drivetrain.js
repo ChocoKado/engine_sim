@@ -254,7 +254,11 @@ export class Drivetrain {
     const sourceGripTorque = Math.max(0, gripTorque - Math.max(0, turbine - pump));
     if (e.netTorque > sourceGripTorque) {
       this.tractionReduction = Math.max(this.tractionReduction || 0, (e.netTorque - sourceGripTorque) / Math.max(1, e.netTorque));
+      const combustionBeforeReduction = e.combustionTorque;
       e.combustionTorque -= e.netTorque - sourceGripTorque;
+      if (Number.isFinite(e.idleTorque) && combustionBeforeReduction > 0) {
+        e.idleTorque *= e.combustionTorque / combustionBeforeReduction;
+      }
       e.netTorque = sourceGripTorque;
     }
     // Resolve the last part of slip over a short compliance interval. This

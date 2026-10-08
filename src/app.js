@@ -12,6 +12,8 @@ import { EngineRenderer } from './visuals/EngineRenderer.js';
 import { GaugeRenderer } from './visuals/GaugeRenderer.js';
 import { InputManager } from './controls/InputManager.js';
 import { PerformancePanel } from './controls/PerformancePanel.js';
+import { GaragePanel } from './controls/GaragePanel.js';
+import { Engine3DRenderer } from './visuals/Engine3DRenderer.js';
 
 export class App {
   constructor() {
@@ -39,9 +41,61 @@ export class App {
     // 5. Setup UI & Event Listeners
     this.initUI();
     this.performancePanel = new PerformancePanel(this.engine, this.drivetrain, () => this.resetPerformanceVehicle());
+    this.garagePanel = new GaragePanel({
+      engine: this.engine, drive: this.drivetrain,
+      onModificationChange: (kind, value) => this.installModification(kind, value),
+      onViewChange: view => this.changeGarageView(view),
+    }).init();
+    if (this.garagePanel.initialized) {
+      try {
+        this.engine3DRenderer = new Engine3DRenderer(this.garagePanel.canvas);
+        this.engine3DRenderer.onPartSelected = part => this.garagePanel.selectPart(part);
+        this.engine3DRenderer.setAnimationSpeed(this.engineRenderer.animationSpeed);
+        if (!this.engine3DRenderer.available) {
+          this.garagePanel.set3DAvailable(false, '此裝置無法啟用 3D，使用機械剖面');
+        }
+        this.garagePanel.canvas.addEventListener('webglcontextlost', () => {
+          this.garagePanel.set3DAvailable(false, '3D 顯示已暫停，使用機械剖面');
+        });
+        this.garagePanel.canvas.addEventListener('webglcontextrestored', () => {
+          this.garagePanel.set3DAvailable(this.engine3DRenderer.available);
+        });
+      } catch (error) {
+        console.warn('3D engine view unavailable', error);
+        this.garagePanel.set3DAvailable(false, '此裝置無法啟用 3D，使用機械剖面');
+      }
+      this.engineRenderer.resize();
+      this.gaugeRenderer.resize();
+      if (typeof ResizeObserver !== 'undefined') {
+        this.canvasResizeObserver = new ResizeObserver(() => {
+          this.engineRenderer.resize();
+          this.gaugeRenderer.resize();
+        });
+        for (const canvas of [this.engineCanvas, this.tachoCanvas, this.exhaustCanvas]) {
+          this.canvasResizeObserver.observe(canvas.parentElement);
+        }
+      }
+    }
 
     // 6. Start Main Animation Loop
     requestAnimationFrame((t) => this.loop(t));
+  }
+
+  installModification(kind, value) {
+    if (this.engine.isIgnitionOn || Math.abs(this.drivetrain.speedKmh) > 1) return false;
+    if (!this.engine.setModification(kind, value)) return false;
+    this.syncTuningUI();
+    this.performancePanel?.beforeStep();
+    return true;
+  }
+
+  changeGarageView({ mode, focus = null, reset = false }) {
+    if (mode === '3d') {
+      if (reset) this.engine3DRenderer?.resetCamera();
+      else this.engine3DRenderer?.setFocus(focus);
+    } else {
+      this.engineRenderer.resize();
+    }
   }
 
   async toggleEnginePower() {
@@ -385,6 +439,7 @@ export class App {
 
     const updateSlowmoSpeed = (speed) => {
       this.engineRenderer.setAnimationSpeed(speed);
+      this.engine3DRenderer?.setAnimationSpeed(speed);
       if (slowmoBadge) {
         slowmoBadge.textContent = `${speed.toFixed(2)}x ${speed < 0.95 ? '(慢速觀察)' : '(即時速度)'}`;
         if (speed < 0.95) slowmoBadge.classList.add('active');
@@ -501,7 +556,7 @@ export class App {
     const boost = document.getElementById('boost-val');
     if (boost) boost.textContent = `+${this.engine.maxBoost.toFixed(2)} bar`;
     const title = document.getElementById('boost-slider-title');
-    if (title) title.textContent = induction === 'supercharger' ? 'TVS 全油門目標增壓' : '渦輪目標增壓';
+    if (title) title.textContent = induction === 'supercharger' ? 'TVS 增壓基準（原廠皮帶比）' : '渦輪目標增壓';
     const badge = document.getElementById('boost-status-badge');
     if (badge) badge.textContent = induction === 'na' ? '自然進氣 (NA)' :
       `${induction === 'turbo' ? `TURBO · ${this.engine.turboSize === 'large' ? '大渦輪' : '小渦輪'}` : 'ROOTS / TVS'} · ${this.engine.maxBoost.toFixed(2)} bar`;
@@ -516,6 +571,7 @@ export class App {
     if (rotaryMode) rotaryMode.value = this.sound?.rotaryIdleMode || 'stock';
     this.updateReferenceStatus();
     this.updateDynoOverview();
+    this.garagePanel?.update();
   }
 
   syncGearControls() {
@@ -649,6 +705,7 @@ export class App {
       && (this.engine.forcedInduction !== 'turbo' || this.engine.turboSize === (config.defaultTurboSize || 'small'))
       && (this.engine.forcedInduction !== 'turbo' || this.engine.bovType === 'bov')
       && this.engine.exhaust.id === 'oem'
+      && Object.values(this.engine.modifications || {}).every(value => value === 'stock')
       && (!this.engine.limiter || this.engine.limiter.mode === 'soft' && this.engine.limiter.hz === 18 && this.engine.limiter.depth === 0.85)
       && (!config.vtec || this.engine.cam?.enabled && this.engine.cam.engageRPM === config.vtec.engageRPM)
       && Math.abs(this.drivetrain.vehicleMass - (profile?.mass ?? 0)) <= 0.5;
@@ -855,12 +912,17 @@ export class App {
     }
 
     // Visual Renderers (Passing dt to enable smooth slow-motion kinematics)
-    this.engineRenderer.render(this.engine, this.drivetrain, dt);
+    if (this.engine3DRenderer && this.garagePanel?.viewMode === '3d') {
+      this.engine3DRenderer.render(this.engine, this.drivetrain, dt);
+    } else {
+      this.engineRenderer.render(this.engine, this.drivetrain, dt);
+    }
     this.gaugeRenderer.render(this.engine, this.drivetrain, dt, engineStatus.popEvents);
 
     // Update Real-time Telemetry UI
     this.updateTelemetryHUD(engineStatus, drivetrainStatus);
     this.performancePanel?.update();
+    this.garagePanel?.update();
 
     requestAnimationFrame((t) => this.loop(t));
   }

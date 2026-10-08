@@ -469,7 +469,8 @@ export class EngineRenderer {
       // Valve lift uses the same four-stroke phase as the actual rod geometry.
       // Rocker valves enter the cylinder head; they are not static decorative
       // ports disconnected from the slow-motion cycle.
-      const valves = camValveLift(k.visualAngle, engine.cam?.blend || 0);
+      const blend = engine.cam?.blend || 0;
+      const valves = camValveLift(k.visualAngle, engine.modifications?.camshaft === 'sport' ? blend + (1 - blend) * 0.25 : blend);
       this.drawValves(ctx, topY, bore, { stroke: k.stroke, intakeValve: valves.intake,
         exhaustValve: valves.exhaust, blowdownPulse: k.stroke === 'exhaust' ? 0.5 : 0 }, scale * 0.6);
 
@@ -637,7 +638,8 @@ export class EngineRenderer {
     const visualStroke = ['intake', 'compression', 'power', 'exhaust'][Math.floor(cylVisualAngle / 180)];
     const visualIsFiring = cylVisualAngle >= 350 && cylVisualAngle <= 375 && this.hasCombustion(engine);
 
-    const valves = camValveLift(cylVisualAngle, engine.cam?.blend || 0);
+    const blend = engine.cam?.blend || 0;
+    const valves = camValveLift(cylVisualAngle, engine.modifications?.camshaft === 'sport' ? blend + (1 - blend) * 0.25 : blend);
     const visualCyl = {
       index: cyl.index,
       phaseAngle: cylVisualAngle,
