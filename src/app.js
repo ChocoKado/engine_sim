@@ -25,10 +25,11 @@ export class App {
     // 2. Canvases
     this.engineCanvas = document.getElementById('engine-canvas');
     this.tachoCanvas = document.getElementById('tachometer-canvas');
+    this.speedoCanvas = document.getElementById('speedometer-canvas');
     this.exhaustCanvas = document.getElementById('exhaust-canvas');
 
     this.engineRenderer = new EngineRenderer(this.engineCanvas);
-    this.gaugeRenderer = new GaugeRenderer(this.tachoCanvas, this.exhaustCanvas);
+    this.gaugeRenderer = new GaugeRenderer(this.tachoCanvas, this.exhaustCanvas, this.speedoCanvas);
 
     // 3. User Controls
     this.input = new InputManager(this.drivetrain, () => this.toggleEnginePower());
@@ -71,7 +72,7 @@ export class App {
           this.engineRenderer.resize();
           this.gaugeRenderer.resize();
         });
-        for (const canvas of [this.engineCanvas, this.tachoCanvas, this.exhaustCanvas]) {
+        for (const canvas of [this.engineCanvas, this.tachoCanvas, this.speedoCanvas, this.exhaustCanvas].filter(Boolean)) {
           this.canvasResizeObserver.observe(canvas.parentElement);
         }
       }
@@ -584,7 +585,6 @@ export class App {
     }
     const maxGear = this.drivetrain.maxGear ?? Math.max(...Object.keys(this.drivetrain.gearRatios).map(Number));
     const values = [...(hasReverse ? [-1] : []), 0, ...Array.from({ length: maxGear }, (_, index) => index + 1)];
-    group.style.gridTemplateColumns = `repeat(${values.length}, minmax(0, 1fr))`;
     group.replaceChildren(...values.map(gear => {
       const button = document.createElement('button');
       button.className = 'amt-gear-btn';
@@ -948,6 +948,20 @@ export class App {
       else digitalRpm.classList.remove('rev-limiting');
     }
 
+    // These values come from the running simulation. TEMP is charge-air
+    // temperature; there is no coolant-temperature model to present as 82°C.
+    const setReading = (id, value) => {
+      const node = document.getElementById(id);
+      if (node && node.textContent !== value) node.textContent = value;
+    };
+    const intakeKelvin = Number(engineStatus.intakeTemperature);
+    setReading('cockpit-intake-temp', Number.isFinite(intakeKelvin) ? `${Math.round(intakeKelvin - 273.15)}` : '—');
+    setReading('cockpit-boost-value', `${Number(engineStatus.boostPressure || 0).toFixed(2)}`);
+    setReading('cockpit-speed-value', `${drivetrainStatus.speedKmh}`);
+    setReading('cockpit-gear-position', drivetrainStatus.gearDisplay);
+    setReading('cockpit-gas-percent', `${Math.round(Math.max(0, Math.min(1, Number(engineStatus.throttle) || 0)) * 100)}%`);
+    setReading('cockpit-brake-percent', `${Math.round(Math.max(0, Math.min(1, Number(this.drivetrain.brakeInput) || 0)) * 100)}%`);
+
     // Sticky In-Viewport Telemetry HUD (Always visible on mobile & desktop sticky canvas)
     const stickySpeed = document.getElementById('sticky-hud-speed');
     const stickyRpm = document.getElementById('sticky-hud-rpm');
@@ -1016,7 +1030,8 @@ export class App {
     // Active Gear Display
     const gearEl = document.getElementById('hud-gear-display');
     if (gearEl) {
-      gearEl.textContent = drivetrainStatus.gearDisplay;
+      gearEl.textContent = drivetrainStatus.currentGear > 0
+        ? String(drivetrainStatus.currentGear) : drivetrainStatus.gearDisplay;
       gearEl.className = `gear-badge ${drivetrainStatus.currentGear === 0 ? 'neutral' : 'in-gear'}`;
     }
 

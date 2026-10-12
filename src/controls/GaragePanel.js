@@ -1,10 +1,11 @@
 import { MODIFICATION_CATALOG, isModificationSupported } from '../physics/Modifications.js';
 
 const TABS = [
-  { id: 'garage', label: '車庫', subtitle: '零件與安裝位置' },
-  { id: 'settings', label: '設定', subtitle: '引擎與傳動設定' },
-  { id: 'sound', label: '聲浪', subtitle: '進排氣與音色' },
-  { id: 'performance', label: '性能', subtitle: '加速與改裝比較' },
+  { id: 'drive', label: '駕駛', symbol: '◉', subtitle: '即時儀表與駕駛操作' },
+  { id: 'garage', label: '改裝', symbol: '◇', subtitle: '零件與安裝位置' },
+  { id: 'sound', label: '聲浪', symbol: '≋', subtitle: '進排氣與音色' },
+  { id: 'performance', label: '性能', symbol: '▥', subtitle: '加速與改裝比較' },
+  { id: 'settings', label: '設定', symbol: '⚙', subtitle: '引擎與傳動設定' },
 ];
 
 const PART_MARKS = { intake: 'IN', headers: 'EX', camshaft: 'CA', flywheel: 'FW', intercooler: 'IC', pulley: 'SC' };
@@ -24,7 +25,7 @@ export class GaragePanel {
     this.onViewChange = onViewChange;
     this.document = ownerDocument || globalThis.document;
     this.catalog = MODIFICATION_CATALOG;
-    this.activeTab = 'garage';
+    this.activeTab = 'drive';
     this.selectedPart = 'intake';
     this.viewMode = '3d';
     this.moves = [];
@@ -67,17 +68,32 @@ export class GaragePanel {
     const tuning = doc?.querySelector('.tuning-card');
     if (!main || !viewport || !canvasBox || !cluster || !tuning) return this;
 
+    // Read all original controls before moving their parents out of the document.
+    const selection = doc.getElementById('engine-select')?.closest('.config-field');
+    const metadata = tuning.querySelector('.engine-meta-card');
+    const tachometer = cluster.querySelector('.tacho-wrapper');
+    const speedometer = cluster.querySelector('.speedo-wrapper');
+    const digitalHud = cluster.querySelector('.cockpit-hud-screen');
+    const gearDisplay = cluster.querySelector('#hud-gear-display');
+    const transmission = cluster.querySelector('.trans-section');
+    const startButton = doc.getElementById('btn-start-engine');
+    const engineStatus = doc.getElementById('engine-status-badge');
+
     this.main = main;
     this.originalChildren = [...main.childNodes];
     this.originalEngineParent = canvasBox;
-    this.layout = this.element('div', 'garage-layout', null, { 'data-tab': 'garage', 'data-inspect': 'list' });
+    this.layout = this.element('div', 'garage-layout', null, { 'data-tab': 'drive', 'data-inspect': 'list' });
     this.toolbar = this.element('nav', 'garage-tabs', null, { 'aria-label': '車庫功能', role: 'tablist' });
     for (const tab of TABS) {
-      const button = this.element('button', 'garage-tab', tab.label, {
+      const button = this.element('button', 'garage-tab', null, {
         type: 'button', id: `garage-tab-${tab.id}`, role: 'tab',
         'aria-controls': `garage-panel-${tab.id}`, 'aria-selected': tab.id === this.activeTab,
         tabindex: tab.id === this.activeTab ? 0 : -1,
       });
+      button.append(
+        this.element('span', 'garage-tab-symbol', tab.symbol, { 'aria-hidden': 'true' }),
+        this.element('span', 'garage-tab-label', tab.label),
+      );
       button.dataset.tab = tab.id;
       this.listen(button, 'click', () => this.selectTab(tab.id));
       this.listen(button, 'keydown', event => this.tabKeyDown(event, tab.id));
@@ -85,13 +101,47 @@ export class GaragePanel {
       this.tabButtons.set(tab.id, button);
     }
 
-    this.library = this.element('aside', 'garage-library garage-surface', null, { 'aria-label': '車款與改裝零件' });
-    this.picker = this.element('div', 'garage-engine-picker');
-    this.library.appendChild(this.picker);
-    const selection = doc.getElementById('engine-select')?.closest('.config-field');
-    const metadata = tuning.querySelector('.engine-meta-card');
+    this.engineBar = this.element('div', 'driving-engine-bar');
+    this.picker = this.engineBar;
     this.move(selection, this.picker);
-    this.move(metadata, this.picker);
+    this.specSummary = this.element('div', 'driving-spec-summary', null, { 'aria-label': '目前引擎規格' });
+    this.displacementValue = this.element('strong', 'driving-spec-value', '—', { id: 'driving-displacement' });
+    this.peakHpValue = this.element('strong', 'driving-spec-value', '—', { id: 'driving-peak-hp' });
+    for (const [label, value] of [['排氣量', this.displacementValue], ['峰值馬力', this.peakHpValue]]) {
+      const spec = this.element('div', 'driving-spec-item');
+      spec.append(this.element('span', 'driving-spec-label', label), value);
+      this.specSummary.appendChild(spec);
+    }
+    this.engineBar.appendChild(this.specSummary);
+
+    this.instruments = this.element('section', 'driving-instruments', null, {
+      id: 'garage-panel-drive', role: 'tabpanel', 'aria-labelledby': 'garage-tab-drive',
+    });
+    this.panels.set('drive', this.instruments);
+    this.gauges = this.element('div', 'driving-gauges', null, { 'aria-label': '轉速與時速儀表' });
+    this.move(tachometer, this.gauges);
+    this.move(speedometer, this.gauges);
+    this.instruments.appendChild(this.gauges);
+    this.move(digitalHud, this.instruments);
+    this.telemetry = this.element('div', 'driving-telemetry');
+    for (const [label, id, unit] of [
+      ['進氣溫度', 'cockpit-intake-temp', '°C'],
+      ['增壓', 'cockpit-boost-value', 'bar'],
+      ['時速', 'cockpit-speed-value', 'km/h'],
+    ]) {
+      const item = this.element('div', 'driving-telemetry-item');
+      const reading = this.element('div', 'driving-telemetry-reading');
+      reading.append(
+        this.element('strong', 'driving-telemetry-value', '—', { id }),
+        this.element('span', 'driving-telemetry-unit', unit),
+      );
+      item.append(this.element('span', 'driving-telemetry-label', label), reading);
+      this.telemetry.appendChild(item);
+    }
+    this.instruments.appendChild(this.telemetry);
+
+    this.library = this.element('aside', 'garage-library garage-surface', null, { 'aria-label': '引擎資訊與改裝零件' });
+    this.move(metadata, this.library);
 
     const partsHeading = this.element('div', 'garage-section-heading');
     partsHeading.append(this.element('span', 'garage-eyebrow', 'MODIFICATION BAY'), this.element('h2', '', '改裝零件'));
@@ -119,8 +169,7 @@ export class GaragePanel {
     const stageHeading = this.element('div', 'garage-stage-heading');
     this.modelTitle = this.element('button', 'garage-model-title', '', { type: 'button', title: '返回車款選擇' });
     this.listen(this.modelTitle, 'click', () => {
-      this.selectTab('garage');
-      this.layout.dataset.inspect = 'list';
+      this.selectTab('drive');
       doc.getElementById('engine-select')?.focus({ preventScroll: true });
     });
     this.viewSwitch = this.element('div', 'garage-view-switch', null, { 'aria-label': '引擎觀察方式' });
@@ -159,6 +208,7 @@ export class GaragePanel {
 
     this.inspector = this.element('aside', 'garage-inspector garage-surface', null, { 'aria-label': '零件資訊與設定' });
     for (const tab of TABS) {
+      if (tab.id === 'drive') continue;
       const panel = this.element('section', `garage-pane garage-pane-${tab.id}`, null, {
         id: `garage-panel-${tab.id}`, role: 'tabpanel', 'aria-labelledby': `garage-tab-${tab.id}`,
       });
@@ -186,13 +236,22 @@ export class GaragePanel {
     this.move(dyno, this.panels.get('performance'));
     this.move(doc.querySelector('.performance-panel'), this.panels.get('performance'));
     this.cockpit = this.element('section', 'garage-cockpit', null, { 'aria-label': '駕駛操作與即時儀表' });
+    this.gearReadout = this.element('div', 'driving-gear-readout');
+    this.gearReadout.appendChild(this.element('span', 'driving-gear-label', '檔位'));
+    this.move(gearDisplay, this.gearReadout);
+    this.gearPosition = this.element('span', 'driving-gear-position', 'N', { id: 'cockpit-gear-position' });
+    this.gearReadout.appendChild(this.gearPosition);
+    transmission?.insertBefore(this.gearReadout, transmission.childNodes[0] || null);
     this.move(cluster, this.cockpit);
-    this.layout.append(this.library, this.workspace, this.inspector, this.cockpit);
+    this.startRow = this.element('div', 'driving-start-row');
+    this.move(startButton, this.startRow);
+    this.move(engineStatus, this.startRow);
+    this.layout.append(this.engineBar, this.instruments, this.library, this.workspace, this.inspector, this.cockpit, this.startRow);
     main.replaceChildren(this.toolbar, this.layout);
     main.classList.add('garage-main');
-    doc.body.classList.add('garage-active');
+    doc.body.classList.add('garage-active', 'driving-active');
     this.initialized = true;
-    this.selectTab('garage');
+    this.selectTab('drive');
     this.renderPartInspector();
     this.update();
     return this;
@@ -255,6 +314,7 @@ export class GaragePanel {
 
   selectTab(id) {
     if (!TABS.some(tab => tab.id === id)) return;
+    const changed = this.activeTab !== id;
     this.activeTab = id;
     if (this.layout) this.layout.dataset.tab = id;
     for (const [key, button] of this.tabButtons) {
@@ -263,6 +323,10 @@ export class GaragePanel {
     }
     for (const [key, panel] of this.panels) panel.hidden = key !== id;
     if (id === 'garage' && this.layout) this.layout.dataset.inspect = 'list';
+    if (changed) {
+      if (this.inspector) this.inspector.scrollTop = 0;
+      if (this.library) this.library.scrollTop = 0;
+    }
   }
 
   selectPart(id) {
@@ -271,6 +335,7 @@ export class GaragePanel {
     this.statusMessage = '';
     this.selectTab('garage');
     this.layout.dataset.inspect = 'detail';
+    if (this.inspector) this.inspector.scrollTop = 0;
     this.renderPartInspector();
     this.setView('3d', this.supported(id) ? id : null);
     this.update(true);
@@ -439,6 +504,9 @@ export class GaragePanel {
     const hp = Number(this.engine?.dynoData?.maxHp);
     const torque = Number(this.engine?.dynoData?.maxTorque);
     const inertia = Number(this.engine?.inertia);
+    const displacement = Number(this.engine?.displacement ?? this.engine?.config?.defaultDisplacement);
+    setText(this.displacementValue, Number.isFinite(displacement) && displacement > 0 ? `${Math.round(displacement)} cc` : '—');
+    setText(this.peakHpValue, Number.isFinite(hp) ? `${hp.toFixed(0)} HP` : '—');
     setText(this.outputPower, Number.isFinite(hp) && Number.isFinite(torque) ? `${hp.toFixed(0)} HP · ${torque.toFixed(0)} Nm` : '—');
     setText(this.outputInertia, Number.isFinite(inertia) ? `${inertia.toFixed(3)} kg·m²` : '—');
   }
@@ -452,10 +520,11 @@ export class GaragePanel {
     }
     this.canvas?.remove();
     this.stageStatus?.remove();
+    this.gearReadout?.remove();
     if (this.oldCanvas) this.oldCanvas.hidden = false;
     this.main.replaceChildren(...this.originalChildren);
     this.main.classList.remove('garage-main');
-    this.document.body.classList.remove('garage-active');
+    this.document.body.classList.remove('garage-active', 'driving-active');
     this.initialized = false;
     this.listeners = [];
     this.moves = [];

@@ -1,16 +1,16 @@
 // GaugeRenderer.js
-// Visualizes Racing Cockpit Gauges:
-// 1. High-precision Tachometer with Shift Lights (F1/GT3 style)
-// 2. Digital Speedometer & Gear Indicator
-// 3. Dynamic Dyno Horsepower & Torque Telemetry
-// 4. Exhaust Tailpipe with Animated Backfire Flames
+// Physical cockpit dials and the existing exhaust / backfire animation.
+// Numeric telemetry is displayed separately by the dashboard HUD.
 
 import { advanceGaugeNeedle } from './MechanicalKinematics.js';
 
 export class GaugeRenderer {
-  constructor(tachoCanvas, exhaustCanvas) {
+  constructor(tachoCanvas, exhaustCanvas, speedCanvas = null) {
     this.tachoCanvas = tachoCanvas;
     this.tachoCtx = tachoCanvas.getContext('2d');
+
+    this.speedCanvas = speedCanvas;
+    this.speedCtx = speedCanvas?.getContext('2d') || null;
 
     this.exhaustCanvas = exhaustCanvas;
     this.exhaustCtx = exhaustCanvas.getContext('2d');
@@ -26,18 +26,24 @@ export class GaugeRenderer {
   }
 
   resize() {
-    // Tachometer canvas resize
-    if (this.tachoCanvas) {
-      const rect = this.tachoCanvas.parentElement.getBoundingClientRect();
+    // Each dial follows its own wrapper, including side-by-side mobile layouts.
+    // Reset the backing transform so repeated resizes cannot accumulate DPR.
+    for (const [canvas, ctx, sizeKey] of [
+      [this.tachoCanvas, this.tachoCtx, 'tachoSize'],
+      [this.speedCanvas, this.speedCtx, 'speedSize']
+    ]) {
+      if (!canvas || !ctx) continue;
+      const rect = canvas.parentElement.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
-      const size = Math.min(rect.width, rect.height || 360, 360);
-      this.tachoSize = size;
-      this.tachoCanvas.width = size * dpr;
-      this.tachoCanvas.height = size * dpr;
-      this.tachoCanvas.style.width = `${size}px`;
-      this.tachoCanvas.style.height = `${size}px`;
-      this.tachoCtx.resetTransform();
-      this.tachoCtx.scale(dpr, dpr);
+      const width = rect.width || 180;
+      const size = Math.max(1, Math.min(width, rect.height || width));
+      this[sizeKey] = size;
+      canvas.width = Math.round(size * dpr);
+      canvas.height = Math.round(size * dpr);
+      canvas.style.width = `${size}px`;
+      canvas.style.height = `${size}px`;
+      ctx.resetTransform();
+      ctx.scale(dpr, dpr);
     }
 
     // Exhaust pipe canvas resize
@@ -88,6 +94,7 @@ export class GaugeRenderer {
     }
     this.consumePopEvents(popEvents);
     this.renderTachometer(engine, drivetrain, dt);
+    this.renderSpeedometer(engine, drivetrain, dt);
     this.renderExhaustPipe(engine, dt);
   }
 
@@ -99,212 +106,178 @@ export class GaugeRenderer {
     }
   }
 
-  // Render Racing Tachometer
-  renderTachometer(engine, drivetrain, dt = 1 / 60) {
-    if (!this.tachoCtx || !this.tachoSize) return;
-    const ctx = this.tachoCtx;
-    // Keep the dial's fonts, tick lengths and hub proportional in the compact
-    // garage cockpit instead of squeezing fixed-size labels into a tiny ring.
-    const s = Math.max(240, this.tachoSize);
+  // All dial geometry uses a common 320 px design space; the backing canvas
+  // remains independently sized and scaled for its wrapper and display DPR.
+  beginDial(ctx, size) {
+    const s = 320, cx = s / 2, cy = s / 2, radius = s * 0.405;
+    ctx.clearRect(0, 0, size, size);
     ctx.save();
-    ctx.scale(this.tachoSize / s, this.tachoSize / s);
-    const cx = s / 2;
-    const cy = s / 2;
-    const radius = s * 0.42;
+    ctx.scale(size / s, size / s);
 
-    // Physical stepper motor needle tracking:
-    // Natural frequency omega_n = 46 rad/s, damping ratio zeta = 0.84
-    // Gives immediate, razor-fast response with authentic mechanical settling on rapid RPM drops
-    if (this.needleRPM === undefined) {
-      this.needleRPM = engine.rpm;
-      this.needleVelocity = 0;
-    }
-    const targetRPM = engine.isIgnitionOn ? engine.rpm : 0;
-    const needle = advanceGaugeNeedle(this.needleRPM, this.needleVelocity, targetRPM, dt);
-    this.needleRPM = needle.position;
-    this.needleVelocity = needle.velocity;
-
-    ctx.clearRect(0, 0, s, s);
-
-    // Outer Bezel with carbon & dark steel gradient
-    const outerGrad = ctx.createRadialGradient(cx, cy, radius * 0.7, cx, cy, radius * 1.15);
-    outerGrad.addColorStop(0, '#151922');
-    outerGrad.addColorStop(0.85, '#1e2532');
-    outerGrad.addColorStop(1, '#0b0e14');
-    ctx.fillStyle = outerGrad;
+    const bezel = ctx.createLinearGradient(0, 0, s, s);
+    bezel.addColorStop(0, '#53575b');
+    bezel.addColorStop(0.16, '#232629');
+    bezel.addColorStop(0.5, '#08090a');
+    bezel.addColorStop(0.8, '#34383c');
+    bezel.addColorStop(1, '#131517');
+    ctx.fillStyle = bezel;
     ctx.beginPath();
-    ctx.arc(cx, cy, radius * 1.1, 0, Math.PI * 2);
+    ctx.arc(cx, cy, radius * 1.13, 0, Math.PI * 2);
     ctx.fill();
-
-    // Metallic ring
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    // Tachometer Scale: sweeps from 135 deg to 405 deg (270 degree arc)
-    const startAngle = (135 * Math.PI) / 180;
-    const endAngle = (405 * Math.PI) / 180;
-    const totalAngle = endAngle - startAngle;
-
-    const maxRPM = Math.ceil(engine.redlineRPM / 1000) * 1000;
-    const redline = engine.redlineRPM;
-    const redlineRatio = redline / maxRPM;
-    const redlineAngle = startAngle + totalAngle * redlineRatio;
-
-    // Track arc (Normal zone: Cyan / White)
-    ctx.lineWidth = 7;
-    ctx.strokeStyle = 'rgba(0, 240, 255, 0.35)';
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius, startAngle, redlineAngle);
-    ctx.stroke();
-
-    // Track arc (Redline danger zone)
-    ctx.strokeStyle = '#ef4444';
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius, redlineAngle, endAngle);
-    ctx.stroke();
-
-    // Tick Marks & Digits
-    const numTicks = maxRPM / 1000;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    for (let i = 0; i <= numTicks; i++) {
-      const rpmVal = i * 1000;
-      const angle = startAngle + (i / numTicks) * totalAngle;
-      const cos = Math.cos(angle);
-      const sin = Math.sin(angle);
-
-      const isRedlineTick = rpmVal >= redline;
-      ctx.strokeStyle = isRedlineTick ? '#ef4444' : 'rgba(255, 255, 255, 0.7)';
-      ctx.lineWidth = 2.5;
-
-      // Major tick mark
-      ctx.beginPath();
-      ctx.moveTo(cx + cos * (radius - 12), cy + sin * (radius - 12));
-      ctx.lineTo(cx + cos * radius, cy + sin * radius);
-      ctx.stroke();
-
-      // Number label (1, 2, 3... 10 x1000 RPM)
-      const labelR = radius - 26;
-      ctx.font = '700 13px Orbitron, Rajdhani, sans-serif';
-      ctx.fillStyle = isRedlineTick ? '#ef4444' : '#e2e8f0';
-      if (this.tachoSize >= 180 || numTicks <= 8 || i % 2 === 0) {
-        ctx.fillText(`${i}`, cx + cos * labelR, cy + sin * labelR);
-      }
-
-      // Minor tick mark (500 RPM)
-      if (i < numTicks) {
-        const midAngle = angle + (0.5 / numTicks) * totalAngle;
-        ctx.lineWidth = 1.2;
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-        ctx.beginPath();
-        ctx.moveTo(cx + Math.cos(midAngle) * (radius - 7), cy + Math.sin(midAngle) * (radius - 7));
-        ctx.lineTo(cx + Math.cos(midAngle) * radius, cy + Math.sin(midAngle) * radius);
-        ctx.stroke();
-      }
-    }
-
-    // Shift Light LED Bar (GT3 / F1 style)
-    this.drawShiftLights(ctx, cx, cy - radius * 0.45, radius * 0.9, engine);
-
-    // Center Inner Disc & Dial Face (Uncluttered, sleek racing hub)
-    const innerRadius = radius * 0.52;
-    const innerGrad = ctx.createRadialGradient(cx, cy, 5, cx, cy, innerRadius);
-    innerGrad.addColorStop(0, '#0c1017');
-    innerGrad.addColorStop(0.7, '#141a24');
-    innerGrad.addColorStop(1, '#1e2634');
-    ctx.fillStyle = innerGrad;
-    ctx.beginPath();
-    ctx.arc(cx, cy, innerRadius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(0, 240, 255, 0.2)';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    // Dial markings in upper center (above pivot, immune to needle)
-    ctx.font = '700 11px Orbitron, Rajdhani, sans-serif';
-    ctx.fillStyle = '#64748b';
-    ctx.fillText('TACHOMETER', cx, cy - innerRadius * 0.46);
-    ctx.font = '600 10px Rajdhani, sans-serif';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-    ctx.fillText('RPM x1000', cx, cy - innerRadius * 0.22);
-
-    // Dynamic Needle (sweeping cleanly across tick marks with physical stepper inertia)
-    const currentRpmRatio = Math.min(1.05, Math.max(0, this.needleRPM / maxRPM));
-    const needleAngle = startAngle + currentRpmRatio * totalAngle;
-
-    ctx.save();
-    ctx.shadowColor = engine.isRevLimiting ? '#ef4444' : '#ff1744';
-    ctx.shadowBlur = 14;
-
-    ctx.strokeStyle = engine.isRevLimiting ? '#ff0033' : '#ff1744';
-    ctx.lineWidth = 3.5;
-    ctx.beginPath();
-    ctx.moveTo(cx - Math.cos(needleAngle) * 16, cy - Math.sin(needleAngle) * 16);
-    ctx.lineTo(cx + Math.cos(needleAngle) * (radius - 10), cy + Math.sin(needleAngle) * (radius - 10));
-    ctx.stroke();
-
-    // Center Needle Hub & Cap
-    const hubGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, 22);
-    hubGrad.addColorStop(0, '#334155');
-    hubGrad.addColorStop(0.5, '#1e293b');
-    hubGrad.addColorStop(1, '#090d14');
-    ctx.fillStyle = hubGrad;
-    ctx.beginPath();
-    ctx.arc(cx, cy, 20, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = engine.isRevLimiting ? '#ef4444' : '#00f0ff';
+    ctx.strokeStyle = '#060708';
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Glowing center pivot dot
-    ctx.fillStyle = engine.isRevLimiting ? '#ef4444' : '#00f0ff';
+    const face = ctx.createRadialGradient(cx, cy * 0.7, 10, cx, cy, radius * 1.055);
+    face.addColorStop(0, '#1c1d1f');
+    face.addColorStop(0.6, '#101113');
+    face.addColorStop(1, '#050607');
+    ctx.fillStyle = face;
     ctx.beginPath();
-    ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+    ctx.arc(cx, cy, radius * 1.055, 0, Math.PI * 2);
     ctx.fill();
-
-    ctx.restore();
-    ctx.restore();
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    return { cx, cy, radius, startAngle: Math.PI * 0.75, sweep: Math.PI * 1.5 };
   }
 
-  // Draw F1 / GT3 Sequential Shift Lights
-  drawShiftLights(ctx, cx, y, width, engine) {
-    const numLeds = 10;
-    const ledW = (width / numLeds) * 0.72;
-    const ledH = 8;
-    const startX = cx - width / 2;
-
-    const rpmRatio = engine.rpm / engine.redlineRPM;
-
-    for (let i = 0; i < numLeds; i++) {
-      const ledThreshold = 0.55 + (i / numLeds) * 0.45;
-      const isLit = rpmRatio >= ledThreshold;
-      const x = startX + i * (width / numLeds) + (width / numLeds - ledW) / 2;
-
-      let color = '#22c55e'; // Green for first 4
-      if (i >= 4 && i < 7) color = '#eab308'; // Yellow for next 3
-      if (i >= 7) color = '#ef4444'; // Red for last 3
-
-      // Flash all red if hitting rev limiter!
-      if (engine.isRevLimiting) {
-        color = (Math.floor(performance.now() / 60) % 2 === 0) ? '#38bdf8' : '#ef4444';
-      }
-
-      ctx.save();
-      if (isLit || engine.isRevLimiting) {
-        ctx.fillStyle = color;
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 10;
-      } else {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
-      }
-
+  drawDialScale(ctx, dial, maximum, majorStep, label, units, redline = null) {
+    const { cx, cy, radius, startAngle, sweep } = dial;
+    const redAngle = redline === null ? startAngle + sweep
+      : startAngle + sweep * Math.max(0, Math.min(1, redline / maximum));
+    ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, startAngle, startAngle + sweep);
+    ctx.stroke();
+    if (redline !== null) {
+      ctx.strokeStyle = '#c9372b';
+      ctx.lineWidth = 6;
       ctx.beginPath();
-      ctx.roundRect(x, y, ledW, ledH, 3);
-      ctx.fill();
-      ctx.restore();
+      ctx.arc(cx, cy, radius - 2, redAngle, startAngle + sweep);
+      ctx.stroke();
     }
+
+    const steps = Math.round(maximum / majorStep) * 5;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let i = 0; i <= steps; i++) {
+      const value = maximum * i / steps;
+      const angle = startAngle + sweep * i / steps;
+      const cos = Math.cos(angle), sin = Math.sin(angle);
+      const major = i % 5 === 0;
+      const red = redline !== null && value >= redline;
+      ctx.strokeStyle = red ? '#ef5945' : major ? '#f3f1eb' : '#8c8d8a';
+      ctx.lineWidth = major ? 2.4 : 1.1;
+      ctx.beginPath();
+      ctx.moveTo(cx + cos * (radius - (major ? 15 : 7)), cy + sin * (radius - (major ? 15 : 7)));
+      ctx.lineTo(cx + cos * radius, cy + sin * radius);
+      ctx.stroke();
+      if (!major) continue;
+      ctx.fillStyle = red ? '#ef5945' : '#f3f1eb';
+      ctx.font = '600 16px Arial, sans-serif';
+      const text = units === '×1000 r/min' ? Number((value / 1000).toFixed(1)).toString() : Math.round(value).toString();
+      ctx.fillText(text, cx + cos * (radius - 34), cy + sin * (radius - 34));
+    }
+
+    // Markings sit in the unused lower sweep gap. Live numbers belong to HUD.
+    ctx.fillStyle = '#f1eee7';
+    ctx.font = '600 14px Arial, sans-serif';
+    ctx.fillText(label, cx, cy + radius * 0.53);
+    ctx.fillStyle = '#a3a29d';
+    ctx.font = '11px Arial, sans-serif';
+    ctx.fillText(units, cx, cy + radius * 0.70);
+  }
+
+  drawDialNeedle(ctx, dial, value, maximum) {
+    const { cx, cy, radius, startAngle, sweep } = dial;
+    const angle = startAngle + sweep * Math.max(0, Math.min(1, value / maximum));
+    const cos = Math.cos(angle), sin = Math.sin(angle);
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+    ctx.shadowBlur = 3;
+    ctx.shadowOffsetY = 2;
+    ctx.strokeStyle = '#ef542e';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx - cos * 18, cy - sin * 18);
+    ctx.lineTo(cx + cos * (radius - 14), cy + sin * (radius - 14));
+    ctx.stroke();
+    ctx.restore();
+
+    const hub = ctx.createRadialGradient(cx - 3, cy - 4, 1, cx, cy, 16);
+    hub.addColorStop(0, '#4b4e50');
+    hub.addColorStop(0.45, '#26282a');
+    hub.addColorStop(1, '#08090a');
+    ctx.fillStyle = hub;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#5b5e60';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = '#121314';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  renderTachometer(engine, drivetrain, dt = 1 / 60) {
+    if (!this.tachoCtx || !this.tachoSize) return;
+    if (this.needleRPM === undefined) {
+      this.needleRPM = engine.isIgnitionOn ? engine.rpm : 0;
+      this.needleVelocity = 0;
+    }
+    const needle = advanceGaugeNeedle(this.needleRPM, this.needleVelocity,
+      engine.isIgnitionOn ? engine.rpm : 0, dt);
+    this.needleRPM = needle.position;
+    this.needleVelocity = needle.velocity;
+    const redline = Math.max(1, engine.redlineRPM);
+    const majorStep = redline > 10000 ? 2000 : redline < 5000 ? 500 : 1000;
+    const maximum = Math.ceil((redline + majorStep * 0.5) / majorStep) * majorStep;
+    const dial = this.beginDial(this.tachoCtx, this.tachoSize);
+    this.drawDialScale(this.tachoCtx, dial, maximum, majorStep, 'RPM', '×1000 r/min', redline);
+    this.drawDialNeedle(this.tachoCtx, dial, this.needleRPM, maximum);
+    this.tachoCtx.restore();
+  }
+
+  speedScale(engine, drivetrain) {
+    let theoretical = 0;
+    // Use every forward ratio, rather than assuming all presets have six gears.
+    if (drivetrain?.calcSpeedFromRPM) {
+      for (const gear of Object.keys(drivetrain.gearRatios || {}).map(Number)) {
+        if (gear <= 0) continue;
+        const speed = drivetrain.calcSpeedFromRPM(gear, engine.redlineRPM);
+        if (Number.isFinite(speed)) theoretical = Math.max(theoretical, speed);
+      }
+    }
+    const rangeStep = theoretical > 480 ? 80 : 40;
+    const maximum = Math.max(240, Math.ceil(theoretical / rangeStep) * rangeStep);
+    const majorStep = maximum <= 280 ? 20 : maximum <= 480 ? 40
+      : maximum <= 800 ? 80 : Math.ceil(maximum / 1000) * 100;
+    // Large experimental ratios can require a coarser range as well as ticks.
+    return { maximum: Math.ceil(maximum / majorStep) * majorStep, majorStep };
+  }
+
+  renderSpeedometer(engine, drivetrain, dt = 1 / 60) {
+    if (!this.speedCtx || !this.speedSize) return;
+    // A speedometer reads road motion even with ignition off, including reverse.
+    const speed = Math.abs(Number(drivetrain?.speedKmh) || 0);
+    if (this.needleSpeed === undefined) {
+      this.needleSpeed = speed;
+      this.speedNeedleVelocity = 0;
+    }
+    const needle = advanceGaugeNeedle(this.needleSpeed, this.speedNeedleVelocity, speed, dt);
+    this.needleSpeed = needle.position;
+    this.speedNeedleVelocity = needle.velocity;
+    const { maximum, majorStep } = this.speedScale(engine, drivetrain);
+    this.speedMaxKmh = maximum;
+    const dial = this.beginDial(this.speedCtx, this.speedSize);
+    this.drawDialScale(this.speedCtx, dial, maximum, majorStep, 'SPEED', 'km/h');
+    this.drawDialNeedle(this.speedCtx, dial, this.needleSpeed, maximum);
+    this.speedCtx.restore();
   }
 
   // Render Exhaust Tailpipe & Backfire Flame Spit

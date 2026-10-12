@@ -31,7 +31,7 @@ export class Engine3DRenderer {
     this.assembly = null;
     this.signature = null;
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x111a23);
+    this.scene.background = new THREE.Color(0x0b0c10);
     this.camera = new THREE.PerspectiveCamera(39, 1, 0.025, 50);
     this.camera.position.set(3.4, 2.5, 4.3);
     this.resize = this.resize.bind(this);
@@ -116,14 +116,14 @@ export class Engine3DRenderer {
     warm.position.set(2, 0.5, -4);
     this.scene.add(warm);
     this.floorGeometry = new THREE.PlaneGeometry(30, 30);
-    this.floorMaterial = new THREE.MeshStandardMaterial({ color: 0x17212a, roughness: 0.94, metalness: 0.09 });
+    this.floorMaterial = new THREE.MeshStandardMaterial({ color: 0x040506, roughness: 1, metalness: 0, envMapIntensity: 0.08 });
     this.floor = new THREE.Mesh(this.floorGeometry, this.floorMaterial);
     this.floor.rotation.x = -Math.PI / 2;
     this.floor.receiveShadow = true;
     this.scene.add(this.floor);
-    this.grid = new THREE.GridHelper(12, 24, 0x344653, 0x243440);
+    this.grid = new THREE.GridHelper(12, 24, 0x303138, 0x1b1d22);
     this.grid.material.transparent = true;
-    this.grid.material.opacity = 0.3;
+    this.grid.material.opacity = 0.15;
     this.scene.add(this.grid);
   }
 

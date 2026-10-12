@@ -106,7 +106,7 @@ function fixture(overrides = {}) {
   const document = documentFixture();
   const engine = { config: { id: 'i4_flat', layout: 'inline', representativeModel: 'CBR1000RR' },
     forcedInduction: 'na', modifications: createStockModifications(), isIgnitionOn: false,
-    dynoData: { maxHp: 190, maxTorque: 113 }, inertia: .03 };
+    displacement: 999, dynoData: { maxHp: 190, maxTorque: 113 }, inertia: .03 };
   const drive = { speedKmh: 0 };
   const requests = [], installations = [];
   const garage = new GaragePanel({ document, engine, drive,
@@ -120,6 +120,7 @@ function fixture(overrides = {}) {
 test('garage reuses every original control and preserves its bound events across mount and destroy', () => {
   const document = documentFixture();
   const originals = new Map(document.querySelectorAll('[id]').map(node => [node.id, node]));
+  const originalParents = new Map([...originals].map(([id, node]) => [id, node.parentNode]));
   const main = document.querySelector('.sim-grid');
   const originalChildren = [...main.children];
   let pressed = 0;
@@ -130,35 +131,66 @@ test('garage reuses every original control and preserves its bound events across
   for (const [id, node] of originals) assert.equal(document.getElementById(id), node, `${id} is the original node`);
   assert.equal(document.querySelectorAll('[id]').filter(node => node.id === 'engine-3d-canvas').length, 1);
   assert.equal(document.getElementById('pedal-gas').closest('.garage-cockpit'), garage.cockpit);
+  assert.equal(document.getElementById('btn-start-engine').parentNode, garage.startRow);
+  assert.equal(document.getElementById('engine-status-badge').parentNode, garage.startRow);
+  assert.equal(document.getElementById('hud-gear-display').parentNode, garage.gearReadout);
+  assert.equal(garage.gearReadout.parentNode, document.querySelector('.trans-section'));
+  assert.equal(document.getElementById('tachometer-canvas').closest('.driving-gauges'), garage.gauges);
+  assert.equal(document.querySelector('.cockpit-hud-screen').parentNode, garage.instruments);
   document.getElementById('pedal-gas').dispatch('pointerdown');
   assert.equal(pressed, 1);
   garage.init();
   assert.equal(document.querySelectorAll('[id]').filter(node => node.id === 'garage-part-option').length, 1);
   garage.destroy();
   assert.deepEqual(main.children, originalChildren);
-  for (const [id, node] of originals) assert.equal(document.getElementById(id), node);
+  for (const [id, node] of originals) {
+    assert.equal(document.getElementById(id), node);
+    assert.equal(node.parentNode, originalParents.get(id), `${id} returns to its original parent`);
+  }
   assert.equal(document.getElementById('engine-3d-canvas'), null);
+  assert.equal(document.getElementById('cockpit-gear-position'), null);
+  assert.equal(document.querySelector('.driving-gear-readout'), null);
   originals.get('pedal-gas').dispatch('pointerdown');
   assert.equal(pressed, 2, 'the original pedal listener survives teardown');
 });
 
 test('tabs work with keyboard navigation without moving the pinned engine or cockpit', () => {
-  const { garage, document } = fixture();
+  const { garage, document, engine } = fixture();
   const engineParent = document.getElementById('engine-canvas').parentNode;
   const gasParent = document.getElementById('pedal-gas').parentNode;
+  assert.equal(garage.activeTab, 'drive');
+  assert.equal(garage.panels.get('drive'), garage.instruments);
+  assert.equal(garage.instruments.hidden, false);
+  assert.deepEqual([...garage.tabButtons.keys()], ['drive', 'garage', 'sound', 'performance', 'settings']);
+  assert.deepEqual(garage.layout.children, [garage.engineBar, garage.instruments, garage.library,
+    garage.workspace, garage.inspector, garage.cockpit, garage.startRow]);
+  assert.equal(document.getElementById('engine-select').closest('.driving-engine-bar'), garage.picker);
+  assert.equal(document.getElementById('driving-displacement').textContent, '999 cc');
+  assert.equal(document.getElementById('driving-peak-hp').textContent, '190 HP');
+  engine.displacement = 1200; engine.dynoData.maxHp = 211; garage.update();
+  assert.equal(document.getElementById('driving-displacement').textContent, '1200 cc');
+  assert.equal(document.getElementById('driving-peak-hp').textContent, '211 HP');
+  garage.inspector.scrollTop = 220;
+  garage.library.scrollTop = 180;
   const event = garage.tabButtons.get('garage').dispatch('keydown', { key: 'End' });
   assert.equal(event.defaultPrevented, true);
-  assert.equal(garage.activeTab, 'performance');
-  assert.equal(document.activeElement, garage.tabButtons.get('performance'));
-  assert.equal(garage.panels.get('performance').hidden, false);
-  assert.equal(garage.panels.get('settings').hidden, true);
-  assert.equal(garage.tabButtons.get('performance').getAttribute('aria-selected'), 'true');
-  garage.tabButtons.get('performance').dispatch('keydown', { key: 'ArrowRight' });
-  assert.equal(garage.activeTab, 'garage');
+  assert.equal(garage.activeTab, 'settings');
+  assert.equal(garage.inspector.scrollTop, 0, 'switching panels starts at the new panel heading');
+  assert.equal(garage.library.scrollTop, 0);
+  assert.equal(document.activeElement, garage.tabButtons.get('settings'));
+  assert.equal(garage.panels.get('settings').hidden, false);
+  assert.equal(garage.panels.get('drive').hidden, true);
+  assert.equal(garage.tabButtons.get('settings').getAttribute('aria-selected'), 'true');
+  garage.tabButtons.get('settings').dispatch('keydown', { key: 'ArrowRight' });
+  assert.equal(garage.activeTab, 'drive');
+  assert.equal(garage.instruments.hidden, false);
   assert.equal(document.getElementById('engine-canvas').parentNode, engineParent);
   assert.equal(document.getElementById('pedal-gas').parentNode, gasParent);
   assert.equal(document.getElementById('ecu-mode').closest('.garage-pane'), garage.panels.get('settings'));
   assert.equal(document.getElementById('warmth-slider').closest('.garage-pane'), garage.panels.get('sound'));
+  garage.selectTab('sound'); garage.modelTitle.dispatch('click');
+  assert.equal(garage.activeTab, 'drive');
+  assert.equal(document.activeElement, document.getElementById('engine-select'));
 });
 
 test('hardware installation requires a stopped, shut-down engine and reflects the actual accepted state', async () => {

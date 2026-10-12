@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>HYPERENGINE // 擬真引擎與排氣聲浪模擬系統</title>
   <meta name="description" content="可旋轉的 3D 引擎改裝車庫：20 種引擎基準、外觀與機械剖面、六類功能改裝、ECU／VTEC、Turbo／TVS 與加速成績比較。">
   <!-- Google Fonts: Orbitron, Rajdhani, Inter -->
@@ -11,6 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;700;800;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./style.css">
   <link rel="stylesheet" href="./garage.css">
+  <link rel="stylesheet" href="./cockpit.css">
 </head>
 <body>
   <div class="app-container">
@@ -214,23 +215,26 @@
 
           <!-- Tachometer Canvas -->
           <div class="tacho-wrapper">
-            <canvas id="tachometer-canvas"></canvas>
+            <canvas id="tachometer-canvas" role="img" aria-label="引擎轉速指針儀表"></canvas>
+          </div>
+          <div class="speedo-wrapper">
+            <canvas id="speedometer-canvas" role="img" aria-label="車速指針儀表"></canvas>
           </div>
 
           <!-- Transmission Controls -->
           <div class="trans-section">
             <div class="trans-mode-bar">
-              <button class="trans-btn active" data-mode="at">全自排 (AT Auto)</button>
-              <button class="trans-btn" data-mode="amt">自手排 (AMT Manual)</button>
+              <button class="trans-btn active" data-mode="at" aria-label="全自排 (AT Auto)" title="全自排：自動升降檔">AT</button>
+              <button class="trans-btn" data-mode="amt" aria-label="自手排 (AMT Manual)" title="自手排：撥片自主換檔">AMT</button>
             </div>
             <p id="transmission-context-note" class="meta-desc transmission-context-note" hidden></p>
 
             <!-- AT Selector (P-R-N-D) -->
             <div id="at-controls" class="shifter-group at-shifter">
-              <button class="at-btn" data-pos="P">P (駐車)</button>
-              <button class="at-btn" data-pos="R">R (倒檔)</button>
-              <button class="at-btn active" data-pos="N">N (空檔)</button>
-              <button class="at-btn" data-pos="D">D (自動換檔)</button>
+              <button class="at-btn" data-pos="P" aria-label="P (駐車)" title="駐車">P</button>
+              <button class="at-btn" data-pos="R" aria-label="R (倒檔)" title="倒檔">R</button>
+              <button class="at-btn active" data-pos="N" aria-label="N (空檔)" title="空檔">N</button>
+              <button class="at-btn" data-pos="D" aria-label="D (自動換檔)" title="前進：自動換檔">D</button>
             </div>
 
             <!-- AMT Mode Controls (Paddles + Gear Buttons) -->
@@ -275,6 +279,7 @@
                   <span class="tread-line"></span>
                 </span>
                 <span class="pedal-text">BRAKE (煞車)</span>
+                <span id="cockpit-brake-percent" class="pedal-percent">0%</span>
                 <span class="pedal-key-hint">按住 [S] 減速降轉</span>
               </button>
 
@@ -287,6 +292,7 @@
                   <span class="tread-line"></span>
                 </span>
                 <span class="pedal-text">GAS (油門)</span>
+                <span id="cockpit-gas-percent" class="pedal-percent">0%</span>
                 <span class="pedal-key-hint">按住 [W] 拉轉加速</span>
               </button>
             </div>
