@@ -22,6 +22,45 @@ const chironRatios = [90, 150, 200, 260, 320, 390, 420].map(speedKMH =>
   6700 * 2 * Math.PI * chironRadius / 60 / (speedKMH / 3.6));
 
 export const VEHICLE_PROFILES = {
+  two_stroke_2: vehicle(157, {
+    // Yamaha brochure gives 143 kg dry; 157 kg wet is an estimate with fuel/oil.
+    dragArea: 0.39, tireRadius: 0.310, primaryRatio: 2.869, finalDrive: 2.437,
+    gearRatios: ratios([2.571, 1.777, 1.318, 1.083, 0.961, 0.888]), transmissionKind: 'manual',
+    gearingKind: 'published', referenceSource: 'https://global.yamaha-motor.com/jp/stories/history/products/img/mc/AP000202531.pdf',
+    massKind: 'estimate-from-published-dry',
+  }),
+  v4: vehicle(203, {
+    dragArea: 0.35, tireRadius: rollingRadius(200, 60, 17), primaryRatio: 1.80, finalDrive: 41 / 16,
+    gearRatios: ratios([2.47, 1.765, 1.4, 1.182, 1.043, 0.958]), transmissionKind: 'manual',
+    gearingKind: 'experimental', referenceKind: 'experimental', referenceSource: 'https://www.ducati.com/ww/en/bikes/panigale/panigale-v4/engine',
+  }),
+  vr6: vehicle(1477, {
+    dragArea: 0.69, tireRadius: rollingRadius(225, 40, 18), finalDrive: 3.94,
+    gearRatios: ratios([3.36, 2.09, 1.47, 1.10, 0.87, 0.73], 3.1), transmissionKind: 'manual',
+    gearingKind: 'experimental', referenceKind: 'experimental', referenceSource: 'https://www.volkswagen-newsroom.com/en/motor-versions-golf-4-profile-19479',
+  }),
+  w12: vehicle(2244, {
+    dragArea: 0.70, tireRadius: rollingRadius(315, 35, 21), finalDrive: 3.154,
+    gearRatios: ratios([5.986, 3.235, 2.083, 1.420, 1.054, 0.841, 0.678, 0.534], 4.77), transmissionKind: 'dct',
+    gearingKind: 'published', reverseGearingKind: 'estimate',
+    referenceSource: 'https://www.autointernational.com.my/WebNews/Overseas/Year%202018/BENTLEY%20CONTINENTAL%20GT%20HAS%20ARRIVED%20-%201%20Oct%2018/Bentley%20Continental%20GT%20spec%20sheet.pdf',
+  }),
+  rotary_4: vehicle(830, {
+    dragArea: 0.88, tireRadius: 0.337, finalDrive: 3.60,
+    gearRatios: ratios([2.50, 1.77, 1.38, 1.13, 0.95]), transmissionKind: 'manual',
+    gearingKind: 'experimental', referenceKind: 'experimental', referenceSource: 'https://www.mazda.com/en/experience/mspr/motorsports/lemans/r26b/',
+  }),
+  v16: vehicle(1995, {
+    dragArea: 0.80, tireRadius: rollingRadius(345, 30, 21), finalDrive: 3.40,
+    gearRatios: ratios([3.65, 2.44, 1.81, 1.43, 1.17, 0.98, 0.84, 0.73], 3.3), transmissionKind: 'dct',
+    gearingKind: 'experimental', referenceKind: 'experimental', referenceSource: 'https://bugatti-newsroom.imgix.net/6675179393f6515cdb966608/technical-specifications-bugatti-TB-en.pdf',
+  }),
+  radial_18: vehicle(2500, {
+    // Stand/chassis estimate, not the 1,043 kg bare engine or an aircraft.
+    dragArea: 1.2, tireRadius: 0.46, finalDrive: 1.8,
+    gearRatios: ratios([2.8, 1.9, 1.4, 1.05], 2.8), transmissionKind: 'amt',
+    gearingKind: 'experimental', referenceKind: 'experimental', referenceSource: 'https://www.si.edu/object/pratt-whitney-double-wasp-r-2800-43-2-row-radial-18-engine%3Anasm_A19660391000',
+  }),
   honda_f20c: vehicle(1240, {
     dragArea: 0.63, tireRadius: rollingRadius(225, 50, 16), primaryRatio: 1.160, finalDrive: 4.100,
     gearRatios: ratios([3.133, 2.045, 1.481, 1.161, 0.970, 0.810], 2.800), transmissionKind: 'manual',
@@ -52,11 +91,10 @@ export const VEHICLE_PROFILES = {
     gearingKind: 'published', referenceSource: 'https://news.mazdausa.com/download/RX-8-Spec-Sheet-Final.pdf',
   }),
   gas_turbine: vehicle(380, {
-    // Estimated single-shaft road demonstration, not an MTT 420RR rebuild.
-    // MTT's real two-speed automatic/free-power-turbine model is not implemented.
+    // Two-speed road load; tooth ratios are estimates, not factory MTT data.
     referenceKind: 'experimental', dragArea: 0.40, tireRadius: rollingRadius(200, 50, 17),
-    primaryRatio: 6.60, finalDrive: 2.60,
-    gearRatios: ratios([2.20, 1.60, 1.25, 1.00, 0.85, 0.72], 2.20), transmissionKind: 'amt',
+    primaryRatio: 1, finalDrive: 2.60,
+    gearRatios: ratios([2.20, 1.20]), transmissionKind: 'automatic',
     gearingKind: 'experimental', referenceSource: 'https://marineturbine.com/motorcycles/',
   }),
   turbojet: {

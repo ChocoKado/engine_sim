@@ -8,6 +8,8 @@ import { EngineRenderer } from '../src/visuals/EngineRenderer.js';
 import { EngineModel } from '../src/physics/EngineModel.js';
 import { camValveLift } from '../src/physics/CamControl.js';
 import { rotaryRotorFacePoint, rotarySparkPlugMounts } from '../src/physics/RotaryMechanics.js';
+import { twoStrokePortState } from '../src/physics/TwoStrokeMechanics.js';
+import { radialEngineKinematics } from '../src/physics/RadialMechanics.js';
 
 test('tachometer response settles without oscillation or runaway at low frame rates', () => {
   for (const fps of [15, 24, 30, 60, 144]) {
@@ -456,4 +458,74 @@ test('aviation visual shaft phase remains one physical revolution across the wra
   engine.coreRPM = 10; renderer.animationSpeed = .1; renderer.render(engine, {}, 1 / 30);
   assert.ok(Math.abs(renderer.visualCrankAngle - 1.2) < 1e-10);
   assert.equal(engine.coreRPM, 10, 'inspection slow motion cannot slow the physical shaft');
+});
+
+test('two-stroke drawing uses shared port state each revolution and never invokes poppet valves', () => {
+  const engine = new EngineModel('two_stroke_2'); engine.setRunning(true);
+  const renderer = Object.create(EngineRenderer.prototype);
+  Object.assign(renderer, { animationSpeed: .1, viewMode: 'focused', focusedCylIndex: 0, sparkParticles: [], ctx: recordingContext() });
+  renderer.drawValves = () => assert.fail('a piston-ported RZ350 cannot acquire a four-stroke valvetrain');
+  const spark = renderer.drawSparkPlug, states = [];
+  renderer.drawSparkPlug = function(ctx, top, state, scale) { states.push(state); return spark.call(this,ctx,top,state,scale); };
+  for (const phase of [0, 90, 120, 180, 240, 300, 359, 360, 540]) {
+    renderer.drawSingleCylinder(renderer.ctx, engine.cylinderStates[0], engine, .3, phase, true);
+    const displayed = states.at(-1), expected = twoStrokePortState(phase, engine.config);
+    assert.equal(displayed.exhaustPort, expected.exhaustPort);
+    assert.equal(displayed.transferPort, expected.transferPort);
+    assert.equal(displayed.portPhase, expected.portPhase);
+    assert.equal(displayed.isFiring, expected.isIgnitionPhase);
+  }
+});
+
+test('Double Wasp cutaway draws two independent nine-cylinder rod assemblies with physical row phases', () => {
+  const engine = new EngineModel('radial_18'); engine.setRunning(true);
+  for (const [width,height] of [[308,81], [180,80], [780,380]]) {
+    const renderer = Object.create(EngineRenderer.prototype);
+    Object.assign(renderer, { width,height,animationSpeed:.1,visualCrankAngle:137,viewMode:'multi',focusedCylIndex:0,ctx:recordingContext() });
+    const actual = renderer.drawValves, states = [];
+    renderer.drawValves = function(ctx, top,bore,state,scale) { states.push(state); return actual.call(this,ctx,top,bore,state,scale); };
+    renderer.drawRadialEngine(renderer.ctx,engine,width,height,true);
+    assert.equal(states.length,18);
+    const expected = radialEngineKinematics(137,engine.config);
+    states.forEach(state => assert.equal(state.phaseAngle, expected[state.index].phaseAngle));
+    assert.equal(new Set(states.map(state => state.index)).size,18);
+    for(const point of renderer.ctx.points) assert.ok(point.x>=-1&&point.x<=width+1&&point.y>=-1&&point.y<=height+1, `${width}×${height}: radial rows cropped`);
+    states.length=0;renderer.viewMode='focused';renderer.focusedCylIndex=13;
+    renderer.drawRadialEngine(renderer.ctx,engine,width,height,true);
+    assert.equal(states.length,1);assert.equal(states[0].index,13);
+  }
+});
+
+test('turboshaft cutaway independently animates core and power blades rather than reusing output RPM', () => {
+  const renderer = Object.create(EngineRenderer.prototype);
+  Object.assign(renderer, { width:308,height:110,animationSpeed:1,cleanMode:true,viewMode:'multi',
+    focusedCylIndex:0,sparkParticles:[],ctx:recordingContext() });
+  const engine = new EngineModel('gas_turbine');
+  Object.assign(engine,{ coreAngle:0,powerTurbineAngle:90,crankAngle:180,coreRPM:40000,powerTurbineRPM:0,rpm:0 });
+  let blades = {};
+  const original=renderer.ctx.fillRect;
+  renderer.ctx.fillRect=function(x,y,w,h){if(y===-30&&(x===42||x===80))blades[x]=w;return original.call(this,x,y,w,h);};
+  renderer.render(engine,{},0);const first={...blades};
+  engine.coreAngle=90;renderer.render(engine,{},0);
+  assert.equal(blades[42],first[42]);assert.notEqual(blades[80],first[80]);
+  const second={...blades};engine.powerTurbineAngle=0;renderer.render(engine,{},0);
+  assert.notEqual(blades[42],second[42]);assert.equal(blades[80],second[80]);
+});
+
+test('R26B four absolute ignition events light the matching rotor triple plugs in physical order', () => {
+  const engine = new EngineModel('rotary_4'); engine.setRunning(true);
+  const renderer = Object.create(EngineRenderer.prototype);
+  Object.assign(renderer,{viewMode:'multi',focusedCylIndex:0,animationSpeed:1,ctx:recordingContext()});
+  const rect=renderer.ctx.fillRect;
+  let plugs=[];
+  renderer.ctx.fillRect=function(x,y,w,h){
+    if(x===-1.5&&y===-1&&w===3&&h===1)plugs.push(this.fillStyle==='#fde68a');
+    return rect.call(this,x,y,w,h);
+  };
+  for(let index=0;index<4;index++){
+    renderer.visualCrankAngle=engine.config.firingAngles[index];plugs=[];
+    renderer.drawRotaryEngine(renderer.ctx,engine,780,380,true);
+    assert.equal(plugs.length,12);
+    assert.deepEqual(plugs,Array.from({length:12},(_,plug)=>Math.floor(plug/3)===index));
+  }
 });

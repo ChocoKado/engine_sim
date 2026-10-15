@@ -3,6 +3,7 @@
 // assumptions are recorded below and in docs/engine-reference.md.
 
 import { ADDITIONAL_ENGINES } from './AdditionalEngines.js';
+import { EXPANSION_ENGINES } from './ExpansionEngines.js';
 import { radialFiringAngles } from './RadialMechanics.js';
 
 export const ENGINE_CONFIGS = {
@@ -535,6 +536,8 @@ for (const [id, reference] of Object.entries(REFERENCES)) {
   ENGINE_CONFIGS[id].vehicleKind = ENGINE_CONFIGS[id].cylinders <= 4 ? 'motorcycle' : 'car';
 }
 Object.assign(ENGINE_CONFIGS, ADDITIONAL_ENGINES);
+Object.assign(ENGINE_CONFIGS, EXPANSION_ENGINES);
+ENGINE_CONFIGS.radial_7.coolingKind = 'air';
 // Articulated-rod TDC differs slightly from evenly spaced cylinder axes.
 ENGINE_CONFIGS.radial_7.firingAngles = [...radialFiringAngles(7)];
 ENGINE_CONFIGS.radial_7.firingAngleKind = 'absolute';

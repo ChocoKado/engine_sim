@@ -8,7 +8,7 @@ const TABS = [
   { id: 'settings', label: '設定', symbol: '⚙', subtitle: '引擎與傳動設定' },
 ];
 
-const PART_MARKS = { intake: 'IN', headers: 'EX', camshaft: 'CA', flywheel: 'FW', intercooler: 'IC', pulley: 'SC' };
+const PART_MARKS = { intake: 'IN', headers: 'EX', camshaft: 'CA', flywheel: 'FW', intercooler: 'IC', pulley: 'SC', radiator: 'RD' };
 const setText = (node, value) => { if (node && node.textContent !== value) node.textContent = value; };
 
 /**
@@ -125,7 +125,7 @@ export class GaragePanel {
     this.move(digitalHud, this.instruments);
     this.telemetry = this.element('div', 'driving-telemetry');
     for (const [label, id, unit] of [
-      ['進氣溫度', 'cockpit-intake-temp', '°C'],
+      ['冷卻液', 'cockpit-intake-temp', '°C'],
       ['增壓', 'cockpit-boost-value', 'bar'],
       ['時速', 'cockpit-speed-value', 'km/h'],
     ]) {
@@ -434,7 +434,7 @@ export class GaragePanel {
     for (const [key, button] of this.viewButtons || []) button.setAttribute('aria-pressed', String(key === mode));
     setText(this.viewHint, mode === '3d' ? '拖曳旋轉 · 滾輪／雙指縮放'
       : ['turbine', 'turbojet'].includes(this.engine?.config?.layout)
-        ? '連續燃燒與轉子 · 慢動作只改變動畫速度' : '觀察四行程 · 慢動作只改變動畫速度');
+        ? '連續燃燒與轉子 · 慢動作只改變動畫速度' : this.engine?.config?.cycleKind === 'two-stroke' ? '觀察氣埠與掃氣 · 慢動作只改變動畫速度' : '觀察四行程 · 慢動作只改變動畫速度');
     const part = this.catalog.find(candidate => candidate.id === focus);
     setText(this.stageStatus, mode === 'cutaway' ? '機械剖面' : part ? `安裝位置 · ${part.name}` : '完整引擎');
     this.emitView({ focus });

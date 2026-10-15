@@ -1,6 +1,13 @@
 const TAU = Math.PI * 2;
 export const wrapRotaryDegrees = angle => ((angle % 1080) + 1080) % 1080;
 
+// Absolute firing events locate face-0 combustion TDC at the shared 540-degree
+// chamber-volume minimum. Legacy additive rotary presets retain their phase.
+export function rotaryShaftPhase(crankDegrees, firingOffset = 0, firingAngleKind) {
+  return wrapRotaryDegrees(firingAngleKind === 'absolute'
+    ? crankDegrees - firingOffset + 540 : crankDegrees + firingOffset);
+}
+
 export function rotaryHousingPoint(t, radius = 70, eccentricity = 11) {
   return { x: radius * Math.cos(t) + eccentricity * Math.cos(3 * t),
     y: radius * Math.sin(t) + eccentricity * Math.sin(3 * t) };

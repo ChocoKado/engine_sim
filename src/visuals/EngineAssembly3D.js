@@ -5,8 +5,8 @@ import { cylinderBankIndex, cylinderBankAngle } from './MechanicalKinematics.js'
 
 const TAU = Math.PI * 2;
 const Z_AXIS = new THREE.Vector3(0, 0, 1);
-const MOD_KEYS = ['intake', 'headers', 'camshaft', 'flywheel', 'intercooler', 'pulley'];
-const BASE_MODS = { intake: 'stock', headers: 'stock', camshaft: 'stock', flywheel: 'stock', intercooler: 'stock', pulley: 'stock' };
+const MOD_KEYS = ['intake', 'headers', 'camshaft', 'flywheel', 'intercooler', 'pulley', 'radiator'];
+const BASE_MODS = { intake: 'stock', headers: 'stock', camshaft: 'stock', flywheel: 'stock', intercooler: 'stock', pulley: 'stock', radiator: 'stock' };
 const v3 = value => value instanceof THREE.Vector3 ? value.clone() : new THREE.Vector3(...value);
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
@@ -21,7 +21,7 @@ export function engineAssemblySignature(engine) {
 export function engineBanks3D(config) {
   const n = config.cylinders;
   if (config.layout === 'radial' || config.layout === 'rotary' || config.layout === 'turbine' || config.layout === 'turbojet') return [];
-  const count = config.layout === 'w' ? 4 : ['v', 'boxer'].includes(config.layout) ? 2 : 1;
+  const count = config.layout === 'w' ? 4 : ['v', 'vr', 'boxer'].includes(config.layout) ? 2 : 1;
   const banks = Array.from({ length: count }, (_, index) => ({ index, angle: 0, cylinders: [] }));
   banks.forEach((bank, index) => {
     bank.angle = cylinderBankAngle(index, config);
@@ -53,31 +53,40 @@ export class EngineAssembly3D {
     this.materials = new Set();
     this.instances = new Set();
     this.disposed = false;
-    this.phase = { core: (engine.crankAngle || 0) * Math.PI / 180,
+    this.phase = { core: (engine.coreAngle ?? engine.crankAngle ?? 0) * Math.PI / 180,
+      power: (engine.powerTurbineAngle || 0) * Math.PI / 180, fan: 0,
       crank: (engine.crankAngle || 0) * Math.PI / 180, turbo: 0, supercharger: 0 };
     this.palette = this.createMaterials();
     this.banks = engineBanks3D(this.config);
-    this.length = this.config.layout === 'rotary' ? 1.08 : this.config.layout === 'radial' ? 0.72
+    this.length = this.config.layout === 'rotary' ? (this.config.rotors || 2) * .41 + .26 : this.config.layout === 'radial' ? (this.config.radialRows || 1) * .56 + .16
       : (this.config.layout === 'turbine' || this.config.layout === 'turbojet') ? 1.40
       : Math.max(0.66, Math.max(...this.banks.map(bank => bank.cylinders.length)) * 0.27 + 0.20);
     this.front = this.length / 2 + 0.08;
     this.bankAnchors = [];
     this.intakeAnchors = [];
     this.headerAnchors = [];
-    this.caseWidth = ['v', 'w'].includes(this.config.layout) ? 0.78 : this.config.layout === 'boxer' ? 0.66 : 0.5;
+    this.caseWidth = ['v', 'w'].includes(this.config.layout) ? 0.78 : this.config.layout === 'boxer' ? 0.66 : this.config.layout === 'vr' ? .62 : 0.5;
     if (this.config.layout === 'radial') this.buildRadial();
     else if (this.config.layout === 'rotary') this.buildRotary();
     else if (this.config.layout === 'turbine') this.buildTurbine(engine);
     else if (this.config.layout === 'turbojet') this.buildTurbojet(engine);
+    else if (this.config.cycleKind === 'two-stroke') this.buildTwoStroke();
+    else if (['vr', 'w'].includes(this.config.layout)) this.buildNarrowBanks();
     else this.buildPistonBanks();
     if (!this.aviation) {
-      this.buildIntake(engine);
-      this.buildExhaust(engine);
-      this.buildFrontDrive();
+      if (this.config.cycleKind === 'two-stroke') this.buildTwoStrokeIntake();
+      else if (this.config.rotaryPortKind === 'peripheral') this.buildRacingRotaryIntake();
+      else this.buildIntake(engine);
+      if (this.config.cycleKind === 'two-stroke') this.buildTwoStrokeExhaust(engine);
+      else this.buildExhaust(engine);
+      if (this.config.cycleKind === 'two-stroke') this.buildTwoStrokeDrive();
+      else this.buildFrontDrive();
       this.buildFlywheel();
       this.buildMounts();
       this.buildInduction(engine);
+      this.buildRadiator(engine);
     }
+    if (this.config.layout === 'radial') this.batchStaticRadialMeshes();
     this.batchRepeatedMeshes();
     const baseCC = this.config.defaultDisplacement || this.config.displacement || engine.displacement || 1000;
     // Changing displacement changes the assembly scale without implying OEM dimensions.
@@ -261,17 +270,148 @@ export class EngineAssembly3D {
     }
   }
 
+  buildNarrowBanks() {
+    const block = this.part('block'), cams = this.part('camshaft');
+    const w = this.config.layout === 'w';
+    const groups = w ? 2 : 1;
+    const { cast, dark, machined, steel, cover } = this.palette;
+    block.userData.sharedCrankcase = true;
+    this.box(block, [this.caseWidth, .43, this.length], [0, .04, 0], cast, true, 'shared crankcase');
+    this.box(block, [this.caseWidth * .88, .20, this.length * .9], [0, -.29, 0], dark, true, 'oil sump');
+    for (let groupIndex = 0; groupIndex < groups; groupIndex++) {
+      const groupAngle = w ? (groupIndex ? 1 : -1) * (this.config.bankAngle || 72) / 2 : 0;
+      const headFrame = new THREE.Group();
+      headFrame.name = 'common narrow-angle head ' + (groupIndex + 1);
+      headFrame.rotation.z = -groupAngle * Math.PI / 180;
+      headFrame.userData.sharedHead = true;
+      block.add(headFrame);
+      this.box(headFrame, [.58, .18, this.length + .06], [0, .765, .035], machined, true, 'single shared VR cylinder head');
+      const camFrame = new THREE.Group(); camFrame.rotation.z = headFrame.rotation.z; cams.add(camFrame);
+      const lid = new THREE.Group(); lid.position.set(0, 1.014, .035); camFrame.add(lid);
+      this.box(lid, [.61, .18, this.length + .07], [0, 0, 0], cover, true, 'common narrow-angle valve cover');
+      for (const x of [-.22, .22]) for (const z of [-this.length * .36, this.length * .36]) this.bolt(lid, [x, .10, z]);
+      const openingSide = w && groupIndex ? 1 : -1;
+      this.covers.push(this.inspectionCover(lid, [openingSide * .82, .10, 0], [0, 0, -openingSide * Math.PI / 3]));
+      const groupBanks = this.banks.filter(bank => w ? Math.floor(bank.index / 2) === groupIndex : true);
+      for (const bank of groupBanks) {
+        const row = new THREE.Group(); row.rotation.z = -bank.angle * Math.PI / 180;
+        row.name = 'cylinder bank ' + (bank.index + 1);
+        row.userData = { bankIndex: bank.index, bankAngle: bank.angle, cylinderIndices: [...bank.cylinders], sharedHeadIndex: groupIndex };
+        block.add(row);
+        this.box(row, [.27, .48, this.length - .03], [0, .39, .035], cast, true, 'narrow-angle cylinder row');
+        for (let column = 0; column < bank.cylinders.length; column++) {
+          const index = bank.cylinders[column];
+          const z = (column - (bank.cylinders.length - 1) / 2) * .27 + (bank.index % 2 ? .0675 : -.0675);
+          const marker = new THREE.Object3D(); marker.position.set(0, .44, z);
+          marker.userData = { cylinderIndex: index, bankIndex: bank.index }; marker.name = 'cylinder ' + (index + 1); row.add(marker);
+          this.box(lid, [.074, .06, .083], [bank.index % 2 ? .095 : -.095, .115, z - .035], dark, true, 'ignition coil');
+          const side = w && groupIndex === 0 ? -1 : 1;
+          const headBank = { angle: groupAngle };
+          this.intakeAnchors.push(this.bankPoint(headBank, -side * .30, .76, z));
+          this.headerAnchors.push(this.bankPoint(headBank, side * .30, .76, z));
+        }
+      }
+      for (const x of [-.155, .155]) {
+        const shaft = new THREE.Group(); shaft.position.set(x, .91, .035); camFrame.add(shaft);
+        this.cylinder(shaft, .024, this.length, [0, 0, 0], steel);
+        for (const bank of groupBanks) for (let column = 0; column < bank.cylinders.length; column++) {
+          const z = (column - (bank.cylinders.length - 1) / 2) * .27 + (bank.index % 2 ? .0675 : -.0675) - .035;
+          for (const offset of [-.029, .029]) {
+            const lobe = this.cylinder(shaft, this.mods.camshaft === 'sport' ? .049 : .039, .021, [0, .011, z + offset], steel);
+            lobe.scale.z = 1.22;
+          }
+        }
+        this.spin(shaft, 'cam');
+      }
+      this.bankAnchors.push(this.bankPoint({ angle: groupAngle }, 0, .82, 0));
+    }
+  }
+
+  buildTwoStroke() {
+    const block = this.part('block'); block.userData.sharedCrankcase = true;
+    this.box(block, [.53, .43, this.length], [0, .02, 0], this.palette.cast, true, 'sealed two-stroke pumping crankcase');
+    for (let index = 0; index < this.config.cylinders; index++) {
+      const z = (index - (this.config.cylinders - 1) / 2) * .27;
+      const group = new THREE.Group(); block.add(group);
+      group.userData.cylinderIndex = index; group.name = 'two-stroke cylinder ' + (index + 1);
+      this.box(group, [.39, .41, .265], [0, .41, z], this.palette.cast, true, 'ported water-jacket cylinder');
+      this.box(group, [.43, .12, .29], [0, .68, z], this.palette.machined, true, 'two-stroke cylinder head without camshaft');
+      for (const x of [-.14, .14]) for (const delta of [-.09, .09]) this.bolt(group, [x, .75, z + delta]);
+      this.cylinder(group, .027, .10, [0, .78, z], this.palette.ceramic, 'y', .022, 'two-stroke spark plug');
+      this.tube(group, [[0, .83, z], [-.15, .86, z], [-.26, .68, z]], .012, this.palette.rubber, 'spark plug HT lead');
+      this.intakeAnchors.push(new THREE.Vector3(-.27, .13, z));
+      this.headerAnchors.push(new THREE.Vector3(.20, .38, z));
+      this.bankAnchors.push(new THREE.Vector3(0, .68, z));
+    }
+  }
+
+  buildTwoStrokeIntake() {
+    const intake = this.part('intake');
+    const sport = this.mods.intake === 'sport';
+    const center = new THREE.Vector3(-.65, .18, 0);
+    this.plenumPosition = center.clone(); this.plenumInlet = center.clone().add(new THREE.Vector3(0, 0, this.length * .46));
+    this.filterOutlet = this.plenumInlet.clone().add(new THREE.Vector3(-.15, .05, .10));
+    this.box(intake, [sport ? .34 : .28, sport ? .31 : .26, this.length * .88], center, this.palette.dark, true, 'two-stroke common filtered airbox');
+    for (const [index, anchor] of this.intakeAnchors.entries()) {
+      const body = anchor.clone().add(new THREE.Vector3(-.12, 0, 0));
+      this.cylinder(intake, .066, .15, body, this.palette.machined, 'x', .066, 'reed-valve carburetor ' + (index + 1));
+      this.cylinder(intake, .04, .10, body.clone().add(new THREE.Vector3(0, .08, 0)), this.palette.dark, 'y', .04, 'carburetor slide cap');
+      this.box(intake, [.10, .07, .10], body.clone().add(new THREE.Vector3(0, -.08, 0)), this.palette.cast, true, 'carburetor float bowl');
+      this.tube(intake, [anchor, body, new THREE.Vector3(-.54, .18, anchor.z)], .046, this.palette.rubber, 'reed-valve intake runner');
+    }
+    if (sport) for (let n = 0; n < 6; n++) this.box(intake, [.012, .23, .025], [-.83, .18, -.20 + n * .08], this.palette.filter, false, 'high-flow airbox inspection rib');
+  }
+
+  buildTwoStrokeDrive() {
+    const accessories = this.part('accessories');
+    this.crankCenter = new THREE.Vector3(0, 0, this.front + .03);
+    this.cylinder(accessories, .24, .075, [0, 0, this.front], this.palette.dark, 'z', .23, 'two-stroke generator side cover');
+    for (let n = 0; n < 6; n++) {
+      const angle = n * TAU / 6;
+      this.bolt(accessories, [.20 * Math.cos(angle), .20 * Math.sin(angle), this.front + .055], 'z');
+    }
+  }
+
+  buildTwoStrokeExhaust(engine) {
+    const headers = this.part('headers'), exhaust = this.part('exhaust');
+    const tuned = this.mods.headers === 'tuned';
+    headers.userData.manifoldKind = 'two-stroke expansion chambers';
+    this.headerAnchors.forEach((anchor, index) => {
+      const side = index % 2 ? 1 : -1;
+      const points = [anchor, new THREE.Vector3(.36, .17, anchor.z), new THREE.Vector3(side * .30, -.28, -.05),
+        new THREE.Vector3(side * .32, -.35, -.30), new THREE.Vector3(side * .32, -.36, -.58),
+        new THREE.Vector3(side * .32, -.35, -.80), new THREE.Vector3(side * .32, -.32, -1.02)];
+      this.tube(headers, points.slice(0, 3), .029, this.palette.hot, 'two-stroke exhaust header ' + (index + 1));
+      const radii = [.030, tuned ? .12 : .105, tuned ? .12 : .105, .055, .023];
+      for (let segment = 2; segment < points.length - 1; segment++) {
+        const a = points[segment], b = points[segment + 1], direction = b.clone().sub(a);
+        const geometry = this.geometry('expansion:' + [radii[segment - 2], radii[segment - 1], direction.length()].join(','),
+          () => new THREE.CylinderGeometry(radii[segment - 1], radii[segment - 2], direction.length(), 24, 1, true));
+        const cone = this.mesh(headers, geometry, tuned ? this.palette.tuned : this.palette.hot, a.clone().add(b).multiplyScalar(.5), 'expansion chamber cone');
+        cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+        cone.userData.cylinderIndex = index;
+      }
+      this.cylinder(exhaust, .052, .27, [side * .32, -.32, -1.12], this.palette.dark, 'z', .052, 'two-stroke stinger silencer');
+    });
+    exhaust.userData.exhaustModel = engine.exhaust?.id || 'oem';
+  }
+
   buildRadial() {
     const block = this.part('block');
     const { cast, machined, dark, steel } = this.palette;
-    this.cylinder(block, 0.47, 0.48, [0, 0, 0], cast, 'z', 0.41, 'central radial crankcase');
+    this.cylinder(block, 0.47, (this.config.radialRows || 1) * .48, [0, 0, 0], cast, 'z', 0.41, 'central radial crankcase');
     this.cylinder(block, 0.33, 0.13, [0, 0, this.front - 0.055], machined, 'z', 0.24, 'reduction nose');
     for (let index = 0; index < this.config.cylinders; index++) {
-      const angle = -index * TAU / this.config.cylinders;
+      const rows = this.config.radialRows || 1;
+      const perRow = this.config.cylindersPerRow || this.config.cylinders / rows;
+      const row = Math.floor(index / perRow), localIndex = index % perRow;
+      const angle = -(localIndex * TAU / perRow + row * (this.config.rowClockingDegrees ?? this.config.rowClocking ?? 0) * Math.PI / 180);
+      const rowZ = ((rows - 1) / 2 - row) * .52;
       const bank = new THREE.Group();
+      bank.position.z = rowZ;
       bank.rotation.z = angle;
       bank.name = `radial cylinder ${index + 1}`;
-      bank.userData = { cylinderIndex: index };
+      bank.userData = { cylinderIndex: index, radialRow: row };
       block.add(bank);
       this.cylinder(bank, 0.135, 0.39, [0, 0.66, 0], dark, 'y', 0.135, 'air cooled barrel');
       for (let fin = 0; fin < 10; fin++) this.cylinder(bank, 0.185, 0.016, [0, 0.48 + fin * 0.036, 0], cast, 'y');
@@ -283,12 +423,21 @@ export class EngineAssembly3D {
         this.cylinder(bank, 0.022, 0.07, [side * 0.12, 1.02, 0.21], this.palette.ceramic, 'z');
       }
       for (const x of [-0.11, 0.11]) this.bolt(bank, [x, 1.15, 0.11]);
-      this.intakeAnchors.push(new THREE.Vector3(-0.12, 0.9, -0.17).applyAxisAngle(Z_AXIS, angle));
-      this.headerAnchors.push(new THREE.Vector3(0.12, 0.9, -0.17).applyAxisAngle(Z_AXIS, angle));
+      this.intakeAnchors.push(new THREE.Vector3(-0.12, 0.9, -0.17 + rowZ).applyAxisAngle(Z_AXIS, angle));
+      this.headerAnchors.push(new THREE.Vector3(0.12, 0.9, -0.17 + rowZ).applyAxisAngle(Z_AXIS, angle));
     }
     for (let index = 0; index < 10; index++) {
       const angle = index * TAU / 10;
       this.bolt(block, [Math.cos(angle) * 0.37, Math.sin(angle) * 0.37, 0.26], 'z');
+    }
+    if (this.config.builtInInduction === 'centrifugal-supercharger') {
+      const blower = this.part('factory-supercharger');
+      blower.userData.inductionKind = 'factory gear-driven centrifugal';
+      const rear = -this.length / 2 - .12;
+      this.cylinder(blower, .35, .20, [0, 0, rear], cast, 'z', .31, 'factory centrifugal supercharger casing');
+      this.ring(blower, .355, .025, [0, 0, rear - .08], machined);
+      this.cylinder(blower, .14, .15, [0, 0, rear - .15], dark, 'z', .13, 'centrifugal compressor inlet');
+      this.tube(blower, [[.26, .10, rear], [.39, .21, rear], [.28, .31, rear + .09]], .06, cast, 'factory compressor delivery scroll');
     }
     this.box(block, [0.28, 0.15, 0.3], [0, -0.42, 0], dark, true, 'oil collection sump');
   }
@@ -320,7 +469,8 @@ export class EngineAssembly3D {
         const p = rotaryHousingPoint(sample * TAU / 12, 70, 11);
         this.bolt(block, [p.x * 0.008, 0.17 + p.y * 0.008, z + 0.197], 'z');
       }
-      for (const plug of [-0.075, 0.075]) {
+      const plugCount = this.config.plugsPerRotor || this.config.sparkPlugsPerRotor || (rotors === 4 ? 3 : 2);
+      for (const plug of Array.from({ length: plugCount }, (_, index) => (index - (plugCount - 1) / 2) * .10)) {
         const p = this.cylinder(block, 0.025, 0.075, [0.52, 0.27 + plug, z], this.palette.ceramic, 'x', 0.022, 'rotary leading / trailing plug');
         p.rotation.z -= 0.1;
       }
@@ -344,7 +494,85 @@ export class EngineAssembly3D {
     return sleeve;
   }
 
-  buildTurbine(engine) { this.buildAviation(engine, false); }
+  aviationBladeStages(parent, count, startZ, gap, hotSection, source = 'core') {
+    const { hot, machined, steel, dark } = this.palette;
+      for (let stage = 0; stage < count; stage++) {
+        const rotor = new THREE.Group();
+        rotor.name = (hotSection ? 'turbine' : 'compressor') + ' rotor ' + (stage + 1);
+        rotor.position.z = startZ - stage * gap;
+        rotor.userData.stageIndex = stage;
+        if (this.config.layout === 'turbine') rotor.scale.setScalar(hotSection ? .80 : .88);
+        parent.add(rotor);
+        this.spin(rotor, source);
+        const radius = hotSection ? .285 + stage * .008 : .302 - stage * .009;
+        this.cylinder(rotor, .105, .024, [0, 0, 0], hotSection ? hot : machined, 'z', .105, 'rotor hub');
+        for (let blade = 0; blade < 18; blade++) {
+          const angle = TAU * blade / 18;
+          const leaf = this.box(rotor, [.026, radius - .102, .018], [Math.sin(angle) * (radius + .102) / 2, Math.cos(angle) * (radius + .102) / 2, 0], hotSection ? hot : steel, false, 'rotor blade');
+          leaf.rotation.set(0, .32, -angle);
+        }
+        const stator = new THREE.Group();
+        stator.name = (hotSection ? 'turbine' : 'compressor') + ' stator ' + (stage + 1);
+        stator.position.z = rotor.position.z - gap * .48;
+        if (this.config.layout === 'turbine') stator.scale.setScalar(hotSection ? .80 : .88);
+        parent.add(stator);
+        for (let vane = 0; vane < 12; vane++) {
+          const angle = TAU * vane / 12;
+          const leaf = this.box(stator, [.017, radius - .105, .018], [Math.sin(angle) * (radius + .105) / 2, Math.cos(angle) * (radius + .105) / 2, 0], dark, false, 'stationary guide vane');
+          leaf.rotation.set(0, -.28, -angle);
+        }
+      }
+      }
+
+  buildFreeTurboshaft(engine) {
+    const block = this.part('block'), intake = this.part('intake'), compressor = this.part('compressor');
+    const combustor = this.part('combustor'), turbine = this.part('turbine'), power = this.part('power-turbine');
+    const nozzle = this.part('nozzle'), gearbox = this.part('gearbox');
+    const { cast, hot, steel, machined, dark, brass } = this.palette;
+    block.userData.flowDirection = 'axial compressor to external ducts, rear combustor to forward turbines';
+    this.aviationSleeve(intake, .31, .278, .17, .66, machined, 'open turboshaft inlet');
+    this.aviationSleeve(compressor, .30, .276, .55, .30, cast, 'six-stage axial compressor casing');
+    this.aviationBladeStages(compressor, this.config.compressorStages || 6, .56, .078, false, 'core');
+    const impeller = new THREE.Group(); impeller.position.z = -.015; compressor.add(impeller);
+    impeller.name = 'centrifugal compressor impeller'; this.spin(impeller, 'core');
+    this.cylinder(impeller, .30, .035, [0, 0, 0], machined);
+    for (let blade = 0; blade < 16; blade++) {
+      const a = blade * TAU / 16;
+      const leaf = this.box(impeller, [.018, .19, .045], [Math.sin(a) * .18, Math.cos(a) * .18, .025], steel, false, 'centrifugal impeller vane');
+      leaf.rotation.z = -a + .22;
+    }
+    this.ring(compressor, .335, .04, [0, 0, -.015], cast);
+    // The external twin ducts route compressor discharge around the turbine
+    // module into the rear can; hot gas then reverses direction through it.
+    for (const side of [-1, 1]) {
+      this.tube(block, [[side * .31, 0, -.015], [side * .43, .04, -.15], [side * .43, .04, -.54], [side * .23, .04, -.68]], .065, cast, 'reverse-flow compressor delivery duct');
+      this.tube(nozzle, [[side * .18, .06, -.15], [side * .38, .16, -.18], [side * .42, .39, -.18]], .095, hot, 'turboshaft side exhaust');
+      this.aviationSleeve(nozzle, .098, .083, .10, 0, hot, 'open exhaust lip').position.set(side * .42, .43, -.18);
+      const lip = nozzle.children.at(-1); lip.rotation.x = 0;
+    }
+    this.aviationSleeve(combustor, .31, .274, .34, -.65, hot, 'reverse-flow rear combustor can');
+    this.cylinder(combustor, .31, .035, [0, 0, -.83], hot, 'z', .31, 'combustor rear dome');
+    this.ring(combustor, .315, .013, [0, 0, -.79], machined);
+    for (const side of [-1, 1]) this.cylinder(combustor, .022, .07, [side * .10, .10, -.86], brass, 'z', .018, 'combustor fuel/igniter fitting');
+    this.aviationSleeve(turbine, .28, .25, .21, -.43, hot, 'gas-generator turbine casing');
+    this.aviationSleeve(power, .28, .25, .19, -.21, hot, 'free power turbine casing');
+    this.aviationBladeStages(turbine, this.config.gasGeneratorTurbineStages || 2, -.48, -.065, true, 'core');
+    this.aviationBladeStages(power, this.config.powerTurbineStages || 2, -.27, -.065, true, 'power');
+    const core = new THREE.Group(); block.add(core); core.name = 'gas-generator core shaft'; this.spin(core, 'core');
+    this.cylinder(core, .035, 1.10, [0, 0, .04], steel);
+    this.cylinder(core, .095, .14, [0, 0, .65], machined, 'z', .01, 'gas-generator inlet spinner');
+    this.box(gearbox, [.48, .26, .46], [0, -.35, .14], dark, true, 'turboshaft reduction gearbox');
+    const output = new THREE.Group(); output.position.set(0, -.35, .43); gearbox.add(output);
+    output.name = 'reduced output shaft'; this.spin(output, 'crank');
+    this.cylinder(output, .075, .16, [0, 0, 0], steel);
+    for (let tooth = 0; tooth < 8; tooth++) {
+      const a = tooth * TAU / 8;
+      this.box(output, [.012, .028, .11], [Math.sin(a) * .078, Math.cos(a) * .078, .02], steel, false, 'output shaft spline');
+    }
+    this.buildMounts();
+  }
+
+  buildTurbine(engine) { this.buildFreeTurboshaft(engine); }
   buildTurbojet(engine) { this.buildAviation(engine, true); }
 
   buildAviation(engine, jet) {
@@ -371,32 +599,7 @@ export class EngineAssembly3D {
     }
     // A narrow hub and separate airfoil illustrations leave visible air
     // passages. Stators belong to stationary groups, not the spinning shaft.
-    const stages = (parent, count, startZ, gap, hotSection) => {
-      for (let stage = 0; stage < count; stage++) {
-        const rotor = new THREE.Group();
-        rotor.name = (hotSection ? 'turbine' : 'compressor') + ' rotor ' + (stage + 1);
-        rotor.position.z = startZ - stage * gap;
-        rotor.userData.stageIndex = stage;
-        parent.add(rotor);
-        this.spin(rotor, 'core');
-        const radius = hotSection ? .285 + stage * .008 : .302 - stage * .009;
-        this.cylinder(rotor, .105, .024, [0, 0, 0], hotSection ? hot : machined, 'z', .105, 'rotor hub');
-        for (let blade = 0; blade < 18; blade++) {
-          const angle = TAU * blade / 18;
-          const leaf = this.box(rotor, [.026, radius - .102, .018], [Math.sin(angle) * (radius + .102) / 2, Math.cos(angle) * (radius + .102) / 2, 0], hotSection ? hot : steel, false, 'rotor blade');
-          leaf.rotation.set(0, .32, -angle);
-        }
-        const stator = new THREE.Group();
-        stator.name = (hotSection ? 'turbine' : 'compressor') + ' stator ' + (stage + 1);
-        stator.position.z = rotor.position.z - gap * .48;
-        parent.add(stator);
-        for (let vane = 0; vane < 12; vane++) {
-          const angle = TAU * vane / 12;
-          const leaf = this.box(stator, [.017, radius - .105, .018], [Math.sin(angle) * (radius + .105) / 2, Math.cos(angle) * (radius + .105) / 2, 0], dark, false, 'stationary guide vane');
-          leaf.rotation.set(0, -.28, -angle);
-        }
-      }
-    };
+    const stages = (...args) => this.aviationBladeStages(...args);
     const compressorCount = jet ? (this.config.compressorStages || 9) : 4;
     stages(compressor, compressorCount, .58, .56 / compressorCount, false);
     stages(turbine, jet ? (this.config.turbineStages || 2) : 2, -.35, .10, true);
@@ -448,6 +651,26 @@ export class EngineAssembly3D {
     }
     this.box(mounts, [.10, .06, 1.15], [-.41, -.58, -.01], dark, false, 'bench rail');
     this.box(mounts, [.10, .06, 1.15], [.41, -.58, -.01], dark, false, 'bench rail');
+  }
+
+  buildRacingRotaryIntake() {
+    const intake = this.part('intake');
+    intake.userData.portKind = 'peripheral';
+    this.plenumPosition = new THREE.Vector3(-.55, .61, 0);
+    this.plenumInlet = new THREE.Vector3(-.72, .61, this.front);
+    this.filterOutlet = this.plenumInlet.clone().add(new THREE.Vector3(-.18, 0, .06));
+    const profile = [[.061, 0], [.065, .17], [.105, .24], [.112, .25], [.108, .235], [.059, .17], [.056, 0]].map(p => new THREE.Vector2(...p));
+    const trumpet = this.geometry('R26B annular intake trumpet', () => new THREE.LatheGeometry(profile, 32));
+    for (const [index, anchor] of this.intakeAnchors.entries()) {
+      const center = new THREE.Vector3(-.49, .67, anchor.z);
+      this.tube(intake, [anchor, [-.47, .53, anchor.z], center], .061, this.palette.machined, 'peripheral intake runner');
+      const horn = this.mesh(intake, trumpet, this.palette.machined, center, 'R26B variable-length intake trumpet');
+      horn.userData.intakeRotorIndex = index;
+      for (const height of [.03, .11]) this.ring(intake, .069, .008, center.clone().add(new THREE.Vector3(0, height, 0)), this.palette.steel, 'y');
+      this.box(intake, [.045, .055, .07], [-.61, .70, anchor.z], this.palette.dark, true, 'intake trumpet slider linkage');
+    }
+    this.tube(intake, [[-.62, .72, -this.length * .39], [-.62, .72, this.length * .39]], .014, this.palette.steel, 'variable-intake common actuator rail');
+    this.box(intake, [.12, .10, .14], [-.66, .71, 0], this.palette.dark, true, 'variable-intake actuator');
   }
 
   buildIntake() {
@@ -638,6 +861,38 @@ export class EngineAssembly3D {
     this.spin(disk, 'crank');
   }
 
+  buildRadiator(engine) {
+    if (this.aviation || this.config.layout === 'radial' || this.config.coolingKind === 'air') return;
+    const radiator = this.part('radiator');
+    const upgraded = this.mods.radiator === 'upgraded';
+    const width = upgraded ? .94 : .78, height = upgraded ? .68 : .58, depth = upgraded ? .12 : .085;
+    const center = new THREE.Vector3(.08, .18, this.front + .44);
+    radiator.userData.coolingKind = 'liquid'; radiator.userData.upgraded = upgraded;
+    this.box(radiator, [width, height, depth], center, this.palette.dark, true, 'radiator frame');
+    for (let row = 0; row < (upgraded ? 22 : 16); row++) {
+      this.box(radiator, [width * .84, .012, depth + .015], [center.x, center.y - height * .43 + row * height * .86 / ((upgraded ? 22 : 16) - 1), center.z],
+        this.palette.machined, false, 'radiator cooling fin');
+    }
+    for (const side of [-1, 1]) this.box(radiator, [.07, height + .025, depth + .035], [center.x + side * width * .47, center.y, center.z], this.palette.cast, true, 'radiator end tank');
+    const head = this.bankAnchors[0] || new THREE.Vector3(0, .65, 0);
+    this.tube(radiator, [center.clone().add(new THREE.Vector3(-width * .42, height * .34, -.03)),
+      [-.42, .58, this.front + .24], head.clone().add(new THREE.Vector3(-.12, -.08, .12))], .029, this.palette.rubber, 'upper hot coolant hose');
+    this.tube(radiator, [center.clone().add(new THREE.Vector3(width * .42, -height * .34, -.03)),
+      [.46, -.17, this.front + .18], [.23, -.09, this.front - .05]], .029, this.palette.rubber, 'lower coolant return hose');
+    const fan = new THREE.Group(); fan.position.copy(center).add(new THREE.Vector3(0, 0, -depth * .8)); radiator.add(fan);
+    fan.name = 'radiator electric fan'; this.ring(radiator, .205, .012, fan.position, this.palette.dark);
+    this.cylinder(fan, .045, .05, [0, 0, 0], this.palette.dark);
+    for (let n = 0; n < 5; n++) {
+      const angle = n * TAU / 5;
+      const blade = this.box(fan, [.07, .16, .012], [Math.sin(angle) * .105, Math.cos(angle) * .105, 0], this.palette.dark, false, 'radiator fan blade');
+      blade.rotation.z = -angle; blade.rotation.y = .20;
+    }
+    this.spin(fan, 'fan');
+    this.cylinder(radiator, .035, .026, [center.x - width * .4, center.y + height * .54, center.z], this.palette.machined, 'y', .035, 'radiator pressure cap');
+    this.tube(radiator, [center.clone().add(new THREE.Vector3(-width * .42, -height * .5, 0)),
+      [-.32, -.35, this.front - .02]], .015, this.palette.steel, 'radiator mounting stay');
+  }
+
   buildMounts() {
     const mounts = this.part('mounts');
     const width = this.config.layout === 'radial' ? 0.9 : 0.74;
@@ -803,6 +1058,33 @@ export class EngineAssembly3D {
     }
   }
 
+  batchStaticRadialMeshes() {
+    // Two radial rows repeat the same stationary castings many times. Batch
+    // across barrel groups while retaining all cylinder markers and row IDs.
+    const block = this.parts.get('block');
+    this.group.updateMatrixWorld(true);
+    const inverse = block.matrixWorld.clone().invert();
+    const groups = new Map();
+    block.traverse(mesh => {
+      if (!mesh.isMesh || mesh.isInstancedMesh || mesh.userData.path) return;
+      const key = `${mesh.geometry.uuid}:${mesh.material.uuid}:${mesh.name}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(mesh);
+    });
+    for (const meshes of groups.values()) {
+      if (meshes.length < 4) continue;
+      const first = meshes[0], batch = new THREE.InstancedMesh(first.geometry, first.material, meshes.length);
+      batch.name = first.name; batch.userData.logicalInstanceCount = meshes.length;
+      batch.castShadow = batch.receiveShadow = true;
+      meshes.forEach((mesh, index) => {
+        batch.setMatrixAt(index, new THREE.Matrix4().multiplyMatrices(inverse, mesh.matrixWorld));
+        mesh.removeFromParent();
+      });
+      batch.computeBoundingBox(); batch.computeBoundingSphere();
+      this.instances.add(batch); block.add(batch);
+    }
+  }
+
   update(engine, dt, animationSpeed = 1) {
     if (this.disposed) return;
     const step = Math.max(0, Math.min(Number.isFinite(dt) ? dt : 0, 0.25)) * clamp(animationSpeed, 0.05, 1);
@@ -810,8 +1092,15 @@ export class EngineAssembly3D {
     // rather than the ignition flag, determines that physical motion.
     this.phase.turbo = (this.phase.turbo + Math.max(0, engine.turboRPM || 0) * TAU / 60 * step) % TAU;
     this.phase.supercharger = (this.phase.supercharger + Math.max(0, engine.superchargerRPM || 0) * TAU / 60 * step) % TAU;
+    this.phase.fan = (this.phase.fan + (engine.radiatorFanOn ? 900 : 0) * TAU / 60 * step) % TAU;
+    this.phase.power = (this.phase.power + Math.max(0, engine.powerTurbineRPM || 0) * TAU / 60 * step) % TAU;
     this.phase.core = (this.phase.core + Math.max(0, engine.coreRPM ?? engine.rpm ?? 0) * TAU / 60 * step) % TAU;
     this.phase.crank += Math.max(0, engine.rpm || 0) * TAU / 60 * step;
+    if (this.aviation && animationSpeed === 1) {
+      if (Number.isFinite(engine.coreAngle)) this.phase.core = engine.coreAngle * Math.PI / 180;
+      if (Number.isFinite(engine.powerTurbineAngle)) this.phase.power = engine.powerTurbineAngle * Math.PI / 180;
+      if (Number.isFinite(engine.crankAngle)) this.phase.crank = engine.crankAngle * Math.PI / 180;
+    }
     const crank = this.phase.crank;
     for (const item of this.animated) {
       const phase = item.source === 'crank' ? crank : item.source === 'cam' ? crank / 2 : this.phase[item.source];
@@ -825,7 +1114,9 @@ export class EngineAssembly3D {
       }
       if (this.jetPlume) {
         const burning = typeof engine.isCombusting === 'boolean' ? engine.isCombusting : engine.isIgnitionOn && engine.rpm > 0;
-        const amount = burning ? clamp(Number(engine.afterburnerAmount) || 0, 0, 1) : 0;
+        const faultFire = clamp(Number(engine.faultFireAmount) || 0, 0, 1);
+        const amount = Math.max(burning ? clamp(Number(engine.afterburnerAmount) || 0, 0, 1) : 0, faultFire * .85);
+        this.jetPlume.material.color.setHex(faultFire > .01 ? 0xf49b57 : 0x75aeff);
         this.jetPlume.material.opacity = amount * .52;
         this.jetPlume.visible = amount > .001;
         this.jetPlume.scale.set(Math.sqrt(area), Math.max(.1, amount), Math.sqrt(area));

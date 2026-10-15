@@ -3,6 +3,10 @@ export { radialKinematics, radialFiringAngles, radialCyclePhase, radialPistonTra
 export { rotaryHousingPoint, rotaryKinematics, rotaryCycleKinematics, rotaryChamberState } from '../physics/RotaryMechanics.js';
 
 export function pistonCyclePhase(crankDegrees, cylinder, config) {
+  if (config.cycleKind === 'two-stroke') {
+    const phase = config.firingAngleKind === 'absolute' ? crankDegrees - cylinder.firingOffset : crankDegrees + cylinder.firingOffset;
+    return ((phase % 360) + 360) % 360;
+  }
   return wrapDegrees(config.firingAngleKind === 'absolute'
     ? crankDegrees - cylinder.firingOffset + 360
     : crankDegrees + cylinder.firingOffset);
@@ -39,10 +43,15 @@ export function cylinderBankIndex(cylinder, config) {
   if (config.layout === 'w') {
     const bank = config.visualBanks?.[index] ?? config.exhaustBanks?.[index];
     if (config.visualBanks || config.exhaustBanks?.some(value => value > 1)) return bank ?? index % 4;
+    if (config.exhaustBanks) {
+      const row = config.exhaustBanks.slice(0, index).filter(value => value === bank).length % 2;
+      return bank * 2 + row;
+    }
     return (bank ?? index % 2) * 2 + Math.floor(index / 2) % 2;
   }
+  if (config.layout === 'vr') return config.visualBanks?.[index] ?? index % 2;
   if (config.layout === 'boxer') return config.exhaustBanks?.[index] ?? index % 2;
-  return config.layout === 'v' ? config.exhaustBanks?.[index] ?? index % 2 : 0;
+  return ['v', 'vr'].includes(config.layout) ? config.visualBanks?.[index] ?? config.exhaustBanks?.[index] ?? index % 2 : 0;
 }
 
 export function cylinderBankAngle(bank, config) {
@@ -54,7 +63,7 @@ export function cylinderBankAngle(bank, config) {
       half - narrowAngle / 2, half + narrowAngle / 2][bank % 4];
   }
   if (config.layout === 'boxer') return bank === 0 ? -90 : 90;
-  return config.layout === 'v' ? (bank === 0 ? -1 : 1) * config.bankAngle / 2 : 0;
+  return ['v', 'vr'].includes(config.layout) ? (bank === 0 ? -1 : 1) * config.bankAngle / 2 : 0;
 }
 
 // An axial cutaway of one assembled engine. The crankshaft recedes diagonally
@@ -69,7 +78,7 @@ export function engineAssemblyLayout(cylinders, config, width, height, { showLab
     const bankIndex = cylinderBankIndex(cylinder, config);
     const column = banks.get(bankIndex) || 0;
     banks.set(bankIndex, column + 1);
-    const stagger = config.layout === 'w' ? (bankIndex % 2) * 0.52 : config.layout === 'v' ? bankIndex * 0.14 : 0;
+    const stagger = ['w', 'vr'].includes(config.layout) ? (bankIndex % 2) * 0.52 : config.layout === 'v' ? bankIndex * 0.14 : 0;
     const angle = cylinderBankAngle(bankIndex, config), radians = angle * Math.PI / 180;
     const journal = { x: (column + stagger) * pitch, y: -(column + stagger) * depthStep };
     const x = journal.x + Math.sin(radians) * 90;
@@ -104,7 +113,7 @@ export function engineAssemblyLayout(cylinders, config, width, height, { showLab
 export function cylinderViewLayout(cylinders, config, width, height, { focusedIndex = null, showLabels = false } = {}) {
   if (!cylinders.length) return [];
   const isW = config.layout === 'w';
-  const isV = config.layout === 'v';
+  const isV = ['v', 'vr'].includes(config.layout);
   const bankFor = cylinder => cylinderBankIndex(cylinder, config);
   const rotationFor = bank => cylinderBankAngle(bank, config);
   const focused = focusedIndex !== null;

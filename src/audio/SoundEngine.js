@@ -6,8 +6,15 @@ import { EXHAUST_MODELS } from './ExhaustModels.js';
 import { ENGINE_CONFIGS } from '../physics/EngineConfigurations.js';
 import { combustionWorkletSource, inductionEventShape } from './CombustionDSP.js';
 import { TurbineDSP } from './TurbineDSP.js';
+import { twoStrokePortState } from '../physics/TwoStrokeMechanics.js';
 
 const continuousTurbine = config => ['turbine', 'turbojet'].includes(config?.layout);
+const LISTENING_MIXES = {
+  balanced: { exhaust: 1, intake: 1, mechanical: 1, exhaustFilter: 1, intakeFilter: 1 },
+  intake: { exhaust: 0.32, intake: 2.1, mechanical: 0.65, exhaustFilter: 0.8, intakeFilter: 1.3 },
+  exhaust: { exhaust: 1.4, intake: 0.32, mechanical: 0.4, exhaustFilter: 1.15, intakeFilter: 0.8 },
+  mechanical: { exhaust: 0.24, intake: 0.4, mechanical: 3.0, exhaustFilter: 0.72, intakeFilter: 0.8 },
+};
 
 export class SoundEngine {
   constructor(contextFactory = null) {
@@ -67,6 +74,7 @@ export class SoundEngine {
     this.acousticBackend = 'oscillator-fallback';
     this.rotaryIdleMode = 'stock';
     this.lastAudioState = null;
+    this.listeningPosition = 'balanced';
     this.turbineParameters = { rpm: 0, turbineFlow: 0, turbineFuel: 0, afterburner: 0 };
   }
 
@@ -241,6 +249,12 @@ export class SoundEngine {
     this.turbineNativeOsc.connect(this.turbineNativeTone);
     this.turbineNativeTone.connect(this.turbineNativeGain);
     this.turbineNativeOsc.start();
+    this.turbineNativePowerOsc = this.ctx.createOscillator();
+    this.turbineNativePowerOsc.type = 'sine';
+    this.turbineNativePowerTone = this.ctx.createGain();
+    this.turbineNativePowerOsc.connect(this.turbineNativePowerTone);
+    this.turbineNativePowerTone.connect(this.turbineNativeGain);
+    this.turbineNativePowerOsc.start();
     this.turbineNativeNoise = this.ctx.createBiquadFilter();
     this.turbineNativeNoise.type = 'lowpass';
     this.turbineNativeNoiseGain = this.ctx.createGain();
@@ -251,8 +265,12 @@ export class SoundEngine {
 
   updateTurbine(engineState, config) {
     const t = this.ctx.currentTime;
+    const mix = LISTENING_MIXES[this.listeningPosition];
     const rpm = Math.max(0, Math.min(120000, Number(engineState.coreRPM ?? engineState.rpm) || 0));
-    const normalized = Math.min(1.5, rpm / Math.max(1000, config.defaultRedlineRPM));
+    const powerRPM = Math.max(0, Math.min(120000, Number(engineState.powerTurbineRPM) || 0));
+    const coreReference = config.turboshaftDesign?.ratedCoreRPM || config.soundReferenceCoreRPM
+      || (config.layout === 'turbine' ? 50970 : config.defaultRedlineRPM);
+    const normalized = Math.min(1.5, rpm / Math.max(1000, coreReference));
     const burning = Boolean(engineState.isCombusting ?? engineState.isIgnitionOn ?? this.running);
     const throttle = Math.max(0, Math.min(1, engineState.throttle ?? engineState.manifoldThrottle ?? 0));
     // Actual jet flow / exit speed are used when supplied. The older turboshaft
@@ -263,9 +281,10 @@ export class SoundEngine {
       ? Math.min(2, Math.max(0, engineState.massFlowKgS) / flowReference) : normalized;
     const velocity = Math.max(0, Math.min(2200, Number(engineState.jetVelocity) || 0));
     const afterburner = burning ? Math.max(0, Math.min(1, engineState.afterburnerAmount || 0)) : 0;
-    this.turbineParameters = { rpm, turbineFlow: flow,
+    this.turbineParameters = { rpm, powerTurbineRPM: powerRPM, turbineFlow: flow,
       turbineFuel: burning ? 0.35 + throttle * 0.65 : 0,
-      afterburner, jetVelocity: velocity, pressureRatio: engineState.pressureRatio || 1 };
+      afterburner, jetVelocity: velocity, pressureRatio: engineState.pressureRatio || 1,
+      exhaustMix: mix.exhaust, intakeMix: mix.intake, mechanicalMix: mix.mechanical };
     if (`${config.id}:${engineState.displacement || config.defaultDisplacement}:${this.soundProfile}` !== this.pressureConfigurationKey) {
       this.configurePressureGenerator(engineState.displacement || config.defaultDisplacement);
     }
@@ -278,22 +297,27 @@ export class SoundEngine {
     }
     this.pressureGain?.gain.setTargetAtTime(0, t, 0.010);
     this.turbineGain.gain.setTargetAtTime(1.8, t, 0.010);
-    this.turbineLowpass.frequency.setTargetAtTime(3800 + (1 - this.toneWarmth) * 4300, t, 0.035);
+    this.turbineLowpass.frequency.setTargetAtTime((3800 + (1 - this.toneWarmth) * 4300)
+      * (this.listeningPosition === 'intake' ? 1.3 : this.listeningPosition === 'exhaust' ? 0.9 : 1), t, 0.035);
     for (const name of ['combustionGain', 'harmonicGain', 'subBassGain', 'camshaftGain', 'gearWhineGain',
-      'intakeGain', 'turboSpoolGain', 'turboAirGain', 'scWhineGain', 'rotaryIdleModGain', 'limiterModGain']) {
+      'intakeGain', 'turboSpoolGain', 'turboAirGain', 'scWhineGain', 'rotaryIdleModGain', 'limiterModGain', 'scavengeModGain']) {
       this[name]?.gain.setTargetAtTime(0, t, 0.008);
     }
     this.limiterGate.gain.setTargetAtTime(1, t, 0.008);
     if (this.turbineNativeGain) {
       this.turbineNativeGain.gain.setTargetAtTime(1, t, 0.010);
       this.turbineNativeOsc.frequency.setTargetAtTime(Math.min(this.ctx.sampleRate * 0.35, rpm / 60), t, 0.012);
-      this.turbineNativeTone.gain.setTargetAtTime(Math.min(0.12, Math.sqrt(normalized) * 0.085), t, 0.012);
+      this.turbineNativeTone.gain.setTargetAtTime(Math.min(0.12, Math.sqrt(normalized) * 0.085)
+        * (mix.mechanical * 0.65 + mix.intake * 0.35), t, 0.012);
+      this.turbineNativePowerOsc.frequency.setTargetAtTime(Math.min(this.ctx.sampleRate * 0.35, powerRPM / 60), t, 0.012);
+      this.turbineNativePowerTone.gain.setTargetAtTime(Math.min(0.07, Math.sqrt(powerRPM / 33290) * 0.055)
+        * mix.mechanical, t, 0.012);
       this.turbineNativeNoise.frequency.setTargetAtTime(Math.min(this.ctx.sampleRate * 0.35, 700 + normalized * 3000), t, 0.012);
       this.turbineNativeNoiseGain.gain.setTargetAtTime(Math.sqrt(flow)
-        * (0.07 + (burning ? 0.20 + afterburner * 0.35 : 0)), t, 0.025);
+        * (0.07 * mix.intake + (burning ? (0.20 + afterburner * 0.35) * mix.exhaust : 0)), t, 0.025);
     }
     this.acousticBackend = this.pressureNode ? 'turbine-worklet' : this.turbineProcessor ? 'turbine-script' : 'turbine-oscillator';
-    const audible = this.running || rpm > 5 || flow > 0.0001;
+    const audible = this.running || rpm > 5 || powerRPM > 5 || flow > 0.0001;
     this.outputGain.gain.setTargetAtTime(audible ? 1 : 0, t, 0.035);
   }
 
@@ -406,7 +430,8 @@ export class SoundEngine {
     }
 
     for (let i = 1; i < numHarmonics; i++) {
-      const width = (config.layout === 'rotary' ? 0.20 : character === 'screamer' ? 0.22 : 0.36) / config.cylinders;
+      const width = (config.layout === 'rotary' ? 0.20 : config.cycleKind === 'two-stroke' ? 0.24
+        : character === 'screamer' ? 0.22 : 0.36) / config.cylinders;
       const decay = Math.exp(-i * 0.012) / (1 + (i * width) ** 2);
       // Fourier fallback approximates a steep pressure rise and slower decay.
       const shockFront = 1.0 + 0.12 * Math.sin(Math.min(Math.PI, i * width));
@@ -414,11 +439,13 @@ export class SoundEngine {
       for (let cylinder = 0; cylinder < config.firingAngles.length; cylinder++) {
         const eventAngle = config.firingAngleKind === 'absolute' ? config.firingAngles[cylinder]
           : (config.cycleDegrees || 720) / 2 - config.firingAngles[cylinder];
-        const phase = eventAngle / (config.cycleDegrees || 720) * Math.PI * 2;
+        const cycleHz = (this.acousticRPM || config.defaultIdleRPM || 900) * 6 / (config.cycleDegrees || 720);
+        const pathDelay = Math.max(0, Math.min(0.02, Number(config.exhaustPathDelays?.[cylinder]) || 0));
+        const phase = (eventAngle / (config.cycleDegrees || 720) + pathDelay * cycleHz) * Math.PI * 2;
         const angle = i * phase;
         // Separate-bank exhaust paths contribute unequal pulse amplitudes.
         const bank = config.exhaustBanks?.[cylinder] ?? (cylinder % 2);
-        const bankGain = ['v', 'w', 'boxer'].includes(config.layout) && bank ? 0.78 : 1;
+        const bankGain = ['v', 'vr', 'w', 'boxer'].includes(config.layout) && bank ? 0.78 : 1;
         real[i] += bankGain * decay * shockFront * (Math.cos(angle) - i * width * Math.sin(angle)) / config.cylinders;
         imag[i] += bankGain * decay * shockFront * (Math.sin(angle) + i * width * Math.cos(angle)) / config.cylinders;
       }
@@ -440,6 +467,22 @@ export class SoundEngine {
     real[2] = 0.10;
     real[3] = 0.03;
     real[4] = 0.008;
+    return this.ctx.createPeriodicWave(real, imag, { disableNormalization: false });
+  }
+
+  createScavengingWave(config) {
+    const real = new Float32Array(33), imag = new Float32Array(33);
+    const samples = 256;
+    for (let i = 0; i < samples; i++) {
+      const phase = i / samples * 360;
+      const portArea = config.firingAngles.reduce((sum, angle) =>
+        sum + twoStrokePortState(phase - angle, config).transferPort, 0) / config.firingAngles.length;
+      for (let harmonic = 1; harmonic < real.length; harmonic++) {
+        const angle = harmonic * i / samples * Math.PI * 2;
+        real[harmonic] += portArea * Math.cos(angle) * 2 / samples;
+        imag[harmonic] += portArea * Math.sin(angle) * 2 / samples;
+      }
+    }
     return this.ctx.createPeriodicWave(real, imag, { disableNormalization: false });
   }
 
@@ -514,6 +557,13 @@ export class SoundEngine {
     this.intakeFilter.Q.setValueAtTime(1.4, t);
 
     this.intakeGain = this.ctx.createGain();
+    this.scavengeOsc = this.ctx.createOscillator();
+    this.scavengeOsc.type = 'sine';
+    this.scavengeModGain = this.ctx.createGain();
+    this.scavengeModGain.gain.setValueAtTime(0, t);
+    this.scavengeOsc.connect(this.scavengeModGain);
+    this.scavengeModGain.connect(this.intakeGain.gain);
+    this.scavengeOsc.start();
     this.intakeGain.gain.setValueAtTime(0.0, t);
 
     this.intakeNoiseNode.connect(this.intakeFilter);
@@ -604,6 +654,7 @@ export class SoundEngine {
       this.camshaftGain.gain.setTargetAtTime(0.35, this.ctx.currentTime, 0.05);
       this.harmonicGain.gain.setTargetAtTime(0.28, this.ctx.currentTime, 0.05);
     }
+    if (this.lastAudioState) this.update(this.lastAudioState.engineState, this.engineConfig, this.lastAudioState.drivetrainState);
   }
 
   // Adjust tone warmth (lowpass filter to eliminate harshness)
@@ -612,12 +663,14 @@ export class SoundEngine {
     if (!this.ctx || !this.isStarted) return;
 
     const baseCutoff = this.currentExhaust.filterLowpassCutoff;
-    const tunedCutoff = baseCutoff * (0.6 + 0.4 * (1.0 - this.toneWarmth));
+    const tunedCutoff = baseCutoff * (0.6 + 0.4 * (1.0 - this.toneWarmth))
+      * LISTENING_MIXES[this.listeningPosition].exhaustFilter;
     this.mufflerLowpass1.frequency.setTargetAtTime(tunedCutoff, this.ctx.currentTime, 0.05);
 
     const antiHarshFreq = 1800 + (1.0 - this.toneWarmth) * 1100;
     this.mufflerLowpass2.frequency.setTargetAtTime(antiHarshFreq, this.ctx.currentTime, 0.05);
-    this.turbineLowpass?.frequency.setTargetAtTime(3800 + (1 - this.toneWarmth) * 4300, this.ctx.currentTime, 0.035);
+    this.turbineLowpass?.frequency.setTargetAtTime((3800 + (1 - this.toneWarmth) * 4300)
+      * (this.listeningPosition === 'intake' ? 1.3 : this.listeningPosition === 'exhaust' ? 0.9 : 1), this.ctx.currentTime, 0.035);
   }
 
   setExhaustModel(exhaustModel) {
@@ -661,7 +714,8 @@ export class SoundEngine {
     const subGain = this.ctx.createGain();
     const decayTime = (isShift ? Math.min(0.080, this.currentExhaust.popDecay * 0.65) : this.currentExhaust.popDecay) * Math.min(1.3, 0.8 + 0.2 * dispScale);
     const baseSubVol = (isShift ? 0.92 : isLimiter ? 0.5 : 0.6) * intensity * (hasFlame ? 1.15 : 1) * Math.min(1.25, 0.75 + 0.25 * dispScale);
-    const subVol = Math.min(0.95, isOem ? baseSubVol * 0.72 : baseSubVol);
+    const subVol = Math.min(0.95, isOem ? baseSubVol * 0.72 : baseSubVol)
+      * LISTENING_MIXES[this.listeningPosition].exhaust;
     subGain.gain.setValueAtTime(0.001, t);
     subGain.gain.linearRampToValueAtTime(subVol, t + (isShift ? 0.0012 : 0.003));
     subGain.gain.exponentialRampToValueAtTime(0.001, t + decayTime);
@@ -733,7 +787,8 @@ export class SoundEngine {
     lowpass.frequency.setValueAtTime(3800 + Math.min(2200, event.pressure * 750), t);
     lowpass.Q.setValueAtTime(0.6, t);
     const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(Math.min(0.68, 0.26 * Math.sqrt(event.pressure) * event.intensity), t);
+    gain.gain.setValueAtTime(Math.min(0.68, 0.26 * Math.sqrt(event.pressure) * event.intensity)
+      * LISTENING_MIXES[this.listeningPosition].intake, t);
     source.connect(filter);
     filter.connect(lowpass);
     lowpass.connect(gain);
@@ -786,7 +841,8 @@ export class SoundEngine {
     lowpass.frequency.setValueAtTime(4200, t);
     lowpass.Q.setValueAtTime(0.65, t);
     const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(Math.min(0.78, 0.42 * Math.sqrt(event.pressure) * event.intensity), t);
+    gain.gain.setValueAtTime(Math.min(0.78, 0.42 * Math.sqrt(event.pressure) * event.intensity)
+      * LISTENING_MIXES[this.listeningPosition].intake, t);
     source.connect(lowpass);
     lowpass.connect(gain);
     gain.connect(this.masterGain);
@@ -798,6 +854,8 @@ export class SoundEngine {
     if (!this.ctx || !this.isStarted) return;
 
     const t = this.ctx.currentTime;
+    const mix = LISTENING_MIXES[this.listeningPosition];
+    this.acousticRPM = Math.max(0, Number(engineState.rpm) || 0);
     this.setEngineConfig(config);
     this.lastAudioState = { engineState, config, drivetrainState };
     if (continuousTurbine(config)) {
@@ -880,7 +938,7 @@ export class SoundEngine {
       const whineFreq = Math.min(3200, 320 + speedKmh * 14.0 + (rpm / 60) * gearRatio * 3.2);
       this.gearWhineOsc.frequency.setTargetAtTime(whineFreq, t, smoothTime);
       const whineVol = Math.min(0.012, 0.002 + (speedKmh / 200) * 0.010);
-      this.gearWhineGain.gain.setTargetAtTime(whineVol, t, smoothTime);
+      this.gearWhineGain.gain.setTargetAtTime(whineVol * mix.mechanical, t, smoothTime);
     } else {
       this.gearWhineGain.gain.setTargetAtTime(0.0, t, 0.05);
     }
@@ -908,7 +966,8 @@ export class SoundEngine {
       ? Math.max(0, Math.min(1, (3000 - rpm) / 1600))
         * Math.max(0, Math.min(1, (0.40 - pressureLoad) / 0.30))
       : 0;
-    const rotaryBrapBlend = this.rotaryIdleMode === 'brap' ? rotaryIdleBlend : 0;
+    const rotaryBrapBlend = this.rotaryIdleMode === 'brap'
+      ? rotaryIdleBlend * (config.rotaryBrapScale ?? (config.cylinders > 2 ? 0.45 : 1)) : 0;
     this.exhaustHighpass.frequency.setTargetAtTime(22 - rotaryIdleBlend * 12, t, 0.025);
     this.currentDisplacement = displacement;
     if (`${config.id}:${displacement}:${this.soundProfile}` !== this.pressureConfigurationKey) {
@@ -925,6 +984,8 @@ export class SoundEngine {
       this.pressureNode.parameters.get('camBlend')?.setTargetAtTime(engineState.camBlend || 0, t, 0.015);
       this.pressureNode.parameters.get('rotaryBrap')?.setTargetAtTime(
         config.layout === 'rotary' && this.rotaryIdleMode === 'brap' ? 1 : 0, t, 0.040);
+      this.pressureNode.parameters.get('exhaustMix')?.setTargetAtTime(mix.exhaust, t, 0.030);
+      this.pressureNode.parameters.get('mechanicalMix')?.setTargetAtTime(mix.mechanical, t, 0.030);
     }
 
     let blowdownBoost = 0;
@@ -942,10 +1003,10 @@ export class SoundEngine {
 
     // Primary combustion pulse softens into a muffled hollow ignition-cut tone (never 0 dead air!)
     const combustionVol = this.pressureNode ? 0 : 0.07 + 0.48 * (1 - cutAmount);
-    this.combustionGain.gain.setTargetAtTime(combustionVol * (1 - rotaryBrapBlend * 0.20), t, isShiftCut ? 0.0015 : 0.007);
+    this.combustionGain.gain.setTargetAtTime(combustionVol * (1 - rotaryBrapBlend * 0.20) * mix.exhaust, t, isShiftCut ? 0.0015 : 0.007);
     this.rotaryIdleOsc.frequency.setTargetAtTime(Math.max(0.1, rpm / 180), t, 0.010);
     this.rotaryIdleModGain.gain.setTargetAtTime(
-      this.pressureNode ? 0 : combustionVol * rotaryBrapBlend * 0.55, t, 0.040);
+      this.pressureNode ? 0 : combustionVol * rotaryBrapBlend * 0.55 * mix.exhaust, t, 0.040);
 
     // Sub-bass thump (30-80 Hz) physically scales with displacement volume:
     // Large displacement engines deliver deep chest-thumping bass; small engines have tighter pulse
@@ -955,9 +1016,9 @@ export class SoundEngine {
     const baseSubBassVol = (this.soundProfile === 'muscle' ? 0.075 : this.soundProfile === 'screamer' ? 0.028 : 0.045) * dispBassMod;
     const baseCamVol = (this.soundProfile === 'muscle' ? 0.035 : this.soundProfile === 'screamer' ? 0.010 : 0.019) * Math.min(1.8, 0.65 + 0.35 * Math.sqrt(dispLiters));
     const orderLayerScale = this.pressureNode ? 0.18 : 1;
-    this.subBassGain.gain.setTargetAtTime(baseSubBassVol * orderLayerScale * (1 - cutAmount * 0.18), t, 0.005);
+    this.subBassGain.gain.setTargetAtTime(baseSubBassVol * orderLayerScale * (1 - cutAmount * 0.18) * mix.mechanical, t, 0.005);
     this.camshaftGain.gain.setTargetAtTime(config.layout === 'rotary' ? 0
-      : baseCamVol * orderLayerScale * (1 - cutAmount * 0.18), t, 0.005);
+      : baseCamVol * orderLayerScale * (1 - cutAmount * 0.18) * mix.mechanical, t, 0.005);
 
     // -------------------------------------------------------------
     // 3. Dynamic Intake Induction Roar
@@ -972,14 +1033,18 @@ export class SoundEngine {
     const turbineRush = ['turbine', 'turbojet'].includes(config.layout)
       ? (0.025 + 0.065 * Math.min(1.5, rpm / (config.ratedPowerRPM || 16500))) : 0;
     const intakeVol = (Math.pow(throttle, 1.35) * (0.020 + 0.045 * intakeAirflow) * (1 + 0.9 * camRoar) + turbineRush) * intakeHardwareGain;
-    this.intakeGain.gain.setTargetAtTime(intakeVol, t, 0.015);
+    this.intakeGain.gain.setTargetAtTime(intakeVol * mix.intake, t, 0.015);
+    this.scavengeOsc.frequency.setTargetAtTime(cycleFreq, t, smoothTime);
+    this.scavengeModGain.gain.setTargetAtTime(!this.pressureNode && config.cycleKind === 'two-stroke'
+      ? intakeVol * 0.18 * mix.intake : 0, t, 0.015);
     // Induction formant shifts with displacement and revs
     const intakeCenterFreq = Math.max(110, Math.min(1600, (220 + rpm * 0.028) * Math.pow(1.0 / dispLiters, 0.14) * (1 + camRoar * 0.25)));
-    this.intakeFilter.frequency.setTargetAtTime(intakeCenterFreq, t, smoothTime);
+    this.intakeFilter.frequency.setTargetAtTime(intakeCenterFreq * mix.intakeFilter, t, smoothTime);
 
     // Harmonic Cut during shift cut: softens high-order firing ping while preserving body
     const baseHarmonic = this.soundProfile === 'muscle' ? 0.015 : this.soundProfile === 'screamer' ? 0.042 : 0.025;
-    this.harmonicGain.gain.setTargetAtTime(baseHarmonic * (this.pressureNode ? 0.12 : 1) * (1 - cutAmount * 0.94), t, isShiftCut ? 0.0015 : 0.007);
+    this.harmonicGain.gain.setTargetAtTime(baseHarmonic * (this.pressureNode ? 0.12 : 1) * (1 - cutAmount * 0.94)
+      * mix.exhaust, t, isShiftCut ? 0.0015 : 0.007);
 
     // -------------------------------------------------------------
     // 4. Rev Limiter Staccato Gate Handling
@@ -1019,14 +1084,14 @@ export class SoundEngine {
         this.turboSpoolOsc.frequency.setTargetAtTime(turboPitch, t, smoothTime);
         this.turboSpoolFilter.frequency.setTargetAtTime(Math.min(3500, turboPitch * 1.18 + 400), t, smoothTime);
         const turboVol = Math.min(0.075, Math.sqrt(turboRPM / 180000) * (0.008 + Math.sqrt(airFlow) * 0.042));
-        this.turboSpoolGain.gain.setTargetAtTime(turboVol, t, 0.025);
+        this.turboSpoolGain.gain.setTargetAtTime(turboVol * mix.mechanical, t, 0.025);
 
         // Pressurized intake airflow suction rush (clean intercooler pipe whoosh)
         if (this.turboAirFilter && this.turboAirGain) {
           const airFreq = Math.min(3400, 650 + turboRPM / 105 + Math.sqrt(boost) * 280);
           this.turboAirFilter.frequency.setTargetAtTime(airFreq, t, smoothTime);
           const airVol = Math.min(0.27, Math.sqrt(airFlow) * (0.12 + Math.sqrt(boost) * 0.085));
-          this.turboAirGain.gain.setTargetAtTime(airVol, t, 0.018);
+          this.turboAirGain.gain.setTargetAtTime(airVol * mix.intake, t, 0.018);
         }
       } else {
         this.turboSpoolGain.gain.setTargetAtTime(0.0, t, 0.04);
@@ -1045,7 +1110,7 @@ export class SoundEngine {
         const inductionLoad = Math.max(0, Math.min(1.5, engineState.inductionLoad ?? throttle * Math.sqrt(boost + 0.1)));
         const scVol = Math.min(0.23, Math.sqrt(rotorRPM / 18000) * (0.012 + inductionLoad * 0.13) * (1 - bypass * 0.82));
         // The belt and rotors keep turning during an ignition cut.
-        this.scWhineGain.gain.setTargetAtTime(scVol, t, 0.012);
+        this.scWhineGain.gain.setTargetAtTime(scVol * mix.mechanical, t, 0.012);
       } else {
         this.scWhineGain.gain.setTargetAtTime(0.0, t, 0.04);
       }
@@ -1055,6 +1120,16 @@ export class SoundEngine {
   setVolume(vol) {
     this.volume = Math.max(0, Math.min(1, Number(vol) || 0));
     this.applyVolume();
+  }
+
+  setListeningPosition(position) {
+    if (!Object.prototype.hasOwnProperty.call(LISTENING_MIXES, position)) return false;
+    this.listeningPosition = position;
+    if (this.ctx && this.isStarted) {
+      this.setToneWarmth(this.toneWarmth);
+      if (this.lastAudioState) this.update(this.lastAudioState.engineState, this.engineConfig, this.lastAudioState.drivetrainState);
+    }
+    return true;
   }
 
   setRotaryIdleMode(mode) {
@@ -1110,10 +1185,15 @@ export class SoundEngine {
       this.outputGain.gain.setTargetAtTime(this.running ? 1 : 0, this.ctx.currentTime, 0.012);
       this.applyVolume();
     }
-    const key = [config.id, this.soundProfile, ...config.firingAngles].join(':');
+    const key = [config.id, this.soundProfile, ...config.firingAngles,
+      ...(!this.pressureNode && config.exhaustPathDelays?.length ? [Math.round((this.acousticRPM || 0) / 200)] : [])].join(':');
     if (key === this.waveKey) return;
     this.combustionOsc.setPeriodicWave(this.createCombustionPulseWave(this.soundProfile, config));
+    if (config.cycleKind === 'two-stroke') this.scavengeOsc.setPeriodicWave(this.createScavengingWave(config));
     this.waveKey = key;
-    this.configurePressureGenerator(this.currentDisplacement || config.defaultDisplacement);
+    const displacement = this.currentDisplacement || config.defaultDisplacement;
+    if (`${config.id}:${displacement}:${this.soundProfile}` !== this.pressureConfigurationKey) {
+      this.configurePressureGenerator(displacement);
+    }
   }
 }

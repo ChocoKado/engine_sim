@@ -14,7 +14,7 @@ function setup(id = 'i4_flat', mode = 'amt') {
   return { engine, drive };
 }
 
-for (const id of Object.keys(ENGINE_CONFIGS).filter(id => ENGINE_CONFIGS[id].propulsionKind !== 'turbojet')) {
+for (const id of Object.keys(ENGINE_CONFIGS).filter(id => !['turbojet', 'turboshaft'].includes(ENGINE_CONFIGS[id].propulsionKind))) {
   for (const mode of ['at', 'amt']) {
     test(`${id}/${mode}: early launch, continuous lock-up, usable partial throttle`, () => {
       for (const throttle of [0.25, 1]) {
@@ -37,7 +37,7 @@ for (const id of Object.keys(ENGINE_CONFIGS).filter(id => ENGINE_CONFIGS[id].pro
             // not inherit the earlier 60 HP/vehicle acceleration benchmark.
             // Low-torque sports cars launched from idle are slower than a
             // light bike or a pre-revved standing start. Keep their own bound.
-            const minimum = throttle === 1 ? (['i2_180', 'radial_7', 'honda_f20c', 'boxer4', 'rotary_2'].includes(id) ? 5 : 8) : 1;
+            const minimum = throttle === 1 ? (['i2_180', 'two_stroke_2', 'radial_7', 'honda_f20c', 'boxer4', 'rotary_2'].includes(id) ? 5 : 8) : 1;
             assert.ok(drive.speedKmh > minimum, 'respond within the first second');
           }
           previousAcceleration = acceleration;
@@ -107,11 +107,12 @@ test('more load slows acceleration without pinning the engine to a scripted laun
 });
 
 test('continuous exhaust torque curve has no artificial 65% redline step', () => {
-  for (const id of Object.keys(ENGINE_CONFIGS).filter(id => ENGINE_CONFIGS[id].propulsionKind !== 'turbojet')) {
+  for (const id of Object.keys(ENGINE_CONFIGS).filter(id => !['turbojet', 'turboshaft'].includes(ENGINE_CONFIGS[id].propulsionKind))) {
     const engine = new EngineModel(id, 'straight');
     const a = engine.torqueAtRPM(engine.redlineRPM * 0.65 - 0.01);
     const b = engine.torqueAtRPM(engine.redlineRPM * 0.65 + 0.01);
-    assert.ok(Math.abs(a - b) < 0.01);
+    assert.ok(Math.abs(a - b) < Math.max(0.01, engine.dynoData.maxTorque * 0.000025),
+      'the same small angular/RPM interval is continuous relative to engine torque scale');
   }
 });
 

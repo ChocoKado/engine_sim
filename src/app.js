@@ -14,6 +14,8 @@ import { InputManager } from './controls/InputManager.js';
 import { PerformancePanel } from './controls/PerformancePanel.js';
 import { GaragePanel } from './controls/GaragePanel.js';
 import { JetBenchPanel } from './controls/JetBenchPanel.js';
+import { SimulationLabPanel } from './controls/SimulationLabPanel.js';
+import { applySetupToModels } from './controls/SimulationSession.js';
 import { Engine3DRenderer } from './visuals/Engine3DRenderer.js';
 
 export class App {
@@ -49,6 +51,7 @@ export class App {
       onViewChange: view => this.changeGarageView(view),
     }).init();
     this.jetBenchPanel = new JetBenchPanel({ engine: this.engine, garage: this.garagePanel });
+    this.labPanel = new SimulationLabPanel({ app: this });
     if (this.garagePanel.initialized) {
       try {
         this.engine3DRenderer = new Engine3DRenderer(this.garagePanel.canvas);
@@ -92,6 +95,23 @@ export class App {
     return true;
   }
 
+  applySavedSetup(setup) {
+    if (this.labPanel?.session.active) return { ok: false, message: '請先停止錄製，再套用設定。' };
+    const result = applySetupToModels(setup, this.engine, this.drivetrain, this.sound, id => this.selectEngineConfig(id));
+    if (result.ok) {
+      this.input.releaseHeldControls(); this.input.manualThrottleSlider = 0;
+      const select = document.getElementById('engine-select'); if (select) select.value = this.engine.config.id;
+      const throttle = document.getElementById('throttle-slider'); if (throttle) throttle.value = 0;
+      this.updateVehicleLoad(); this.syncTuningUI(); this.jetBenchPanel?.sync(); this.labPanel?.sync();
+      for (const card of document.querySelectorAll('.exhaust-card')) card.classList.toggle('selected', card.dataset.exhaust === this.engine.exhaust.id);
+      for (const button of document.querySelectorAll('.sound-profile-btn')) button.classList.toggle('active', button.dataset.profile === this.sound.soundProfile);
+      const warmth = Math.round(this.sound.toneWarmth * 100);
+      const warmthSlider = document.getElementById('warmth-slider'); if (warmthSlider) warmthSlider.value = warmth;
+      const warmthLabel = document.getElementById('warmth-val'); if (warmthLabel) warmthLabel.textContent = `${warmth}%`;
+    }
+    return result;
+  }
+
   changeGarageView({ mode, focus = null, reset = false }) {
     if (mode === '3d') {
       if (reset) this.engine3DRenderer?.resetCamera();
@@ -115,10 +135,10 @@ export class App {
       }
       this.engine.setRunning(running);
       this.drivetrain.resetShift();
-      this.isEngineRunning = running;
-      if (running) this.sound.update(this.engine.snapshot(), this.engine.config);
-      this.sound.setRunning(running);
-      this.updatePowerButtonUI(running);
+      this.isEngineRunning = this.engine.isIgnitionOn;
+      if (this.isEngineRunning) this.sound.update(this.engine.snapshot(), this.engine.config);
+      this.sound.setRunning(this.isEngineRunning);
+      this.updatePowerButtonUI(this.isEngineRunning);
       this.drivetrain.lastShiftMessage = '';
     } catch (error) {
       console.error('Audio initialization failed', error);
@@ -507,6 +527,7 @@ export class App {
     this.updateEngineDescription();
     this.syncTuningUI();
     this.jetBenchPanel?.sync();
+    this.labPanel?.sync();
   }
 
   // All tuning controls are views of model state, including after preset changes.
@@ -533,8 +554,13 @@ export class App {
     }
 
     const induction = this.engine.forcedInduction;
+    const aviation = ['turbine', 'turbojet'].includes(config.layout);
+    for (const id of ['displacement-slider', 'redline-slider', 'ecu-mode', 'limiter-hz', 'limiter-depth']) {
+      const control = document.getElementById(id); if (control) control.disabled = aviation;
+    }
     for (const button of document.querySelectorAll('.induction-btn')) {
       const selected = button.dataset.induction === induction;
+      button.disabled = aviation || Boolean(config.builtInInduction);
       button.classList.toggle('active', selected);
       button.setAttribute('aria-pressed', String(selected));
     }
@@ -568,6 +594,8 @@ export class App {
     const badge = document.getElementById('boost-status-badge');
     if (badge) badge.textContent = induction === 'na' ? '自然進氣 (NA)' :
       `${induction === 'turbo' ? `TURBO · ${this.engine.turboSize === 'large' ? '大渦輪' : '小渦輪'}` : 'ROOTS / TVS'} · ${this.engine.maxBoost.toFixed(2)} bar`;
+    if (badge && config.builtInInduction) badge.textContent = config.builtInInductionLabel;
+    if (badge && aviation) badge.textContent = '連續燃燒 · 航空壓縮機';
     const scRangeNote = document.getElementById('supercharger-range-note');
     if (scRangeNote) scRangeNote.hidden = induction !== 'supercharger' || this.engine.maxBoost <= 1.5;
     this.syncGearingUI();
@@ -580,6 +608,7 @@ export class App {
     this.updateReferenceStatus();
     this.updateDynoOverview();
     this.garagePanel?.update();
+    this.labPanel?.sync();
   }
 
   syncGearControls() {
@@ -653,7 +682,7 @@ export class App {
     if (tagCyls) tagCyls.textContent = this.engine.config.layout === 'turbine' ? '航太連續燃燒渦輪級' : this.engine.config.layout === 'turbojet' ? '9 級壓縮機／2 級渦輪' : `${this.engine.config.cylinders} ${this.engine.config.layout === 'rotary' ? '轉子' : '汽缸'}`;
     if (tagSound) tagSound.textContent = `聲浪風格: ${this.engine.config.soundCharacter || this.engine.config.shortName}`;
     const heading = document.getElementById('mechanical-view-title');
-    if (heading) heading.textContent = this.engine.config.layout === 'turbine' ? '航太燃氣渦輪發動機剖面動態' : this.engine.config.layout === 'turbojet' ? '航空超音速渦輪噴射發動機剖面動態' : this.engine.config.layout === 'rotary' ? '轉子引擎剖面動態' : '四行程引擎剖面動態';
+    if (heading) heading.textContent = this.engine.config.layout === 'turbine' ? '雙軸渦輪軸機構動態' : this.engine.config.layout === 'turbojet' ? '渦輪噴射機構動態' : this.engine.config.layout === 'rotary' ? '轉子引擎剖面動態' : this.engine.config.cycleKind === 'two-stroke' ? '二行程氣埠與掃氣動態' : '四行程引擎剖面動態';
     const focus = document.getElementById('btn-view-focus');
     if (focus) { focus.textContent = this.engine.config.layout === 'turbine' ? '燃燒室特寫' : this.engine.config.layout === 'turbojet' ? '燃燒室與後燃器特寫' : this.engine.config.layout === 'rotary' ? '轉子特寫' : '單缸特寫'; focus.title = focus.textContent; }
     const overview = document.getElementById('btn-view-multi');
@@ -731,10 +760,12 @@ export class App {
       && (!config.vtec || this.engine.cam?.enabled && this.engine.cam.engageRPM === config.vtec.engageRPM)
       && Math.abs(this.drivetrain.vehicleMass - (profile?.mass ?? 0)) <= 0.5;
     const jet = config.propulsionKind === 'turbojet';
-    if (state) state.textContent = jet ? '公開推力基準' : isStock ? '原廠基準' : '自訂改裝';
+    const experimentalLoad = profile?.referenceKind === 'experimental' || profile?.gearingKind === 'experimental';
+    if (state) state.textContent = jet ? '公開推力基準' : isStock ? experimentalLoad ? '引擎基準／負載估算' : '原廠基準' : '自訂改裝';
     if (note) note.textContent = jet ? 'J85-21 海平面靜態推力基準；N1、溫度與中間工況為簡化工程模擬。'
       : config.layout === 'radial'
       ? '航空引擎基準；車速與換檔為實驗負載台模擬。'
+      : experimentalLoad ? '額定引擎數據有公開來源；道路車重、齒比與中間曲線含估算，不代表原廠整車性能。'
       : '原廠數據基準（中間曲線為推估）；改裝輸出為模型估算。';
     if (transmissionNote) {
       transmissionNote.textContent = jet ? '' : config.layout === 'radial' ? '實驗負載台，不代表航空傳動。'
@@ -951,6 +982,7 @@ export class App {
     this.performancePanel?.update();
     this.garagePanel?.update();
     this.jetBenchPanel?.update(engineStatus);
+    this.labPanel?.update(engineStatus, drivetrainStatus);
 
     requestAnimationFrame((t) => this.loop(t));
   }
@@ -976,14 +1008,23 @@ export class App {
       else digitalRpm.classList.remove('rev-limiting');
     }
 
-    // These values come from the running simulation. TEMP is charge-air
-    // temperature; there is no coolant-temperature model to present as 82°C.
+    // Read the thermal/gas-path state; an air-cooled engine has no coolant.
     const setReading = (id, value) => {
       const node = document.getElementById(id);
       if (node && node.textContent !== value) node.textContent = value;
     };
-    const intakeKelvin = Number(engineStatus.intakeTemperature);
-    setReading('cockpit-intake-temp', Number.isFinite(intakeKelvin) ? `${Math.round(intakeKelvin - 273.15)}` : '—');
+    const primaryTemp = this.engine.turboshaft ? engineStatus.exhaustTemperatureC : engineStatus.coolantTemperatureC ?? engineStatus.oilTemperatureC;
+    setReading('cockpit-intake-temp', Number.isFinite(primaryTemp) ? `${Math.round(primaryTemp)}` : '—');
+    if (!this.engine.jet) {
+      const label = document.querySelector('.driving-telemetry-item:first-child .driving-telemetry-label');
+      if (label) label.textContent = this.engine.turboshaft ? 'EGT' : engineStatus.coolantTemperatureC == null ? '機油' : '冷卻液';
+      const middleLabel = document.querySelector('.driving-telemetry-item:nth-child(2) .driving-telemetry-label');
+      const middleUnit = document.querySelector('.driving-telemetry-item:nth-child(2) .driving-telemetry-unit');
+      if (middleLabel) middleLabel.textContent = this.engine.turboshaft ? 'N1' : '增壓';
+      if (middleUnit) middleUnit.textContent = this.engine.turboshaft ? '%' : 'bar';
+      const summaryLabel = document.querySelector('.driving-spec-item .driving-spec-label');
+      if (summaryLabel) summaryLabel.textContent = this.engine.turboshaft ? '額定輸出' : '排氣量';
+    }
     setReading('cockpit-boost-value', `${Number(engineStatus.boostPressure || 0).toFixed(2)}`);
     setReading('cockpit-speed-value', `${drivetrainStatus.speedKmh}`);
     setReading('cockpit-gear-position', drivetrainStatus.gearDisplay);

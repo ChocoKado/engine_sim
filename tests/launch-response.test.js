@@ -43,7 +43,7 @@ function checkMidrangeProgress(samples, redline) {
   assert.ok(windows > 20, 'the trace must actually cover the middle of the rev range');
 }
 
-for (const id of Object.keys(ENGINE_CONFIGS).filter(id => ENGINE_CONFIGS[id].propulsionKind !== 'turbojet')) {
+for (const id of Object.keys(ENGINE_CONFIGS).filter(id => !['turbojet', 'turboshaft'].includes(ENGINE_CONFIGS[id].propulsionKind))) {
   test(`${id}: stock AMT first-gear launch crosses midrange without a synthetic RPM hold`, () => {
     const state = stockAMT(id);
     const { engine, drive } = state;
@@ -91,7 +91,7 @@ for (const id of Object.keys(ENGINE_CONFIGS).filter(id => ENGINE_CONFIGS[id].pro
 }
 
 test('all stock engines accelerate through the same midrange while already locked in first gear', () => {
-  for (const [id, config] of Object.entries(ENGINE_CONFIGS).filter(([, config]) => config.propulsionKind !== 'turbojet')) {
+  for (const [id, config] of Object.entries(ENGINE_CONFIGS).filter(([, config]) => !['turbojet', 'turboshaft'].includes(config.propulsionKind))) {
     const state = stockAMT(id);
     const { engine, drive } = state;
     engine.rpm = config.defaultRedlineRPM * 0.35;

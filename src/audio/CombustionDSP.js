@@ -1,4 +1,5 @@
 import { TurbineDSP } from './TurbineDSP.js';
+import { twoStrokePortState } from '../physics/TwoStrokeMechanics.js';
 
 /**
  * Sample-rate, phase-continuous pressure-pulse synthesis. This is a compact
@@ -32,12 +33,17 @@ export class CombustionDSP {
     this.turbineConfigId = config.id;
     this.cycleDegrees = config.cycleDegrees || 720;
     this.rotary = config.layout === 'rotary';
+    this.twoStroke = config.cycleKind === 'two-stroke';
+    this.scavengePorts = this.twoStroke ? Float32Array.from({ length: 720 }, (_, i) =>
+      twoStrokePortState(i * 0.5, config).transferPort) : null;
+    this.rotaryBrapScale = config.rotaryBrapScale ?? (config.cylinders > 2 ? 0.45 : 1);
     const angles = config.firingAngles?.length ? config.firingAngles : [0, 180, 360, 540];
     this.events = angles.map((angle, i) => ({
       phase: (((Number(angle) || 0) % this.cycleDegrees) + this.cycleDegrees) % this.cycleDegrees / this.cycleDegrees,
       age: 1,
       strength: 0,
-      bank: config.exhaustBanks?.[i] ?? (['v', 'w', 'boxer'].includes(config.layout) ? i % 2 : 0),
+      bank: config.exhaustBanks?.[i] ?? (['v', 'vr', 'w', 'boxer'].includes(config.layout) ? i % 2 : 0),
+      pathDelay: Math.max(0, Math.min(0.02, Number(config.exhaustPathDelays?.[i]) || 0)),
       ordinal: i,
       count: 0,
     }));
@@ -66,7 +72,7 @@ export class CombustionDSP {
     const dt = 1 / this.sampleRate;
     const level = 0.76 / Math.sqrt(this.events.length);
     const cylinderLiters = this.displacement / this.events.length;
-    const baseExhaustDecay = 0.0018 + Math.sqrt(cylinderLiters) * 0.0035;
+    const baseExhaustDecay = (0.0018 + Math.sqrt(cylinderLiters) * 0.0035) * (this.twoStroke ? 0.68 : 1);
     const rpmSlew = 1 - Math.exp(-dt / 0.005);
     const loadSlew = 1 - Math.exp(-dt / 0.012);
     const cutSlew = 1 - Math.exp(-dt / 0.0015);
@@ -82,7 +88,7 @@ export class CombustionDSP {
         ? Math.max(0, Math.min(1, (3000 - this.rpm) / 1600))
           * Math.max(0, Math.min(1, (0.40 - this.load) / 0.30))
         : 0;
-      const brapBlend = idleBlend * Math.max(0, Math.min(1, read('rotaryBrap', i, 0)));
+      const brapBlend = idleBlend * Math.max(0, Math.min(1, read('rotaryBrap', i, 0))) * this.rotaryBrapScale;
       // Stock side-port RENESIS retains every evenly spaced firing. At idle,
       // shorter blowdown tails expose each pulse instead of a continuous wash.
       const exhaustDecay = Math.min(0.010, baseExhaustDecay * (this.rotary ? 1.35 - 0.55 * idleBlend : 1));
@@ -97,13 +103,14 @@ export class CombustionDSP {
         : limiter ? 1 - limiterDepth * 0.985 : 1);
       const camBlend = Math.max(0, Math.min(1, read('camBlend', i, 0)));
       let pressure = 0;
+      let scavenging = 0;
       for (const event of this.events) {
         const fired = this.phase >= before
           ? before <= event.phase && this.phase > event.phase
           : event.phase >= before || event.phase < this.phase;
         if (fired && this.rpm > 30) {
           // Small cycle differences remove a perfectly repeating electronic buzz.
-          event.age = -event.bank * this.bankDelay * dt;
+          event.age = -event.bank * this.bankDelay * dt - event.pathDelay;
           const sequentialCut = limiterMode === 2 && ((Math.floor(limitPhase) + event.ordinal) % this.events.length)
             / this.events.length < limiterAmount;
           const firing = limiterMode === 2 ? (1 - this.cut) * (sequentialCut ? 1 - limiterDepth * 0.985 : 1) : combustion;
@@ -130,13 +137,25 @@ export class CombustionDSP {
           pressure += rise * decay * (0.014 + this.cut * 0.050);
         }
         event.age += dt;
+        if (this.twoStroke) {
+          // Port-open gas exchange occupies part of the same 360 degree cycle.
+          // This is an acoustic scavenging estimate, not a tuned-pipe CFD model.
+          const portPhase = ((this.phase - event.phase + 1) % 1) * this.cycleDegrees;
+          const portIndex = portPhase * 2;
+          const first = Math.floor(portIndex) % 720;
+          const window = this.scavengePorts[first] * (1 - (portIndex % 1))
+            + this.scavengePorts[(first + 1) % 720] * (portIndex % 1);
+          scavenging += this.noiseLow * window * (0.05 + 0.16 * this.load);
+        }
       }
       const noise = this.random();
       this.noiseLow += (noise - this.noiseLow) * 0.10;
       this.mechanicalLow += (noise - this.mechanicalLow) * 0.028;
       const mechanical = this.mechanicalLow * (0.022 + Math.min(0.025, this.rpm / 400000))
         + Math.sin(this.crankPhase * Math.PI * 2) * 0.012;
-      const input = pressure * level + mechanical;
+      const exhaustMix = Math.max(0, Math.min(3, read('exhaustMix', i, 1)));
+      const mechanicalMix = Math.max(0, Math.min(4, read('mechanicalMix', i, 1)));
+      const input = (pressure * level + scavenging) * exhaustMix + mechanical * mechanicalMix;
       const length = this.reflection.length;
       const reflection1 = this.reflection[(this.writeIndex - this.reflectionDelay + length) % length];
       const reflection2 = this.reflection[(this.writeIndex - this.secondaryDelay + length) % length];
@@ -155,7 +174,9 @@ export class CombustionDSP {
 
 // Embed the same DSP in a worklet without external imports or path assumptions.
 export function combustionWorkletSource() {
-  return `const TurbineDSP = (${TurbineDSP.toString()});
+  return `const clamp = n => Math.max(0, Math.min(1, n));
+const twoStrokePortState = (${twoStrokePortState.toString()});
+const TurbineDSP = (${TurbineDSP.toString()});
 const CombustionDSP = (${CombustionDSP.toString()});
 class CombustionProcessor extends AudioWorkletProcessor {
   static get parameterDescriptors() {
@@ -174,6 +195,10 @@ class CombustionProcessor extends AudioWorkletProcessor {
       { name: 'afterburner', defaultValue: 0, minValue: 0, maxValue: 1, automationRate: 'k-rate' },
       { name: 'jetVelocity', defaultValue: 0, minValue: 0, maxValue: 2200, automationRate: 'k-rate' },
       { name: 'pressureRatio', defaultValue: 1, minValue: 1, maxValue: 50, automationRate: 'k-rate' },
+      { name: 'powerTurbineRPM', defaultValue: 0, minValue: 0, maxValue: 120000, automationRate: 'a-rate' },
+      { name: 'exhaustMix', defaultValue: 1, minValue: 0, maxValue: 3, automationRate: 'k-rate' },
+      { name: 'intakeMix', defaultValue: 1, minValue: 0, maxValue: 3, automationRate: 'k-rate' },
+      { name: 'mechanicalMix', defaultValue: 1, minValue: 0, maxValue: 4, automationRate: 'k-rate' },
     ];
   }
   constructor(options) {

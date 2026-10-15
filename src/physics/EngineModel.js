@@ -3,9 +3,12 @@ import { EXHAUST_MODELS } from '../audio/ExhaustModels.js';
 import { InductionModel, ATMOSPHERE, chargeThermodynamics, steadyBoost, superchargerDriveTorque, superchargerBypass } from './InductionModel.js';
 import { CamControl, camValveLift } from './CamControl.js';
 import { RevLimiter } from './RevLimiter.js';
-import { radialKinematics, radialCyclePhase, radialPistonTravel } from './RadialMechanics.js';
-import { rotaryChamberState } from './RotaryMechanics.js';
+import { radialEngineKinematics, radialEnginePistonTravel } from './RadialMechanics.js';
+import { rotaryChamberState, rotaryShaftPhase } from './RotaryMechanics.js';
 import { TurbojetModel } from './TurbojetModel.js';
+import { TurboshaftModel } from './TurboshaftModel.js';
+import { ThermalModel } from './ThermalModel.js';
+import { twoStrokePortState } from './TwoStrokeMechanics.js';
 import { MODIFICATION_CATALOG, createStockModifications, isModificationSupported,
   sanitizeModifications, modificationEffects } from './Modifications.js';
 
@@ -91,6 +94,11 @@ export class EngineModel {
       this.syncJetState();
       return;
     }
+    if (this.turboshaft) {
+      this.turboshaft.setRunning(running);
+      this.syncTurboshaftState();
+      return;
+    }
     if (!running) this.boostPressure = 0;
     if (running) this.rpm = Math.max(this.rpm, this.idleRPM);
     for (const cyl of this.cylinderStates) {
@@ -101,8 +109,12 @@ export class EngineModel {
 
   setConfig(configId) {
     if (this.jet) for (const key of Object.keys(this.jet.snapshot())) delete this[key];
+    if (this.turboshaft) for (const key of Object.keys(this.turboshaft.snapshot())) delete this[key];
     this.config = ENGINE_CONFIGS[configId] || ENGINE_CONFIGS.i4_flat;
     this.jet = this.config.propulsionKind === 'turbojet' ? new TurbojetModel(this.config) : null;
+    this.turboshaft = this.config.propulsionKind === 'turboshaft' ? new TurboshaftModel(this.config) : null;
+    this.thermal = new ThermalModel(this.config);
+    Object.assign(this, this.thermal.snapshot());
     this.modifications = createStockModifications();
     this.isStalled = false;
     this.powerPoints = this.config.torquePoints?.map(([rpm, torque]) => [rpm, torque * rpm]);
@@ -113,7 +125,7 @@ export class EngineModel {
     this.limiter = new RevLimiter();
     this.rpm = this.isIgnitionOn ? this.idleRPM : 0;
     this.resetCombustion();
-    this.cylinderStates = this.config.firingAngles.map((firingOffset, index) => ({
+    this.cylinderStates = (this.turboshaft ? [] : this.config.firingAngles).map((firingOffset, index) => ({
       index, firingOffset, phaseAngle: 0, stroke: 'intake', pistonPos: 0,
       isFiring: false, sparkTimer: 0, intakeValve: 0, exhaustValve: 0,
       gasPressure: 1.0, blowdownPulse: 0, gasTorque: 0
@@ -121,7 +133,7 @@ export class EngineModel {
 
     // Forced Induction (NA, Turbo, Supercharger)
     this.forcedInduction = this.config.defaultInduction || 'na';
-    this.maxBoost = this.jet ? 0 : this.config.defaultBoost || 0.8;
+    this.maxBoost = this.jet || this.turboshaft ? 0 : this.config.defaultBoost || 0.8;
     this.turboSize = this.config.defaultTurboSize || 'small';
     this.induction = new InductionModel();
     this.boostPressure = 0; // current gauge boost pressure in bar
@@ -134,16 +146,66 @@ export class EngineModel {
       this.jet.setRunning(this.isIgnitionOn);
       this.syncJetState();
     }
+    if (this.turboshaft) {
+      this.turboshaft.setRunning(this.isIgnitionOn);
+      this.turboshaft.syncOutputRPM(0);
+      this.syncTurboshaftState();
+    }
     this.dynoData = this.calculateDynoCurve();
   }
 
   syncJetState() {
     if (!this.jet) return;
     Object.assign(this, this.jet.snapshot());
+    this.isIgnitionOn = this.jet.running;
     this.rpm = this.coreRPM;
     this.manifoldThrottle = this.jet.fuelCommand;
     this.manifoldPressure = (this.pressureRatio * 1.01325).toFixed(2);
     this.exhaustHeat = clamp((this.nozzleTemperatureC - 15) / 1500, 0, 1);
+  }
+
+  syncTurboshaftState() {
+    if (!this.turboshaft) return;
+    Object.assign(this, this.turboshaft.snapshot());
+    this.rpm = this.outputShaftRPM;
+    this.manifoldThrottle = this.turboshaft.fuelCommand;
+    this.manifoldPressure = (this.pressureRatio * 1.01325).toFixed(2);
+    this.exhaustHeat = clamp((this.exhaustTemperatureC - 25) / 1000, 0, 1);
+  }
+
+  setThermalMode(mode) {
+    const result = this.thermal.setMode(mode);
+    Object.assign(this, this.thermal.snapshot());
+    return result;
+  }
+
+  setCoolingFan(enabled) {
+    this.thermal.setCoolingFan(enabled);
+    Object.assign(this, this.thermal.snapshot());
+    return true;
+  }
+
+  updateThermal(dt) {
+    const shaftPowerKW = this.turboshaft ? this.shaftPowerKW : Math.max(0, this.netTorque) * this.rpm * Math.PI / 30000;
+    Object.assign(this, this.thermal.update(dt, { running: this.jet || this.turboshaft ? this.isCombusting : this.isIgnitionOn,
+      shaftPowerKW, ratedPowerKW: this.config.ratedPowerKW || this.dynoData?.maxHp * 0.7457,
+      displacementCC: this.displacement, speedKmh: this.roadSpeedKmh || 0,
+      chargeTemperatureC: (this.induction?.intakeTemperature || 298.15) - 273.15,
+      corePercent: this.corePercent || 0, radiator: this.modifications.radiator }));
+  }
+
+  setStartScenario(scenario) {
+    if (!this.jet) return false;
+    const result = this.jet.setStartScenario(scenario);
+    this.syncJetState();
+    return result;
+  }
+
+  resetStartFault() {
+    if (!this.jet) return false;
+    const result = this.jet.resetStartFault();
+    this.syncJetState();
+    return result;
   }
 
   setAfterburnerEnabled(enabled) {
@@ -154,7 +216,7 @@ export class EngineModel {
   }
 
   setForcedInduction(type) {
-    if (['turbine', 'turbojet'].includes(this.config.layout)) return false;
+    if (this.config.builtInInduction || ['turbine', 'turbojet'].includes(this.config.layout)) return false;
     if (['na', 'turbo', 'supercharger'].includes(type)) {
       this.forcedInduction = type;
       this.modifications = sanitizeModifications(this.config, type, this.modifications);
@@ -168,7 +230,7 @@ export class EngineModel {
   }
 
   setTurboSize(size) {
-    if (['turbine', 'turbojet'].includes(this.config.layout)) return false;
+    if (this.config.builtInInduction || ['turbine', 'turbojet'].includes(this.config.layout)) return false;
     if (!['small', 'large'].includes(size)) return;
     this.turboSize = size;
     this.induction.reset();
@@ -180,7 +242,7 @@ export class EngineModel {
   }
 
   setMaxBoost(val) {
-    if (['turbine', 'turbojet'].includes(this.config.layout)) return false;
+    if (this.config.builtInInduction || ['turbine', 'turbojet'].includes(this.config.layout)) return false;
     if (Number.isFinite(Number(val))) {
       this.maxBoost = clamp(Number(val), 0.3, 3.0);
       this.dynoData = this.calculateDynoCurve();
@@ -188,14 +250,14 @@ export class EngineModel {
   }
 
   setBovType(type) {
-    if (['turbine', 'turbojet'].includes(this.config.layout)) return false;
+    if (this.config.builtInInduction || ['turbine', 'turbojet'].includes(this.config.layout)) return false;
     if (['bov', 'flutter'].includes(type)) {
       this.bovType = type;
     }
   }
 
   setExhaust(id) {
-    if (this.jet) return false;
+    if (this.jet || this.turboshaft) return false;
     if (!EXHAUST_MODELS[id]) return;
     this.exhaust = EXHAUST_MODELS[id];
     this.dynoData = this.calculateDynoCurve();
@@ -215,14 +277,14 @@ export class EngineModel {
   }
 
   setDisplacement(value) {
-    if (this.jet) return false;
+    if (this.jet || this.turboshaft) return false;
     if (!Number.isFinite(Number(value))) return;
     this.displacement = clamp(Number(value), this.config.minDisplacement, this.config.maxDisplacement);
     this.dynoData = this.calculateDynoCurve();
   }
 
   setRedlineRPM(value) {
-    if (this.jet) return false;
+    if (this.jet || this.turboshaft) return false;
     if (!Number.isFinite(Number(value))) return;
     this.redlineRPM = clamp(Number(value), this.config.minRedlineRPM || 2500, this.config.maxRedlineRPM || 65000);
     this.idleRPM = Math.min(this.idleRPM, this.redlineRPM - 1000);
@@ -232,6 +294,7 @@ export class EngineModel {
 
   get inertia() {
     if (this.jet) return this.config.flywheelInertia;
+    if (this.turboshaft) return this.config.turboshaftDesign?.outputInertia || 0.65;
     // Crank, flywheel and connected accessories, in kg m².
     // Small displacement engines have lightweight reciprocating mass and snap up quickly.
     // Large displacement engines have heavy pistons, massive counterweights, and heavy flywheels.
@@ -254,14 +317,15 @@ export class EngineModel {
     return this.limiter.getControlRange(this.redlineRPM);
   }
 
-  setECUMode(mode) { if (!this.jet) this.limiter.setMode(mode); }
-  setLimiterHz(value) { if (!this.jet) this.limiter.setHz(value); }
-  setLimiterDepth(value) { if (!this.jet) this.limiter.setDepth(value); }
-  setVtecEnabled(enabled) { if (!this.jet) { this.cam.setEnabled(enabled); this.dynoData = this.calculateDynoCurve(); } }
-  setVtecRPM(value) { if (!this.jet) { this.cam.setEngageRPM(value, this.redlineRPM); this.dynoData = this.calculateDynoCurve(); } }
+  setECUMode(mode) { if (!this.jet && !this.turboshaft) this.limiter.setMode(mode); }
+  setLimiterHz(value) { if (!this.jet && !this.turboshaft) this.limiter.setHz(value); }
+  setLimiterDepth(value) { if (!this.jet && !this.turboshaft) this.limiter.setDepth(value); }
+  setVtecEnabled(enabled) { if (!this.jet && !this.turboshaft && this.config.cycleKind !== 'two-stroke') { this.cam.setEnabled(enabled); this.dynoData = this.calculateDynoCurve(); } }
+  setVtecRPM(value) { if (!this.jet && !this.turboshaft && this.config.cycleKind !== 'two-stroke') { this.cam.setEngageRPM(value, this.redlineRPM); this.dynoData = this.calculateDynoCurve(); } }
 
   torqueAtRPM(rpm) {
     if (this.jet) return 0;
+    if (this.turboshaft) return this.turboshaft.steadyTorqueAtRPM(rpm);
     if (this.config.torquePoints) {
       // Interpolating torque alone can invent a higher horsepower peak between
       // OEM anchors. Bound it with the independently monotone power curve;
@@ -305,6 +369,7 @@ export class EngineModel {
 
   steadyTorqueAtRPM(rpm) {
     if (this.jet) return 0;
+    if (this.turboshaft) return this.turboshaft.steadyTorqueAtRPM(rpm);
     const effects = modificationEffects(this.config, this.modifications, rpm, this.displacement);
     let boost = steadyBoost(this.config, this.forcedInduction, this.turboSize, this.maxBoost, rpm,
       this.displacement, effects.pulleyRatio);
@@ -331,6 +396,13 @@ export class EngineModel {
     }
     const torquePeak = points.reduce((a, b) => b.torque > a.torque ? b : a);
     const hpPeak = points.reduce((a, b) => b.hp > a.hp ? b : a);
+    // Clutch hardware capacity must not move with an ECU rev-limit slider.
+    // Keep its estimate on the same factory RPM envelope even when a lower
+    // selected redline hides the true torque peak from the displayed dyno.
+    const capacityRPMs = new Set((this.config.torquePoints || []).map(([rpm]) => rpm));
+    for (let rpm = 500; rpm <= (this.config.maxRedlineRPM || this.config.defaultRedlineRPM); rpm += 100) capacityRPMs.add(rpm);
+    this.referenceTorqueCapacity = Math.max(torquePeak.torque,
+      ...[...capacityRPMs].map(rpm => this.steadyTorqueAtRPM(rpm)));
     return { points, maxTorque: Math.round(torquePeak.torque), maxTorqueRPM: torquePeak.rpm,
       maxHp: Math.round(hpPeak.hp), maxHpRPM: hpPeak.rpm };
   }
@@ -344,7 +416,7 @@ export class EngineModel {
   }
 
   createPop(kind, intensity = 1) {
-    if (this.jet) return;
+    if (this.jet || this.turboshaft) return;
     if (!this.isIgnitionOn || this.exhaust.id === 'oem') return;
     const rpmEnergy = clamp((this.rpm - this.idleRPM) / (this.redlineRPM - this.idleRPM), 0, 1);
     const loadEnergy = kind === 'shift'
@@ -376,6 +448,23 @@ export class EngineModel {
       this.isRevLimiting = this.isRevLimitingCut = this.ignitionCut = false;
       this.revLimiterCutAmount = 0;
       this.torqueScale = 1;
+      this.updateThermal(dt);
+      return;
+    }
+    if (this.turboshaft) {
+      this.throttle = this.isIgnitionOn ? clamp(Number(throttleInput) || 0, 0, 1) : 0;
+      this.turboshaft.update(dt, { throttle: this.throttle, outputRPM: this.rpm,
+        thermalPowerFactor: this.thermalPowerFactor });
+      this.syncTurboshaftState();
+      this.netTorque = this.turboshaft.netTorque;
+      this.availableCrankTorque = Math.max(0, this.netTorque);
+      this.combustionTorque = this.availableCrankTorque;
+      this.idleTorque = this.currentEngineDrag = 0;
+      this.bovEvents = [];
+      this.isRevLimiting = this.isRevLimitingCut = this.ignitionCut = false;
+      this.revLimiterCutAmount = 0;
+      this.torqueScale = 1;
+      this.updateThermal(dt);
       return;
     }
     this.throttle = this.isIgnitionOn ? clamp(throttleInput, 0, 1) : 0;
@@ -411,13 +500,13 @@ export class EngineModel {
     const friction = 4 + 13 * rpmFraction;
     const pumping = (1 - this.manifoldThrottle) * (5 + 15 * rpmFraction);
     this.currentEngineDrag = liters * (friction + pumping)
-      * this.config.engineBrakeFactor * Math.min(1, this.rpm / 300);
+      * this.config.engineBrakeFactor * Math.min(1, this.rpm / 300) * this.thermalDragFactor;
     const drag = this.currentEngineDrag;
 
     this.torqueScale = clamp(torqueScale, 0, 1);
     this.ignitionCut = this.isRevLimitingCut || this.torqueScale < 0.12;
     const firingScale = this.torqueScale * (1 - this.revLimiterCutAmount);
-    const baseTorque = this.torqueAtRPM(this.rpm) * this.cam.torqueFactor(this.rpm);
+    const baseTorque = this.torqueAtRPM(this.rpm) * this.cam.torqueFactor(this.rpm) * this.thermalPowerFactor;
     const induction = this.induction.update(dt, {
       config: this.config, type: this.forcedInduction, size: this.turboSize,
       maxBoost: this.maxBoost, displacement: this.displacement, rpm: this.rpm,
@@ -465,9 +554,20 @@ export class EngineModel {
     // is only a drivetrain planning limit, never a source of physical torque.
     this.combustionTorque += this.idleTorque;
     this.netTorque = this.combustionTorque - this.currentEngineDrag;
+    this.updateThermal(dt);
   }
 
   advanceStep(dt, { coupledRPM, loadTorque = 0 } = {}) {
+    if (this.turboshaft) {
+      this.rpm = Number.isFinite(coupledRPM) ? Math.max(0, coupledRPM)
+        : Math.max(0, this.rpm + (this.netTorque - loadTorque) / this.inertia * RPM_PER_RAD * dt);
+      if (!this.isIgnitionOn && this.rpm < 1) this.rpm = 0;
+      this.turboshaft.syncOutputRPM(this.rpm, dt);
+      this.syncTurboshaftState();
+      this.crankAngle = (this.crankAngle + this.rpm * 6 * dt) % 360;
+      this.peakCylinderPressure = '1.0';
+      return;
+    }
     if (this.jet) {
       // The single compressor/turbine core never locks to road speed or gears.
       this.crankAngle = (this.crankAngle + this.rpm * 6 * dt) % 360;
@@ -503,15 +603,16 @@ export class EngineModel {
     const Vc = 1 / (rc - 1);
     const manifoldP = this.induction.intakePressure / 100000;
     this.manifoldPressure = manifoldP.toFixed(2);
-    const radialGeometry = this.config.layout === 'radial' ? radialKinematics(this.crankAngle, this.config.cylinders) : null;
-    const radialTravel = radialGeometry ? radialPistonTravel(this.config.cylinders) : null;
+    const radialGeometry = this.config.layout === 'radial' ? radialEngineKinematics(this.crankAngle, this.config) : null;
+    const radialTravel = radialGeometry ? radialEnginePistonTravel(this.config) : null;
 
     for (const cyl of this.cylinderStates) {
       if (this.config.layout === 'rotary') {
         // Three faces each complete intake/compression/expansion/exhaust over
         // three shaft turns. Approximate port windows; no fictitious valve train.
+        const shaftAngle = rotaryShaftPhase(this.crankAngle, cyl.firingOffset, this.config.firingAngleKind);
         cyl.chambers = Array.from({ length: 3 }, (_, face) => {
-          const chamber = rotaryChamberState(this.crankAngle + cyl.firingOffset, face);
+          const chamber = rotaryChamberState(shaftAngle, face);
           const { phaseAngle: angle, stage, volume } = chamber;
           const u = angle % 270 / 270;
           const p = this.rpm < 1 ? manifoldP : stage === 1 ? manifoldP * (1 / volume) ** 1.3
@@ -519,7 +620,7 @@ export class EngineModel {
             : stage === 3 ? 1.05 + 3 * Math.exp(-u * 8) * this.manifoldThrottle : manifoldP;
           return { ...chamber, angle, pressure: p };
         });
-        cyl.phaseAngle = (this.crankAngle + cyl.firingOffset) % 1080;
+        cyl.phaseAngle = shaftAngle;
         cyl.stroke = cyl.chambers[0].stroke;
         cyl.intakeValve = cyl.exhaustValve = 0;
         cyl.gasPressure = Math.max(...cyl.chambers.map(c => c.pressure));
@@ -544,9 +645,34 @@ export class EngineModel {
         if (cyl.gasPressure > maxP) maxP = cyl.gasPressure;
         continue;
       }
-      const angle = radialGeometry ? radialCyclePhase(this.crankAngle, cyl.index, this.config.cylinders)
+      if (this.config.cycleKind === 'two-stroke') {
+        const phase = ((this.crankAngle - cyl.firingOffset) % 360 + 360) % 360;
+        const previous = ((previousAngle - cyl.firingOffset) % 360 + 360) % 360;
+        const state = twoStrokePortState(phase, this.config);
+        Object.assign(cyl, state);
+        // These are piston-controlled ports, never cam-actuated poppet valves.
+        cyl.intakeValve = cyl.exhaustValve = 0;
+        const crossesSpark = Math.floor((previous + deltaDeg) / 360) > Math.floor(previous / 360);
+        const firing = this.isIgnitionOn && !this.ignitionCut && !this.isRevLimitingCut;
+        cyl.sparkTimer = crossesSpark && firing ? 0.012 : Math.max(0, cyl.sparkTimer - dt);
+        cyl.isFiring = firing && state.isIgnitionPhase;
+        const volume = Vc + state.pistonPos;
+        const trappedVolume = Vc + twoStrokePortState(this.config.twoStrokePorts?.exhaustClose || 250, this.config).pistonPos;
+        let pressure = manifoldP;
+        if (state.portPhase === 'compression') pressure = manifoldP * (trappedVolume / volume) ** 1.32;
+        else if (state.portPhase === 'expansion') pressure = manifoldP * (trappedVolume / volume) ** 1.28
+          * (1 + (firing ? 2.3 * this.manifoldThrottle : 0));
+        else pressure = 1.02 + 2.8 * Math.exp(-Math.max(0, phase - 110) / 20) * this.manifoldThrottle * (firing ? 1 : 0);
+        cyl.gasPressure = this.rpm < 1 ? manifoldP : Math.max(1, pressure);
+        cyl.blowdownPulse = Math.max(0, cyl.gasPressure - 1) * state.exhaustPort;
+        cyl.gasTorque = (cyl.gasPressure - 1.013) * (this.displacement / 1000 / this.cylinderStates.length)
+          * 8.5 * Math.sin(phase * Math.PI / 180);
+        maxP = Math.max(maxP, cyl.gasPressure);
+        continue;
+      }
+      const angle = radialGeometry ? radialGeometry[cyl.index].phaseAngle
         : (this.crankAngle + (this.config.firingAngleKind === 'absolute' ? 360 - cyl.firingOffset : cyl.firingOffset) + 720) % 720;
-      const previous = radialGeometry ? radialCyclePhase(previousAngle, cyl.index, this.config.cylinders)
+      const previous = radialGeometry ? ((previousAngle - this.config.firingAngles[cyl.index] + 360) % 720 + 720) % 720
         : (previousAngle + (this.config.firingAngleKind === 'absolute' ? 360 - cyl.firingOffset : cyl.firingOffset) + 720) % 720;
       cyl.phaseAngle = angle;
       cyl.stroke = ['intake', 'compression', 'power', 'exhaust'][Math.floor(angle / 180)];
@@ -603,7 +729,8 @@ export class EngineModel {
 
   snapshot(popEvents = this.popEvents, bovEvents = this.bovEvents) {
     return { rpm: this.rpm, redlineRPM: this.redlineRPM, idleRPM: this.idleRPM,
-      propulsionKind: this.config.propulsionKind || 'shaft', ...(this.jet?.snapshot() || {}),
+      propulsionKind: this.config.propulsionKind || 'shaft', cycleKind: this.config.cycleKind || 'four-stroke',
+      ...(this.jet?.snapshot() || {}), ...(this.turboshaft?.snapshot() || {}), ...this.thermal.snapshot(),
       simTime: this.time, torqueScale: this.torqueScale, ignitionCut: this.ignitionCut,
       combustionTorque: this.combustionTorque, idleTorque: this.idleTorque,
       turboSize: this.turboSize, turboRPM: this.induction.turboRPM, superchargerRPM: this.induction.superchargerRPM,

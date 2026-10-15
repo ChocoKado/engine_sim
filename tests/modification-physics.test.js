@@ -27,7 +27,7 @@ function assertLiveMatchesDyno(engine, rpm) {
 }
 
 test('all stock engines enter idle catch without a torque step across the former 100 RPM boundary', () => {
-  for (const id of Object.keys(ENGINE_CONFIGS).filter(id => ENGINE_CONFIGS[id].propulsionKind !== 'turbojet')) {
+  for (const id of Object.keys(ENGINE_CONFIGS).filter(id => !['turbojet', 'turboshaft'].includes(ENGINE_CONFIGS[id].propulsionKind))) {
     const engine = new EngineModel(id, 'oem', () => 0.5);
     engine.setRunning(true);
     engine.rpm = engine.idleRPM + 100.1;
@@ -42,7 +42,7 @@ test('all stock engines enter idle catch without a torque step across the former
 });
 
 test('stock neutral coast-down remains physical and settles to idle after the continuous catch', () => {
-  for (const id of Object.keys(ENGINE_CONFIGS).filter(id => ENGINE_CONFIGS[id].propulsionKind !== 'turbojet')) {
+  for (const id of Object.keys(ENGINE_CONFIGS).filter(id => !['turbojet', 'turboshaft'].includes(ENGINE_CONFIGS[id].propulsionKind))) {
     const engine = new EngineModel(id, 'oem', () => 0.5);
     const drive = new Drivetrain(engine);
     engine.setRunning(true);
@@ -61,7 +61,7 @@ test('stock neutral coast-down remains physical and settles to idle after the co
 });
 
 test('complete ignition cuts cannot produce idle combustion or carry an external load in any engine', () => {
-  for (const id of Object.keys(ENGINE_CONFIGS).filter(id => ENGINE_CONFIGS[id].propulsionKind !== 'turbojet')) for (const type of (ENGINE_CONFIGS[id].layout === 'turbine' ? ['na'] : ['na', 'supercharger'])) {
+  for (const id of Object.keys(ENGINE_CONFIGS).filter(id => !['turbojet', 'turboshaft'].includes(ENGINE_CONFIGS[id].propulsionKind))) for (const type of (ENGINE_CONFIGS[id].builtInInduction ? ['na'] : ['na', 'supercharger'])) {
     const engine = make(id, type);
     if (type === 'supercharger') engine.setMaxBoost(3);
     engine.setRunning(true);
@@ -81,7 +81,7 @@ test('complete ignition cuts cannot produce idle combustion or carry an external
 });
 
 test('partial ignition cuts retain bounded idle air authority rather than bypassing the cut', () => {
-  for (const id of Object.keys(ENGINE_CONFIGS).filter(id => ENGINE_CONFIGS[id].propulsionKind !== 'turbojet')) {
+  for (const id of Object.keys(ENGINE_CONFIGS).filter(id => !['turbojet', 'turboshaft'].includes(ENGINE_CONFIGS[id].propulsionKind))) {
     const full = make(id), half = make(id);
     for (const engine of [full, half]) {
       engine.setRunning(true);
@@ -147,6 +147,13 @@ test('modification API rejects invalid parts, respects architecture and inductio
     assert.equal(engine.modifications.intake, 'sport', 'telemetry must not expose mutable tuning state');
     engine.setConfig(id);
     assert.ok(Object.values(engine.modifications).every(value => value === 'stock'));
+    if (config.builtInInduction) {
+      assert.equal(engine.setForcedInduction('supercharger'), false);
+      assert.equal(engine.setMaxBoost(3), false);
+      assert.equal(engine.setModification('pulley', 'overdrive'), false);
+      assert.equal(engine.setModification('intercooler', 'upgraded'), false);
+      continue;
+    }
     engine.setForcedInduction('supercharger');
     assert.equal(engine.setModification('pulley', 'overdrive'), true);
     assert.equal(engine.setModification('intercooler', 'upgraded'), true);

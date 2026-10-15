@@ -68,6 +68,22 @@ export class JetBenchPanel {
     this.create('h3', '', 'J85-GE-21 · 海平面靜態基準', this.setup);
     this.create('p', '', '最大乾推力 15.50 kN；額定後燃推力 22.24 kN。用油門控制燃油調度，後燃器在高 N1 且接近全油門時才允許接通。', this.setup);
     this.create('p', 'meta-desc', 'N1 以額定核心轉速百分比顯示。公開資料未確認精確軸轉速，因此不把內部聲學／動畫參考 RPM 當作實機規格。', this.setup);
+    const startLabel = this.create('label', 'lab-field', '啟動情境（停機且轉子停妥後設定）', this.setup);
+    this.scenario = this.create('select', '', null, startLabel); this.scenario.setAttribute('id', 'jet-start-scenario');
+    for (const [value, text] of [['normal', '正常啟動'], ['no-lightoff', '未點火 · 中止並乾轉吹除'], ['hot-start', '熱啟動 · EGT 過高保護']]) {
+      const option = this.create('option', '', text, this.scenario); option.value = value;
+    }
+    this.onScenario = () => {
+      const accepted = this.engine.setStartScenario(this.scenario.value);
+      if (!accepted) this.scenario.value = this.engine.jet?.startScenario || 'normal';
+      write(this.startMessage, accepted ? '情境已設定；按啟動開始。' : '請停機並等待轉子停止、溫度下降。');
+    };
+    this.scenario.addEventListener('change', this.onScenario);
+    this.resetFault = this.create('button', 'lab-button', '清除故障／準備重啟', this.setup); this.resetFault.setAttribute('id', 'jet-reset-fault'); this.resetFault.type = 'button';
+    this.onResetFault = () => write(this.startMessage, this.engine.resetStartFault() ? '故障已清除；選擇正常情境後可再啟動。' : '請先熄火，等待轉子低於 1% 且 EGT 低於 200°C。');
+    this.resetFault.addEventListener('click', this.onResetFault);
+    this.startMessage = this.create('p', 'lab-message', '', this.setup); this.startMessage.setAttribute('aria-live', 'polite');
+    this.create('p', 'meta-desc', '流程：起動馬達吹除 → 供油點火 → 怠速穩定。異常會切斷燃油並乾轉吹除；故障溫度門檻與時序為教學估算，非飛行操作程序。', this.setup);
     const link = this.create('a', '', 'NASA J85-21 實驗資料 ↗', this.setup);
     link.setAttribute('href', 'https://ntrs.nasa.gov/citations/19800012848');
     link.setAttribute('target', '_blank');
@@ -163,10 +179,12 @@ export class JetBenchPanel {
     text('cockpit-speed-value', number(state.fuelFlowKgS, 2));
     text('driving-displacement', `${n1}% N1`);
     text('driving-peak-hp', `${number(this.engine.config.ratedAfterburnerThrustN / 1000, 2)} kN`);
-    const status = state.starterActive ? 'STARTING' : state.isIgnitionOn
+    const phases = { purge: 'PURGE · 乾轉', lightoff: 'LIGHTOFF · 點火', running: state.afterburnerAmount > 0.05 ? 'AFTERBURNER' : 'RUNNING', abort: 'ABORT · 中止', cooldown: 'COOLDOWN · 降溫' };
+    const status = state.faultCode ? `${state.faultCode} · ${phases[state.startState] || state.startState}` : phases[state.startState] || (state.starterActive ? 'STARTING' : state.isIgnitionOn
       ? state.afterburnerAmount > 0.05 ? 'AFTERBURNER' : 'RUNNING'
-      : state.corePercent > 0.1 ? 'SPOOLING DOWN' : 'STANDBY';
+      : state.corePercent > 0.1 ? 'SPOOLING DOWN' : 'STANDBY');
     write(this.status, status);
+    if (this.scenario) { this.scenario.value = this.engine.jet?.startScenario || 'normal'; this.scenario.disabled = state.isIgnitionOn || state.corePercent > 1; }
     this.afterburner.checked = Boolean(state.afterburnerEnabled);
     write(this.abStatus, !state.afterburnerEnabled ? 'OFF' : state.afterburnerAmount > 0.05
       ? `${number(state.afterburnerAmount * 100)}%` : 'ARMED · 等待高 N1');
@@ -180,6 +198,8 @@ export class JetBenchPanel {
   }
 
   destroy() {
+    this.scenario?.removeEventListener('change', this.onScenario);
+    this.resetFault?.removeEventListener('click', this.onResetFault);
     this.afterburner?.removeEventListener('change', this.onAfterburner);
     for (const [node, original] of this.labels) write(node, original);
     for (const [node, original] of this.attributes) node.setAttribute('aria-label', original || '');

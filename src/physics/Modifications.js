@@ -28,6 +28,10 @@ export const MODIFICATION_CATALOG = Object.freeze([
     purpose: '提高機械增壓器轉子傳動比，增加供氣、增壓與尖叫聲階次。',
     tradeoff: '同步增加曲軸耗功與壓縮熱；不適用排氣驅動的 Turbo。',
     options: [{ value: 'stock', label: '基準傳動比' }, { value: 'overdrive', label: '轉子增速 ×1.10' }] },
+  { id: 'radiator', name: '冷卻水箱', mount: '液冷引擎前方水箱與風扇',
+    purpose: '增加熱交換能力與冷卻液熱容量，降低持續負載的過熱與熱衰退。',
+    tradeoff: '不直接增加馬力；熱容量較大，冷車暖機稍慢。風冷與航空渦輪不適用。',
+    options: [{ value: 'stock', label: '原廠水箱' }, { value: 'upgraded', label: '加大高效率水箱' }] },
 ]);
 
 export function createStockModifications() {
@@ -39,7 +43,9 @@ export function isModificationSupported(config, induction, kind) {
   // These are road-engine hardware packages, not turbine compressor maps,
   // combustor/nozzle changes or replaceable aviation rotor assemblies.
   if (['turbine', 'turbojet'].includes(config.layout)) return false;
-  if (kind === 'camshaft') return !['rotary', 'radial', 'turbine', 'turbojet'].includes(config.layout);
+  if (config.builtInInduction && ['intercooler', 'pulley'].includes(kind)) return false;
+  if (kind === 'radiator') return config.layout !== 'radial' && config.coolingKind !== 'air';
+  if (kind === 'camshaft') return config.cycleKind !== 'two-stroke' && !['rotary', 'radial', 'turbine', 'turbojet'].includes(config.layout);
   if (kind === 'intercooler') return induction !== 'na';
   if (kind === 'pulley') return induction === 'supercharger';
   return true;
@@ -62,8 +68,11 @@ export function modificationEffects(config, mods = {}, rpm = 0, displacement = c
   const band = smooth(clamp((rpm / reference - 0.25) / 0.65, 0, 1));
   let torqueFactor = 1;
   if (mods.intake === 'sport') torqueFactor *= 1 + 0.025 * band;
-  if (mods.headers === 'tuned') torqueFactor *= 0.99 + 0.045 * band;
-  if (mods.camshaft === 'sport' && !['radial', 'rotary', 'turbine', 'turbojet'].includes(config.layout)) torqueFactor *= 0.96 + 0.105 * band;
+  if (mods.headers === 'tuned') torqueFactor *= config.cycleKind === 'two-stroke'
+    ? 0.95 + 0.12 * Math.exp(-0.5 * ((rpm / reference - 0.90) / 0.20) ** 2)
+    : 0.99 + 0.045 * band;
+  if (mods.camshaft === 'sport' && config.cycleKind !== 'two-stroke'
+    && !['radial', 'rotary', 'turbine', 'turbojet'].includes(config.layout)) torqueFactor *= 0.96 + 0.105 * band;
   return { torqueFactor,
     inertiaFactor: mods.flywheel === 'light' ? 0.70 : 1,
     fillRateFactor: mods.intake === 'sport' ? 1.15 : 1,

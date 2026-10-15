@@ -227,8 +227,10 @@ export class GaugeRenderer {
   renderTachometer(engine, drivetrain, dt = 1 / 60) {
     if (!this.tachoCtx || !this.tachoSize) return;
     const jet = engine.config?.propulsionKind === 'turbojet' || engine.config?.layout === 'turbojet';
-    const mode = jet ? 'core-percent' : 'rpm';
-    const target = jet ? Math.max(0, Number(engine.corePercent) || 0) : engine.isIgnitionOn ? engine.rpm : 0;
+    const shaft = engine.config?.propulsionKind === 'turboshaft';
+    const mode = jet ? 'core-percent' : shaft ? 'output-rpm' : 'rpm';
+    const target = jet ? Math.max(0, Number(engine.corePercent) || 0)
+      : shaft ? Math.max(0, Number(engine.outputShaftRPM ?? engine.rpm) || 0) : engine.isIgnitionOn ? engine.rpm : 0;
     if (this.tachoMode !== mode) {
       this.tachoMode = mode;
       this.needleRPM = target;
@@ -253,7 +255,7 @@ export class GaugeRenderer {
     const majorStep = redline > 40000 ? 10000 : redline > 20000 ? 5000 : redline > 10000 ? 2000 : redline < 5000 ? 500 : 1000;
     const maximum = Math.ceil((redline + majorStep * 0.5) / majorStep) * majorStep;
     const dial = this.beginDial(this.tachoCtx, this.tachoSize);
-    this.drawDialScale(this.tachoCtx, dial, maximum, majorStep, 'RPM', '×1000 r/min', redline);
+    this.drawDialScale(this.tachoCtx, dial, maximum, majorStep, shaft ? 'OUTPUT' : 'RPM', '×1000 r/min', redline);
     this.drawDialNeedle(this.tachoCtx, dial, this.needleRPM, maximum);
     this.tachoCtx.restore();
   }
@@ -320,7 +322,8 @@ export class GaugeRenderer {
       ctx.lineTo(0, center + side * 42); ctx.closePath(); ctx.fill(); ctx.stroke();
     }
     const burning = typeof engine.isCombusting === 'boolean' ? engine.isCombusting : engine.isIgnitionOn && engine.rpm > 0;
-    const afterburner = jet && burning ? Math.max(0, Math.min(1, Number(engine.afterburnerAmount) || 0)) : 0;
+    const afterburner = Math.max(jet && burning ? Math.max(0, Math.min(1, Number(engine.afterburnerAmount) || 0)) : 0,
+      jet ? Math.max(0, Math.min(1, Number(engine.faultFireAmount) || 0)) * .85 : 0);
     if (afterburner > 0) {
       const length = Math.max(1, (w - exit - 12) * afterburner);
       const plume = ctx.createLinearGradient(exit, 0, exit + length, 0);

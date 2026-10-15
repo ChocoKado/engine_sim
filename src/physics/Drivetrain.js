@@ -316,7 +316,7 @@ export class Drivetrain {
 
   stepShift(dt, throttle) {
     const e = this.engine;
-    const peak = e.dynoData.maxTorque;
+    const peak = e.referenceTorqueCapacity || e.dynoData.maxTorque;
     this.shiftElapsed += dt;
     this.shiftTimer = Math.max(0, this.shiftDuration - this.shiftElapsed);
     const releaseTime = this.mode === 'at' ? 0.045 : 0.018;
@@ -336,6 +336,7 @@ export class Drivetrain {
     const cutTorque = this.isUpshift ? (this.mode === 'amt' ? 0.06 : 0.40) : Math.max(0.25, 1 - release);
     this.shiftPhase = recovering ? 'recover' : this.shiftElapsed < releaseTime ? 'release' : 'synchronize';
     this.cutAmount = recovering ? (1 - recovery) * (1 - cutTorque) : 1 - cutTorque;
+    if (e.turboshaft) this.cutAmount = 0;
     e.prepareStep(dt, commandedThrottle, { torqueScale: recovering ? cutTorque + recovery * (1 - cutTorque)
       : needsBlip ? 1 : cutTorque });
     let locked = false;
@@ -378,6 +379,7 @@ export class Drivetrain {
 
   step(dt, throttle) {
     const e = this.engine;
+    e.roadSpeedKmh = this.speedKmh;
     if (e.config.propulsionKind === 'turbojet') {
       this.mode = 'bench';
       this.currentGear = 0;
@@ -406,7 +408,7 @@ export class Drivetrain {
       return;
     }
 
-    const peak = e.dynoData.maxTorque;
+    const peak = e.referenceTorqueCapacity || e.dynoData.maxTorque;
     const wheelRPM = this.calcRPMFromSpeed(this.currentGear, this.speedKmh);
     if (this.shiftState === 'locked' && wheelRPM > e.idleRPM * 1.12) {
       if (!this.couple(dt, this.currentGear, peak * 3)) {

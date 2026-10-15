@@ -258,11 +258,12 @@ test('switching from the bench back to a road engine removes jet state and resto
   assert.equal(drive.distanceMeters, 0);
 });
 
-test('the legacy turboshaft road demonstration is explicitly estimated and rejects piston hardware and external compressors', () => {
+test('the M250 reference identifies its two independent shafts and estimated road load while rejecting piston hardware', () => {
   const e = new EngineModel('gas_turbine', 'oem');
-  assert.equal(e.config.curveKind, 'estimate');
+  assert.equal(e.config.propulsionKind, 'turboshaft');
+  assert.equal(e.config.curveKind, 'published-rated-point-estimated-transient');
   assert.equal(VEHICLE_PROFILES.gas_turbine.gearingKind, 'experimental');
-  assert.match(e.config.description, /單軸簡化.*未模擬.*雙軸/);
+  assert.match(e.config.description, /雙軸.*N1.*N2/);
   assert.equal(e.setForcedInduction('turbo'), false);
   assert.equal(e.setForcedInduction('supercharger'), false);
   for (const part of MODIFICATION_CATALOG) assert.equal(e.setModification(part.id, part.options[1].value), false);

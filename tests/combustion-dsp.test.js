@@ -51,7 +51,10 @@ test('all configurations remain finite and bounded at low/high sample rates and 
     for (const config of Object.values(ENGINE_CONFIGS)) {
       const dsp = new CombustionDSP(sampleRate);
       dsp.configure({ ...config, displacement: config.maxDisplacement });
-      const data = render(dsp, { rpm: config.defaultRedlineRPM, load: 1.6, limiter: 1 });
+      // The turbine DSP receives the gas-generator speed, not the reduced
+      // output-shaft speed that the road engine now exposes as engine.rpm.
+      const data = render(dsp, { rpm: config.turboshaftDesign?.ratedCoreRPM || config.defaultRedlineRPM,
+        powerTurbineRPM: config.turboshaftDesign?.ratedPowerTurbineRPM || 0, load: 1.6, limiter: 1 });
       assert.ok(data.every(value => Number.isFinite(value) && Math.abs(value) < 0.79), `${config.id} at ${sampleRate}`);
       assert.ok(rms(data) > 0.005, 'redline limiter retains gas pumping and mechanical sound');
     }

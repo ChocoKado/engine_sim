@@ -48,11 +48,14 @@ function fixture(id, mode, displacement, mass) {
 // Full Cartesian coverage, including a heavy car load on a small motorcycle
 // engine. Finishing with an honest 120-second timeout is legitimate when the
 // selected gearing/power cannot reach 200; a stall or silent restart is not.
-for (const [id, config] of Object.entries(ENGINE_CONFIGS).filter(([, config]) => !['turbine', 'turbojet'].includes(config.layout))) {
+for (const [id, config] of Object.entries(ENGINE_CONFIGS).filter(([, config]) => !config.builtInInduction && !['turbine', 'turbojet'].includes(config.layout))) {
   for (const mode of ['at', 'amt']) {
     const referenceMass = new Drivetrain(new EngineModel(id)).vehicleMass;
     for (const displacement of [...new Set([config.minDisplacement, config.defaultDisplacement, config.maxDisplacement])]) {
-      for (const mass of [...new Set([180, referenceMass, 3000])]) {
+      // The 250 cc two-stroke cannot pull a 3-tonne chassis against rolling
+      // resistance at its estimated boosted low-speed torque. Exercise that
+      // honest no-launch state separately, rather than require invented power.
+      for (const mass of [...new Set([180, referenceMass, config.cycleKind === 'two-stroke' ? 600 : 3000])]) {
         test(`${id}/${mode}/${displacement}cc/${mass}kg: 3bar launch, completed run, ECU changes, braking and reset`, () => {
           const f = fixture(id, mode, displacement, mass);
           f.wait(1, 0, 1);
@@ -86,3 +89,19 @@ for (const [id, config] of Object.entries(ENGINE_CONFIGS).filter(([, config]) =>
     }
   }
 }
+
+test('a 250cc two-stroke with a three-tonne research load reports no launch without fabricating acceleration or stalling', () => {
+  const f = fixture('two_stroke_2', 'amt', 250, 3000);
+  f.wait(1, 0, 1);
+  f.meter.arm({ time: f.engine.time, speed: 0, distance: f.drive.distanceMeters, running: true, gear: 1 }, { model: 'two_stroke_2' });
+  f.wait(121, 1);
+  assert.equal(f.meter.state, 'cancelled');
+  assert.match(f.meter.message, /起步逾時/);
+  assert.equal(f.drive.speedKmh, 0); assert.equal(f.drive.distanceMeters, 0);
+  assert.equal(f.engine.isIgnitionOn, true); assert.equal(f.engine.isStalled, false);
+  f.stop(); f.reset(); f.wait(3, 1);
+  assert.equal(f.engine.isIgnitionOn, true);
+  // The same engine/tune immediately drives a physically appropriate load.
+  f.drive.setVehicleMass(600); f.reset(); f.wait(3, 1);
+  assert.ok(f.drive.speedKmh > 0);
+});

@@ -129,3 +129,12 @@ test('static turbojet dials use N1 percent and thrust kN, including coasting and
   assert.equal(gauge.needleRPM, 4500, 'changing units cannot leave a percent value on an RPM dial');
   assert.equal(gauge.needleSpeed, 80);
 });
+
+test('turboshaft road tachometer reads reduced output RPM and retains coasting independently of its N1 core', () => {
+  const { gauge, tacho } = cockpit();
+  const engine = { config:ENGINE_CONFIGS.gas_turbine,redlineRPM:6016,isIgnitionOn:false,
+    rpm:1600,outputShaftRPM:1600,coreRPM:50970,corePercent:100 };
+  gauge.renderTachometer(engine,{},0);
+  assert.equal(gauge.needleRPM,1600);
+  assert.ok(tacho.calls.some(call=>call[0]==='fillText'&&call[1]==='OUTPUT'));
+});

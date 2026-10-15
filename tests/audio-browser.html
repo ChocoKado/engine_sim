@@ -34,9 +34,12 @@ const silenceEngine = sound => {
     sound[name].gain.setValueAtTime(0, 0);
   }
 };
-async function render({ mode = 'at', muted = false, stopped = false, config = ENGINE_CONFIGS.i4_flat, induction = 'na', isolate = '', ecuMode = 'soft', limiterCut = 0, limiterHz = 18, camBlend = 0, intakeHardwareGain = 1 } = {}) {
+async function render({ mode = 'at', muted = false, stopped = false, config = ENGINE_CONFIGS.i4_flat, induction = 'na', isolate = '', ecuMode = 'soft', limiterCut = 0, limiterHz = 18, camBlend = 0, intakeHardwareGain = 1,
+  listeningPosition = 'balanced', fallback = false } = {}) {
   const context = new OfflineAudioContext(1, 76800, sampleRate);
   const sound = new SoundEngine(() => context);
+  if (fallback) sound.setupPressureGenerator = async () => {};
+  sound.setListeningPosition(listeningPosition);
   sound.setVolume(muted ? 0 : 0.5);
   sound.setEngineConfig(config);
   await sound.init();
@@ -161,13 +164,14 @@ async function renderRotaryModeChanges() {
   return { data: (await rendering).getChannelData(0), backend: sound.acousticBackend };
 }
 async function renderTurbine({ config = ENGINE_CONFIGS.gas_turbine, rpm = 30000, afterburner = 0,
-  fallback = false, muted = false, coast = false } = {}) {
+  fallback = false, muted = false, coast = false, powerTurbineRPM = 0, listeningPosition = 'balanced' } = {}) {
   const context = new OfflineAudioContext(1, sampleRate * 3, sampleRate);
   const sound = new SoundEngine(() => context);
+  sound.setListeningPosition(listeningPosition);
   if (fallback) sound.setupPressureGenerator = async () => {};
   sound.setVolume(muted ? 0 : 0.5); sound.setEngineConfig(config);
   await sound.init(); sound.setRunning(true);
-  const state = { rpm, coreRPM: rpm, throttle: 0.85, isIgnitionOn: true, isCombusting: true,
+  const state = { rpm, coreRPM: rpm, powerTurbineRPM, throttle: 0.85, isIgnitionOn: true, isCombusting: true,
     massFlowKgS: 18, jetVelocity: 1000, pressureRatio: 8.3, afterburnerAmount: afterburner };
   sound.update(state, config);
   if (!coast) return { data: (await context.startRendering()).getChannelData(0), backend: sound.acousticBackend };
@@ -178,7 +182,7 @@ async function renderTurbine({ config = ENGINE_CONFIGS.gas_turbine, rpm = 30000,
   sound.update({ ...state, coreRPM: rpm * 0.4, rpm: rpm * 0.4, isIgnitionOn: false,
     isCombusting: false, afterburnerAmount: 0, massFlowKgS: 4, jetVelocity: 100 }, config);
   suspended = context.suspend(2); await context.resume(); await suspended;
-  sound.update({ ...state, coreRPM: 0, rpm: 0, isIgnitionOn: false,
+  sound.update({ ...state, coreRPM: 0, rpm: 0, powerTurbineRPM: 0, isIgnitionOn: false,
     isCombusting: false, afterburnerAmount: 0, massFlowKgS: 0, jetVelocity: 0 }, config);
   await context.resume();
   return { data: (await rendering).getChannelData(0), backend: sound.acousticBackend };
@@ -366,6 +370,41 @@ try {
     `滑降 RMS ${rms(jetCoast.data, 1.4, 1.9).toFixed(4)}；停止 ${rms(jetCoast.data, 2.6, 2.9).toExponential(2)}`);
   const silentJet = await renderTurbine({ config: ENGINE_CONFIGS.turbojet, muted: true, afterburner: 1 });
   check('連續噴射／後燃聲浪仍遵守靜音', rms(silentJet.data) === 0, 'RMS = ' + rms(silentJet.data));
+  for (const fallback of [false, true]) {
+    const prefix = fallback ? '備援' : 'Worklet';
+    const intake = await render({ fallback, isolate: 'intakeGain', listeningPosition: 'intake' });
+    const rearIntake = await render({ fallback, isolate: 'intakeGain', listeningPosition: 'exhaust' });
+    check(prefix + ' 進氣側增加進氣聲源、排氣側降低進氣聲源', finite(intake.data)
+      && rms(intake.data, 0.2, 0.4) > rms(rearIntake.data, 0.2, 0.4) * 3,
+      `進氣源 RMS ${rms(intake.data, 0.2, 0.4).toFixed(4)} / ${rms(rearIntake.data, 0.2, 0.4).toFixed(4)}`);
+    const source = fallback ? 'combustionGain' : 'pressureGain';
+    const exhaust = await render({ fallback, isolate: source, listeningPosition: 'exhaust' });
+    const frontExhaust = await render({ fallback, isolate: source, listeningPosition: 'intake' });
+    check(prefix + ' 排氣側實際增加排氣聲源', finite(exhaust.data)
+      && rms(exhaust.data, 0.2, 0.4) > rms(frontExhaust.data, 0.2, 0.4) * 1.5,
+      `排氣源 RMS ${rms(exhaust.data, 0.2, 0.4).toFixed(4)} / ${rms(frontExhaust.data, 0.2, 0.4).toFixed(4)}`);
+    const mechanics = await render({ fallback, isolate: 'subBassGain', listeningPosition: 'mechanical' });
+    const rearMechanics = await render({ fallback, isolate: 'subBassGain', listeningPosition: 'exhaust' });
+    check(prefix + ' 機械側增加旋轉階次而非主音量', finite(mechanics.data)
+      && rms(mechanics.data, 0.2, 0.4) > rms(rearMechanics.data, 0.2, 0.4) * 3,
+      `機械源 RMS ${rms(mechanics.data, 0.2, 0.4).toFixed(4)} / ${rms(rearMechanics.data, 0.2, 0.4).toFixed(4)}`);
+    const dual = await renderTurbine({ fallback, rpm: 50970, powerTurbineRPM: 33290 });
+    check(prefix + ' 雙軸渦輪同時呈現 N1 與獨立 Np 階次', finite(dual.data)
+      && normalizedTone(dual.data, 50970 / 60, 0.5, 2.9) > 0.1
+      && normalizedTone(dual.data, 33290 / 60, 0.5, 2.9) > 0.1,
+      `N1 / Np = ${normalizedTone(dual.data, 50970 / 60, 0.5, 2.9).toFixed(3)} / ${normalizedTone(dual.data, 33290 / 60, 0.5, 2.9).toFixed(3)}`);
+  }
+  for (const id of ['two_stroke_2', 'v4', 'vr6', 'w12', 'rotary_4', 'v16', 'radial_18']) {
+    const config = ENGINE_CONFIGS[id];
+    if (!config) throw new Error('缺少新增架構音效測試配置 ' + id);
+    for (const fallback of [false, true]) {
+      const { data, backend } = await render({ config, fallback });
+      check(id + (fallback ? ' 備援聲源' : ' 實際 Worklet') + ' 產生相位點火聲且穩定無削波',
+        backend === (fallback ? 'oscillator-fallback' : 'pressure-worklet')
+          && finite(data) && rms(data, 0.2, 0.4) > 0.002,
+        `RMS = ${rms(data, 0.2, 0.4).toFixed(4)}`);
+    }
+  }
   addAudioPreview(rotaryIdle['stock:straight'], '原廠轉子怠速', 'rotary-stock-idle.wav');
   addAudioPreview(rotaryIdle['brap:straight'], '改裝 Brap 怠速', 'rotary-brap-idle.wav');
   lines.push('全部 ' + count + ' 項音訊渲染檢查通過');

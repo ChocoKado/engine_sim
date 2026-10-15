@@ -190,3 +190,94 @@ test('native emergency fallback follows absolute rotor RPM above 24000 and mode 
   sound.setRunning(true);
   assert.ok(sound.combustionGain.gain.value > 0);
 });
+
+test('free-power turbine acoustics resolve independently moving gas-generator and power-turbine spools', () => {
+  const config = { ...ENGINE_CONFIGS.gas_turbine, defaultRedlineRPM: 6016,
+    turboshaftDesign: { ratedCoreRPM: 50970, ratedPowerTurbineRPM: 33290 } };
+  const outputs = [18000, 33290].map(powerTurbineRPM => {
+    const { processor } = worklet(config);
+    const data = new Float32Array(sampleRate * 2);
+    processor.process([], [[data]], { rpm: 50970, powerTurbineRPM, turbineFlow: 0.8, turbineFuel: 1 });
+    const steady = data.subarray(sampleRate);
+    assert.ok(tone(steady, 50970 / 60) > 0.04, 'N1 remains audible at the gas-generator speed');
+    assert.ok(tone(steady, powerTurbineRPM / 60) > 0.025, 'Np follows the independent free-power turbine');
+    return steady;
+  });
+  assert.ok(tone(outputs[0], 300) > tone(outputs[1], 300) * 4);
+  assert.ok(tone(outputs[1], 33290 / 60) > tone(outputs[0], 33290 / 60) * 4);
+  assert.ok(Math.abs(tone(outputs[0], 50970 / 60) - tone(outputs[1], 50970 / 60)) < 0.002,
+    'changing a loaded output spool cannot repitch the gas generator');
+});
+
+test('dual-spool SoundEngine follows N1 and Np rather than the road output shaft, in both fallback paths', async () => {
+  for (const ContextType of [Context, CallbackContext]) {
+    const sound = new SoundEngine(() => new ContextType());
+    sound.setEngineConfig(ENGINE_CONFIGS.gas_turbine); await sound.init(); sound.setRunning(true);
+    const state = { rpm: 6016, coreRPM: 50970, powerTurbineRPM: 33290, isCombusting: true, throttle: 1 };
+    sound.update(state, ENGINE_CONFIGS.gas_turbine);
+    assert.equal(sound.turbineParameters.rpm, 50970);
+    assert.equal(sound.turbineParameters.powerTurbineRPM, 33290);
+    if (sound.turbineNativeOsc) {
+      assert.equal(sound.turbineNativeOsc.frequency.value, 50970 / 60);
+      assert.equal(sound.turbineNativePowerOsc.frequency.value, 33290 / 60);
+    }
+    sound.update({ ...state, rpm: 3500 }, ENGINE_CONFIGS.gas_turbine, { isShifting: true, cutAmount: 1 });
+    assert.equal(sound.turbineParameters.rpm, 50970, 'a gearbox speed drop is not a gas-generator speed drop');
+    assert.equal(sound.turbineParameters.powerTurbineRPM, 33290);
+  }
+});
+
+test('listening position changes individual piston source balance and filters without changing volume or engine state', async () => {
+  const sound = new SoundEngine(() => new Context());
+  assert.equal(sound.setListeningPosition('not-a-position'), false);
+  assert.equal(sound.setListeningPosition('intake'), true);
+  await sound.init(); sound.setRunning(true);
+  const state = { rpm: 7000, manifoldThrottle: 0.8, displacement: 1000, forcedInduction: 'na' };
+  sound.update(state, ENGINE_CONFIGS.i4_cross, { speedKmh: 90, currentGear: 3 });
+  const intake = { intake: sound.intakeGain.gain.value, exhaust: sound.combustionGain.gain.value,
+    mechanical: sound.subBassGain.gain.value, cutoff: sound.mufflerLowpass1.frequency.value };
+  const volume = sound.masterGain.gain.value;
+  sound.setListeningPosition('exhaust');
+  assert.ok(sound.combustionGain.gain.value > intake.exhaust * 3);
+  assert.ok(sound.intakeGain.gain.value < intake.intake * 0.3);
+  assert.ok(sound.mufflerLowpass1.frequency.value > intake.cutoff);
+  sound.setListeningPosition('mechanical');
+  assert.ok(sound.subBassGain.gain.value > intake.mechanical * 3);
+  assert.equal(sound.masterGain.gain.value, volume, 'position changes source balance, not the user volume');
+  assert.deepEqual(state, { rpm: 7000, manifoldThrottle: 0.8, displacement: 1000, forcedInduction: 'na' });
+  sound.setVolume(0); sound.setListeningPosition('exhaust'); sound.setRunning(false); sound.setListeningPosition('intake');
+  assert.equal(sound.masterGain.gain.value, 0);
+  assert.equal(sound.outputGain.gain.value, 0);
+});
+
+test('Worklet and callback turbine listening positions change rotor-to-exhaust balance rather than only total level', () => {
+  const renderMix = (mechanicalMix, exhaustMix) => {
+    const { processor } = worklet(ENGINE_CONFIGS.turbojet);
+    const data = new Float32Array(sampleRate * 2);
+    const params = { ...parameters, rpm: 15000, turbineFlow: 1, jetVelocity: 1000,
+      mechanicalMix, exhaustMix, intakeMix: 0.4 };
+    processor.process([], [[data]], params);
+    const fallback = new TurbineDSP(); fallback.configure(ENGINE_CONFIGS.turbojet);
+    assert.deepEqual(data, fallback.process(new Float32Array(data.length), params));
+    return data.subarray(sampleRate);
+  };
+  const mechanics = renderMix(3, 0.24), exhaust = renderMix(0.4, 1.4);
+  const ratio = data => tone(data, 250) / rms(data);
+  assert.ok(ratio(mechanics) > ratio(exhaust) * 2, 'mechanical observation foregrounds rotor orders over the broad hot plume');
+  assert.ok(tone(mechanics, 250) > tone(exhaust, 250) * 3);
+});
+
+test('callback listening changes preserve rotor phase and avoid an instantaneous gain step', () => {
+  const dsp = new TurbineDSP();
+  dsp.configure(ENGINE_CONFIGS.gas_turbine);
+  dsp.random = () => 0;
+  const params = { rpm: 30000, powerTurbineRPM: 18000, turbineFlow: 0.8, turbineFuel: 0 };
+  render(dsp, params);
+  const phase = dsp.phase;
+  const single = dsp.process(new Float32Array(1), { ...params, mechanicalMix: 3 });
+  assert.ok(Math.abs(dsp.phase - ((phase + 500 / sampleRate) % 1)) < 1e-9,
+    'changing observation position cannot reset the phase of a turning shaft');
+  assert.ok(dsp.mechanicalMix > 1 && dsp.mechanicalMix < 1.01,
+    'the callback backend must slew the mix rather than tripling one sample');
+  assert.ok(Number.isFinite(single[0]));
+});

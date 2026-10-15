@@ -716,3 +716,19 @@ body.driving-active {
 @media (prefers-reduced-motion: reduce) {
   .driving-active .pedal-unit, .driving-active .garage-tab, .driving-active .engine-start-btn { transition: none; }
 }
+.simulation-lab { padding: 18px; border: 1px solid #30333f; border-radius: 16px; background: #15161e; margin-top: 16px; min-width: 0; }
+.simulation-lab h3 { font-size: 16px; color: #fafafa; margin: 0 0 14px; }
+.lab-field { display: flex; flex-direction: column; gap: 7px; font-size: 12px; color: #b1b5c3; margin: 12px 0; min-width: 0; }
+.lab-field select, .lab-field input { width: 100%; min-width: 0; background: #22242f; color: #f4f4f6; border: 1px solid #3d414f; border-radius: 9px; padding: 11px; font: inherit; font-size: 14px; }
+.lab-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.lab-button { padding: 10px 14px; background: #272b39; color: #fff; border: 1px solid #414655; border-radius: 9px; cursor: pointer; min-height: 42px; }
+.lab-button:hover { border-color: #ff953f; }
+.lab-button:disabled { cursor: default; opacity: .45; }
+.lab-check { display: flex; align-items: center; gap: 9px; color: #d9dbe4; font-size: 13px; padding: 8px 0; }
+.lab-check input { width: 18px; height: 18px; accent-color: #ff953f; }
+.lab-check[hidden], .lab-field[hidden] { display: none; }
+.lab-live, .lab-message, .lab-status, .lab-legend { font-size: 12px; line-height: 1.6; color: #b9c1d4; overflow-wrap: anywhere; }
+.lab-message { color: #ffb571; }
+.lab-chart { display: block; width: 100%; height: auto; margin-top: 15px; background: #101119; border-radius: 10px; }
+.turboshaft-readings { color: #b6d5ff; font-size: 11px; line-height: 1.5; text-align: center; flex-basis: 100%; }
+.turboshaft-readings[hidden] { display: none; }

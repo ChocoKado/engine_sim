@@ -45,7 +45,7 @@ for (const [id, config] of Object.entries(ENGINE_CONFIGS)) {
         assert.equal(cylinders.length, 0);
       } else {
         assert.deepEqual(cylinders.sort((a, b) => a - b), Array.from({ length: config.cylinders }, (_, i) => i));
-        assert.equal(assembly.parts.has('camshaft'), config.layout !== 'radial');
+        assert.equal(assembly.parts.has('camshaft'), config.layout !== 'radial' && config.cycleKind !== 'two-stroke');
       }
       for (const geo of assembly.geometries) {
         for (const key of ['position', 'normal']) {
@@ -184,7 +184,8 @@ test('cam focus reveals hidden shafts by lifting covers, and reset restores the 
     try {
       const closed = assembly.covers.map(cover => ({ position: cover.object.position.clone(), rotation: cover.object.rotation.clone() }));
       const shafts = assembly.animated.filter(item => item.source === 'cam');
-      assert.equal(shafts.length, assembly.banks.length * 2);
+      const heads = assembly.config.layout === 'w' ? 2 : assembly.config.layout === 'vr' ? 1 : assembly.banks.length;
+      assert.equal(shafts.length, heads * 2);
       assembly.setFocus('camshaft');
       assembly.covers.forEach((cover, i) => assert.ok(cover.object.position.distanceTo(closed[i].position) > 0.7));
       assert.equal(assembly.setFocus('flywheel'), assembly.parts.get('flywheel'));
@@ -278,6 +279,7 @@ test('cold-air inspection view exposes the filter rather than aiming at an opaqu
 
 test('external shafts stop at physical zero and use actual RPM, including turbo coast and independent slow motion', () => {
   const engine = new EngineModel('i4_cross');
+  engine.radiatorFanOn = false; // An independently powered cooling fan may run with a stopped crank.
   engine.setForcedInduction('supercharger');
   const assembly = new EngineAssembly3D(engine);
   try {
@@ -363,7 +365,7 @@ test('renderer can be imported in Node and reports a missing WebGL canvas withou
 });
 
 test('camera fits actual projected box corners across wide desktop and narrow phone viewports', () => {
-  for (const id of ['i1', 'i6', 'w16', 'boxer6', 'radial_7', 'rotary_2', 'gas_turbine', 'turbojet']) {
+  for (const id of ['i1', 'i6', 'w16', 'boxer6', 'radial_7', 'rotary_2', 'gas_turbine', 'turbojet', 'two_stroke_2', 'v4', 'vr6', 'w12', 'rotary_4', 'v16', 'radial_18']) {
     const assembly = new EngineAssembly3D(new EngineModel(id));
     try {
       for (const aspect of [688 / 220, 306 / 200, 320 / 420, 844 / 190]) {
@@ -439,5 +441,101 @@ test('variable nozzle petals retain fixed hinges while their exit area follows t
       const exit = object.localToWorld(new THREE.Vector3(0, 0, -.19));
       near(Math.hypot(exit.x, exit.y) ** 2 / .302 ** 2, ratio);
     }
+  } finally { assembly.dispose(); }
+});
+
+test('VR6 and W12 retain actual narrow rows under one and two shared heads rather than independent V heads', () => {
+  for (const [id, rows, heads] of [['vr6', 2, 1], ['w12', 4, 2], ['w16', 4, 2]]) {
+    const assembly = new EngineAssembly3D(new EngineModel(id));
+    try {
+      assert.equal(assembly.banks.length, rows);
+      assert.equal(assembly.covers.length, heads);
+      assert.equal(assembly.animated.filter(item => item.source === 'cam').length, heads * 2);
+      assert.ok(assembly.banks.every(bank => bank.cylinders.length === assembly.config.cylinders / rows));
+      const shared = assembly.parts.get('block').children.filter(child => child.userData.sharedHead);
+      assert.equal(shared.length, heads);
+      if (id === 'vr6') assert.deepEqual(assembly.banks.map(bank => bank.angle), [-7.5, 7.5]);
+      if (id === 'w12') assert.deepEqual(assembly.banks.map(bank => bank.angle), [-43.5, -28.5, 28.5, 43.5]);
+    } finally { assembly.dispose(); }
+  }
+});
+
+test('RZ350 has reed carburetors, two expansion chambers and no camshaft or automotive accessory belt', () => {
+  const assembly = new EngineAssembly3D(new EngineModel('two_stroke_2'));
+  try {
+    assert.equal(assembly.parts.has('camshaft'), false);
+    assert.equal(assembly.animated.some(item => item.source === 'cam'), false);
+    assert.ok(find(assembly, 'reed-valve carburetor 1'));
+    assert.ok(find(assembly, 'reed-valve carburetor 2'));
+    assert.ok(find(assembly, 'sealed two-stroke pumping crankcase'));
+    assert.equal(assembly.parts.get('headers').userData.manifoldKind, 'two-stroke expansion chambers');
+    assert.equal(find(assembly, 'alternator'), undefined);
+    assert.equal(find(assembly, 'continuous drive belt'), undefined);
+    const cones = assembly.parts.get('headers').children.filter(child => child.name === 'expansion chamber cone');
+    assert.equal(cones.length, 8);
+    assert.ok(cones.some(cone => cone.geometry.parameters.radiusTop > .10));
+  } finally { assembly.dispose(); }
+});
+
+test('R26B has four housings, twelve plugs and four variable-length peripheral intake trumpets', () => {
+  const assembly = new EngineAssembly3D(new EngineModel('rotary_4'));
+  try {
+    const housings = []; assembly.group.traverse(node => { if (node.userData.rotorIndex !== undefined && node.name.startsWith('rotor housing')) housings.push(node); });
+    assert.equal(housings.length, 4);
+    const plugs = find(assembly, 'rotary leading / trailing plug');
+    assert.equal(plugs.count, 12);
+    const trumpets = assembly.parts.get('intake').children.filter(child => child.name === 'R26B variable-length intake trumpet');
+    assert.equal(trumpets.reduce((count, mesh) => count + (mesh.isInstancedMesh ? mesh.count : 1), 0), 4);
+    assert.equal(assembly.parts.get('intake').userData.portKind, 'peripheral');
+    assert.ok(find(assembly, 'variable-intake common actuator rail'));
+  } finally { assembly.dispose(); }
+});
+
+test('Double Wasp has two clocked axial rows and factory centrifugal equipment without a TVS add-on', () => {
+  const assembly = new EngineAssembly3D(new EngineModel('radial_18'));
+  try {
+    const cylinders = []; assembly.group.traverse(node => { if (node.userData.radialRow !== undefined) cylinders.push(node); });
+    const front = cylinders.filter(node => node.userData.radialRow === 0), rear = cylinders.filter(node => node.userData.radialRow === 1);
+    assert.equal(front.length, 9); assert.equal(rear.length, 9);
+    near(front[0].position.z - rear[0].position.z, .52);
+    near(rear[0].rotation.z - front[0].rotation.z, -20 * Math.PI / 180);
+    assert.ok(find(assembly, 'factory centrifugal supercharger casing'));
+    assert.equal(assembly.parts.has('supercharger'), false);
+    assert.equal(assembly.parts.has('radiator'), false);
+    assert.ok(meshStats(assembly).draws < 200, 'two rows must remain usable on a phone');
+  } finally { assembly.dispose(); }
+});
+
+test('liquid cooling upgrade changes actual radiator and hoses while its electric fan follows thermal state', () => {
+  const engine = new EngineModel('v4'); engine.radiatorFanOn = false;
+  const stock = new EngineAssembly3D(engine);
+  engine.setModification('radiator', 'upgraded');
+  const upgraded = new EngineAssembly3D(engine);
+  try {
+    assert.ok(find(stock, 'upper hot coolant hose')); assert.ok(find(stock, 'lower coolant return hose'));
+    assert.ok(upgraded.getBounds('radiator').getSize(new THREE.Vector3()).x > stock.getBounds('radiator').getSize(new THREE.Vector3()).x);
+    const fan = stock.animated.find(item => item.source === 'fan').object;
+    const before = fan.rotation.z; stock.update(engine, .05); near(fan.rotation.z, before);
+    engine.radiatorFanOn = true; stock.update(engine, .05);
+    assert.ok(Math.abs(fan.rotation.z - before) > .1);
+    assert.equal(engine.rpm, 0, 'the fan can cool a stopped engine without inventing crank motion');
+  } finally { stock.dispose(); upgraded.dispose(); }
+});
+
+test('M250 has separate gas generator, free power turbine and reduced output shaft, including stopped-output running core', () => {
+  const engine = new EngineModel('gas_turbine');
+  const assembly = new EngineAssembly3D(engine);
+  try {
+    assert.ok(find(assembly, 'centrifugal compressor impeller'));
+    assert.equal(assembly.parts.get('compressor').children.filter(node => node.name.startsWith('compressor rotor')).length, 6);
+    assert.equal(assembly.parts.get('power-turbine').children.filter(node => node.name.startsWith('turbine rotor')).length, 2);
+    assert.ok(find(assembly, 'reverse-flow rear combustor can'));
+    const core = assembly.animated.find(item => item.source === 'core').object;
+    const power = assembly.animated.find(item => item.source === 'power').object;
+    const output = assembly.animated.find(item => item.source === 'crank').object;
+    Object.assign(engine, { coreAngle: 90, powerTurbineAngle: 45, crankAngle: 10, coreRPM: 40000, powerTurbineRPM: 0, rpm: 0 });
+    assembly.update(engine, .05);
+    near(core.rotation.z, Math.PI / 2); near(power.rotation.z, Math.PI / 4); near(output.rotation.z, Math.PI / 18);
+    assert.equal(assembly.parts.has('afterburner'), false);
   } finally { assembly.dispose(); }
 });

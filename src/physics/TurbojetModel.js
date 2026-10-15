@@ -53,6 +53,12 @@ export class TurbojetModel {
     this.exhaustTemperatureC = AMBIENT_K - 273.15;
     this.nozzleTemperatureC = AMBIENT_K - 273.15;
     this.readings = this.coldReadings();
+    this.startScenario = 'normal';
+    this.startState = 'off';
+    this.faultCode = '';
+    this.faultFireAmount = 0;
+    this.startElapsed = this.lightoffElapsed = this.abortElapsed = this.purgeRemaining = 0;
+    this.unburnedFuelKg = 0;
   }
 
   coldReadings() {
@@ -97,6 +103,11 @@ export class TurbojetModel {
   }
 
   setRunning(running) {
+    if (running && (this.faultCode || this.purgeRemaining > 0)) return false;
+    if (running && !this.running) {
+      this.startState = 'purge';
+      this.startElapsed = this.lightoffElapsed = 0;
+    }
     this.running = Boolean(running);
     if (!this.running) {
       this.afterburnerEnabled = false;
@@ -105,7 +116,34 @@ export class TurbojetModel {
       this.isCombusting = false;
       this.starterActive = false;
       this.readings = { ...this.readings, thrustN: 0, fuelFlowKgS: 0, nozzleAreaRatio: 1 };
+      if (!this.faultCode) this.startState = this.coreFraction > 0 ? 'cooldown' : 'off';
     }
+    return true;
+  }
+
+  setStartScenario(scenario) {
+    if (!['normal', 'no-lightoff', 'hot-start'].includes(scenario)
+      || this.running || this.starterActive || this.coreFraction >= 0.01) return false;
+    this.startScenario = scenario;
+    return true;
+  }
+
+  resetStartFault() {
+    if (this.running || this.starterActive || this.coreFraction >= 0.01 || this.exhaustTemperatureC > 200) return false;
+    this.faultCode = '';
+    this.faultFireAmount = this.unburnedFuelKg = 0;
+    this.startState = this.coreFraction > 0 ? 'cooldown' : 'off';
+    return true;
+  }
+
+  abortStart(code) {
+    this.setRunning(false);
+    this.faultCode = code;
+    this.startState = 'abort';
+    this.abortElapsed = 0;
+    this.purgeRemaining = 6;
+    this.starterActive = true;
+    if (code === 'HOT_START') this.faultFireAmount = 1;
   }
 
   setAfterburnerEnabled(enabled) { this.afterburnerEnabled = Boolean(enabled); }
@@ -115,19 +153,36 @@ export class TurbojetModel {
     const s = this.spec;
     const pedal = this.running ? clamp(Number(throttle) || 0, 0, 1) : 0;
     this.fuelCommand += (pedal - this.fuelCommand) * (1 - Math.exp(-dt / 0.18));
-    this.starterActive = this.running && this.coreFraction < s.idleCoreFraction * 0.92;
-    this.isCombusting = this.running && this.coreFraction >= s.lightoffCoreFraction;
-    if (!this.running) {
+    if (this.running) this.startElapsed += dt;
+    const purgingFault = !this.running && this.purgeRemaining > 0;
+    this.starterActive = purgingFault || this.running && this.coreFraction < s.idleCoreFraction * 0.92;
+    this.isCombusting = this.running && this.coreFraction >= s.lightoffCoreFraction
+      && this.startScenario !== 'no-lightoff';
+    if (purgingFault) {
+      this.abortElapsed += dt;
+      this.purgeRemaining = Math.max(0, this.purgeRemaining - dt);
+      this.startState = this.abortElapsed < 0.45 ? 'abort' : 'purge';
+      this.coreFraction += (0.25 - this.coreFraction) * (1 - Math.exp(-dt / 0.8));
+      this.unburnedFuelKg *= Math.exp(-dt / 0.8);
+    } else if (!this.running) {
       this.coreFraction *= Math.exp(-dt / s.coastSeconds);
       if (this.coreFraction < 0.001) this.coreFraction = 0;
+      this.startState = this.coreFraction > 0 ? 'cooldown' : 'off';
     } else if (!this.isCombusting) {
       // Estimated assisted start; do not teleport from zero to a running idle.
-      this.coreFraction = Math.min(s.lightoffCoreFraction, this.coreFraction + dt * 0.075);
+      this.startState = 'purge';
+      const motoringLimit = this.startScenario === 'no-lightoff' ? 0.28 : s.lightoffCoreFraction;
+      this.coreFraction = Math.min(motoringLimit, this.coreFraction + dt * 0.075);
     } else {
-      const target = s.idleCoreFraction + (1 - s.idleCoreFraction) * this.fuelCommand ** 0.65;
+      const hotStart = this.startScenario === 'hot-start' && this.startState !== 'running';
+      const target = hotStart ? s.idleCoreFraction * 0.60
+        : s.idleCoreFraction + (1 - s.idleCoreFraction) * this.fuelCommand ** 0.65;
       const tau = target > this.coreFraction ? s.spoolUpSeconds * (1 + 1.2 * (1 - this.coreFraction)) : s.spoolDownSeconds;
       this.coreFraction += (target - this.coreFraction) * (1 - Math.exp(-dt / tau));
+      this.startState = this.coreFraction >= s.idleCoreFraction * 0.92 ? 'running' : 'lightoff';
     }
+    if (this.running && this.coreFraction >= s.lightoffCoreFraction && this.startState !== 'running') this.lightoffElapsed += dt;
+    this.faultFireAmount *= Math.exp(-dt / 0.35);
     // An illustrative high-power interlock prevents lighting the augmentor at
     // idle or before light-off. Threshold/timing are estimates, not a flight ECU.
     const wantAB = this.isCombusting && this.afterburnerEnabled && pedal >= 0.9 && this.coreFraction >= 0.92;
@@ -137,7 +192,8 @@ export class TurbojetModel {
     const massFlow = s.maxMassFlowKgS * this.coreFraction ** 1.4;
     if (this.isCombusting) {
       const band = smooth(clamp((this.coreFraction - s.idleCoreFraction) / (1 - s.idleCoreFraction), 0, 1));
-      const inletK = s.idleTurbineInletK + (s.designTurbineInletK - s.idleTurbineInletK) * band;
+      const hotStart = this.startScenario === 'hot-start' && this.startState === 'lightoff';
+      const inletK = hotStart ? 1800 : s.idleTurbineInletK + (s.designTurbineInletK - s.idleTurbineInletK) * band;
       this.readings = this.cycle(this.coreFraction, this.afterburnerAmount, inletK, massFlow,
         s.afterburnerTemperatureK);
     } else {
@@ -145,11 +201,21 @@ export class TurbojetModel {
       // combustion thrust or fictitious shaft power survives the fuel cut.
       this.readings = { ...this.coldReadings(), massFlowKgS: massFlow,
         pressureRatio: 1 + (s.designPressureRatio - 1) * this.coreFraction ** 2.4 };
+      if (this.running && this.startScenario === 'no-lightoff' && this.coreFraction >= s.lightoffCoreFraction) {
+        this.readings.fuelFlowKgS = 0.035;
+        this.unburnedFuelKg += this.readings.fuelFlowKgS * dt;
+      }
     }
     const egtTarget = this.isCombusting ? this.readings.turbineExitTemperatureC : AMBIENT_K - 273.15;
     const nozzleTarget = this.isCombusting ? this.readings.nozzleTemperatureC : AMBIENT_K - 273.15;
-    this.exhaustTemperatureC += (egtTarget - this.exhaustTemperatureC) * (1 - Math.exp(-dt / (this.running ? 0.8 : 5)));
+    this.exhaustTemperatureC += (egtTarget - this.exhaustTemperatureC) * (1 - Math.exp(-dt / (this.running ? 0.8 : purgingFault ? 2 : 5)));
     this.nozzleTemperatureC += (nozzleTarget - this.nozzleTemperatureC) * (1 - Math.exp(-dt / (this.running ? 0.25 : 3)));
+    // FAA start-failure principles: no light-off requires fuel shutoff; a hot
+    // start is excessive EGT from fuel/air mismatch. Continue dry motoring to
+    // purge. The numerical timeout/temperature are training estimates, not an
+    // approved J85 operating procedure.
+    if (this.running && this.startScenario === 'no-lightoff' && this.lightoffElapsed >= 8) this.abortStart('NO_LIGHTOFF');
+    if (this.running && this.startState === 'lightoff' && this.exhaustTemperatureC > 850) this.abortStart('HOT_START');
     return this.snapshot();
   }
 
@@ -159,6 +225,8 @@ export class TurbojetModel {
       nozzleTemperatureC: this.nozzleTemperatureC, afterburnerAmount: this.afterburnerAmount,
       afterburnerEnabled: this.afterburnerEnabled, isCombusting: this.isCombusting,
       starterActive: this.starterActive, designMassFlowKgS: this.spec.maxMassFlowKgS,
+      startScenario: this.startScenario, startState: this.startState, faultCode: this.faultCode,
+      faultFireAmount: this.faultFireAmount, unburnedFuelKg: this.unburnedFuelKg,
       coreRPMKind: 'normalized-animation-reference' };
   }
 }

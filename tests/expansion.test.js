@@ -43,7 +43,7 @@ for (const id of ['honda_f20c', 'honda_k20a']) {
 
 for (const mode of ['soft', 'hard', 'sequential']) {
   test(`${mode}: every architecture stays in a narrow neutral limit band at cadence extremes`, () => {
-    for (const id of Object.keys(ENGINE_CONFIGS).filter(id => ENGINE_CONFIGS[id].propulsionKind !== 'turbojet')) for (const hz of [8, 32]) {
+    for (const id of Object.keys(ENGINE_CONFIGS).filter(id => !['turbojet', 'turboshaft'].includes(ENGINE_CONFIGS[id].propulsionKind))) for (const hz of [8, 32]) {
       const e = new EngineModel(id, 'oem'); const d = new Drivetrain(e);
       e.setRunning(true); e.setECUMode(mode); e.setLimiterHz(hz); e.setLimiterDepth(1);
       let min = Infinity, max = -Infinity;

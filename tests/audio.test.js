@@ -244,3 +244,37 @@ test('Worklet receives rotary sound selection, fallback fades under load, and no
   sound.setRotaryIdleMode('stock');
   assert.equal(sound.outputGain.gain.value, 0, 'mode change cannot restart engine audio');
 });
+
+test('new architectures retain their own cycle pitch in the oscillator fallback and two-stroke port modulation is real', async () => {
+  const sound = new SoundEngine(() => new Context());
+  await sound.init();
+  for (const id of ['two_stroke_2', 'v4', 'vr6', 'w12', 'rotary_4', 'v16', 'radial_18']) {
+    const config = ENGINE_CONFIGS[id];
+    sound.update({ rpm: 6000, manifoldThrottle: 0.7, displacement: config.defaultDisplacement }, config);
+    assert.equal(sound.combustionOsc.frequency.value, 6000 * 6 / (config.cycleDegrees || 720));
+    assert.ok(sound.combustionOsc.wave.real.every(Number.isFinite));
+    assert.ok(sound.combustionOsc.wave.real.some(value => Math.abs(value) > 0.01), `${id}: the fallback must contain real firing energy`);
+    assert.equal(sound.scavengeModGain.gain.value > 0, config.cycleKind === 'two-stroke');
+    if (config.cycleKind === 'two-stroke') {
+      assert.equal(sound.scavengeOsc.frequency.value, 100);
+      assert.ok(sound.scavengeOsc.wave.real.some(value => Math.abs(value) > 0.01));
+    }
+  }
+});
+
+test('RPM-dependent runner delays alter the native waveform without reconfiguring a live Worklet on every RPM step', async () => {
+  const sound = new SoundEngine(() => new Context());
+  const config = { ...ENGINE_CONFIGS.vr6, exhaustPathDelays: [0, 0.0006, 0.0012, 0, 0.0006, 0.0012] };
+  await sound.init();
+  sound.update({ rpm: 3000, manifoldThrottle: 0.7 }, config);
+  const low = sound.combustionOsc.wave;
+  sound.update({ rpm: 6000, manifoldThrottle: 0.7 }, config);
+  assert.notDeepEqual(sound.combustionOsc.wave, low, 'a fixed propagation time changes acoustic phase when shaft frequency changes');
+  let messages = 0;
+  const params = new Map(['rpm', 'load', 'ignitionCut', 'limiter'].map(name => [name, new Parameter()]));
+  sound.pressureNode = { parameters: params, port: { postMessage() { messages++; } } };
+  sound.update({ rpm: 4000, manifoldThrottle: 0.7 }, config);
+  const configured = messages;
+  for (const rpm of [4250, 4500, 4750, 5000]) sound.update({ rpm, manifoldThrottle: 0.7 }, config);
+  assert.equal(messages, configured, 'the acoustic firing/decay state cannot reset during a normal sweep');
+});

@@ -8,7 +8,7 @@ import { capturePerformanceSetup, setupCaption, PerformancePanel } from '../src/
 import { PerformanceMeter } from '../src/physics/PerformanceMeter.js';
 
 test('all engines gain usable steady torque with CC while fixed ratios retain the same redline wheel speeds', () => {
-  for (const id of Object.keys(ENGINE_CONFIGS).filter(id => ENGINE_CONFIGS[id].propulsionKind !== 'turbojet')) {
+  for (const id of Object.keys(ENGINE_CONFIGS).filter(id => !['turbojet', 'turboshaft'].includes(ENGINE_CONFIGS[id].propulsionKind))) {
     const e = new EngineModel(id, 'oem'), d = new Drivetrain(e);
     const before = e.dynoData, gearing = gearingSummary(e, d);
     e.setDisplacement(e.config.maxDisplacement);
