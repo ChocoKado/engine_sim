@@ -62,7 +62,7 @@ const settingChanges = [
   ['limiter depth', e => e.setLimiterDepth(1)],
 ];
 
-for (const id of Object.keys(ENGINE_CONFIGS)) {
+for (const id of Object.keys(ENGINE_CONFIGS).filter(id => ENGINE_CONFIGS[id].propulsionKind !== 'turbojet')) {
   for (const mode of ['at', 'amt']) {
     test(`${id}/${mode}: saved acceleration test can restart after each limiter setting changes`, () => {
       const f = fixture(id, mode);

@@ -13,6 +13,7 @@ import { GaugeRenderer } from './visuals/GaugeRenderer.js';
 import { InputManager } from './controls/InputManager.js';
 import { PerformancePanel } from './controls/PerformancePanel.js';
 import { GaragePanel } from './controls/GaragePanel.js';
+import { JetBenchPanel } from './controls/JetBenchPanel.js';
 import { Engine3DRenderer } from './visuals/Engine3DRenderer.js';
 
 export class App {
@@ -47,6 +48,7 @@ export class App {
       onModificationChange: (kind, value) => this.installModification(kind, value),
       onViewChange: view => this.changeGarageView(view),
     }).init();
+    this.jetBenchPanel = new JetBenchPanel({ engine: this.engine, garage: this.garagePanel });
     if (this.garagePanel.initialized) {
       try {
         this.engine3DRenderer = new Engine3DRenderer(this.garagePanel.canvas);
@@ -211,8 +213,6 @@ export class App {
     const transBtns = document.querySelectorAll('.trans-btn');
     transBtns.forEach(btn => {
       btn.addEventListener('click', () => {
-        transBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
         const mode = btn.dataset.mode;
         this.selectTransmissionMode(mode);
       });
@@ -490,6 +490,12 @@ export class App {
   }
 
   selectEngineConfig(configId) {
+    if (configId === 'turbojet' || this.engine.config.propulsionKind === 'turbojet') {
+      this.input?.releaseHeldControls();
+      if (this.input) this.input.manualThrottleSlider = 0;
+      const slider = document.getElementById('throttle-slider');
+      if (slider) slider.value = 0;
+    }
     // Reconfigure in neutral without discarding the vehicle's momentum.
     if (this.drivetrain.mode === 'at') this.drivetrain.setAtSelector('N');
     else this.drivetrain.setAmtGear(0);
@@ -500,6 +506,7 @@ export class App {
     this.sound.setEngineConfig(this.engine.config);
     this.updateEngineDescription();
     this.syncTuningUI();
+    this.jetBenchPanel?.sync();
   }
 
   // All tuning controls are views of model state, including after preset changes.
@@ -576,6 +583,7 @@ export class App {
   }
 
   syncGearControls() {
+    this.syncTransmissionUI();
     const group = document.querySelector('.amt-shifter');
     if (!group) return;
     const hasReverse = Boolean(this.drivetrain.gearRatios?.[-1]);
@@ -617,14 +625,21 @@ export class App {
 
   selectTransmissionMode(mode) {
     this.drivetrain.setMode(mode);
+    this.syncTransmissionUI();
+    this.updateReferenceStatus();
+  }
 
-    // Show/hide relevant controls
+  syncTransmissionUI() {
+    const mode = this.drivetrain.mode;
+    for (const button of document.querySelectorAll('.trans-btn')) {
+      button.classList.toggle('active', button.dataset.mode === mode);
+      button.setAttribute('aria-pressed', String(button.dataset.mode === mode));
+    }
     const atControls = document.getElementById('at-controls');
     const amtControls = document.getElementById('amt-controls');
 
     if (atControls) atControls.style.display = mode === 'at' ? 'flex' : 'none';
     if (amtControls) amtControls.style.display = mode === 'amt' ? 'flex' : 'none';
-    this.updateReferenceStatus();
   }
 
   updateEngineDescription() {
@@ -635,12 +650,17 @@ export class App {
 
     if (descEl) descEl.textContent = this.engine.config.description;
     if (tagLayout) tagLayout.textContent = `${this.engine.config.layout.toUpperCase()} 架構`;
-    if (tagCyls) tagCyls.textContent = this.engine.config.layout === 'turbine' ? '航太連續燃燒渦輪級' : this.engine.config.layout === 'turbojet' ? '航空8級軸流/後燃器噴射級' : `${this.engine.config.cylinders} ${this.engine.config.layout === 'rotary' ? '轉子' : '汽缸'}`;
+    if (tagCyls) tagCyls.textContent = this.engine.config.layout === 'turbine' ? '航太連續燃燒渦輪級' : this.engine.config.layout === 'turbojet' ? '9 級壓縮機／2 級渦輪' : `${this.engine.config.cylinders} ${this.engine.config.layout === 'rotary' ? '轉子' : '汽缸'}`;
     if (tagSound) tagSound.textContent = `聲浪風格: ${this.engine.config.soundCharacter || this.engine.config.shortName}`;
     const heading = document.getElementById('mechanical-view-title');
     if (heading) heading.textContent = this.engine.config.layout === 'turbine' ? '航太燃氣渦輪發動機剖面動態' : this.engine.config.layout === 'turbojet' ? '航空超音速渦輪噴射發動機剖面動態' : this.engine.config.layout === 'rotary' ? '轉子引擎剖面動態' : '四行程引擎剖面動態';
     const focus = document.getElementById('btn-view-focus');
     if (focus) { focus.textContent = this.engine.config.layout === 'turbine' ? '燃燒室特寫' : this.engine.config.layout === 'turbojet' ? '燃燒室與後燃器特寫' : this.engine.config.layout === 'rotary' ? '轉子特寫' : '單缸特寫'; focus.title = focus.textContent; }
+    const overview = document.getElementById('btn-view-multi');
+    if (overview) {
+      overview.textContent = ['turbine', 'turbojet'].includes(this.engine.config.layout) ? '全機剖面' : '多缸全景';
+      overview.title = overview.textContent;
+    }
   }
 
   initECUControls() {
@@ -653,6 +673,7 @@ export class App {
   }
 
   resetPerformanceVehicle() {
+    if (this.engine.config.propulsionKind === 'turbojet') return;
     this.input.releaseHeldControls();
     this.input.manualThrottleSlider = 0;
     const slider = document.getElementById('throttle-slider'); if (slider) slider.value = 0;
@@ -709,12 +730,14 @@ export class App {
       && (!this.engine.limiter || this.engine.limiter.mode === 'soft' && this.engine.limiter.hz === 18 && this.engine.limiter.depth === 0.85)
       && (!config.vtec || this.engine.cam?.enabled && this.engine.cam.engageRPM === config.vtec.engageRPM)
       && Math.abs(this.drivetrain.vehicleMass - (profile?.mass ?? 0)) <= 0.5;
-    if (state) state.textContent = isStock ? '原廠基準' : '自訂改裝';
-    if (note) note.textContent = config.layout === 'radial'
+    const jet = config.propulsionKind === 'turbojet';
+    if (state) state.textContent = jet ? '公開推力基準' : isStock ? '原廠基準' : '自訂改裝';
+    if (note) note.textContent = jet ? 'J85-21 海平面靜態推力基準；N1、溫度與中間工況為簡化工程模擬。'
+      : config.layout === 'radial'
       ? '航空引擎基準；車速與換檔為實驗負載台模擬。'
       : '原廠數據基準（中間曲線為推估）；改裝輸出為模型估算。';
     if (transmissionNote) {
-      transmissionNote.textContent = config.layout === 'radial' ? '實驗負載台，不代表航空傳動。'
+      transmissionNote.textContent = jet ? '' : config.layout === 'radial' ? '實驗負載台，不代表航空傳動。'
         : profile?.transmissionKind === 'manual' ? (this.drivetrain.mode === 'at'
           ? '原車為手排；AT 為模擬操作模式。' : '原車為手排；以自動離合模擬撥片操作。') : '';
       transmissionNote.hidden = !transmissionNote.textContent;
@@ -909,6 +932,10 @@ export class App {
         }
       }
 
+    } else if (['turbine', 'turbojet'].includes(this.engine.config.layout)) {
+      // Fuel shutoff leaves a freely coasting rotor; its acoustic state must
+      // continue to follow the same shaft state until it stops.
+      this.sound.update(engineStatus, this.engine.config, drivetrainStatus);
     }
 
     // Visual Renderers (Passing dt to enable smooth slow-motion kinematics)
@@ -923,6 +950,7 @@ export class App {
     this.updateTelemetryHUD(engineStatus, drivetrainStatus);
     this.performancePanel?.update();
     this.garagePanel?.update();
+    this.jetBenchPanel?.update(engineStatus);
 
     requestAnimationFrame((t) => this.loop(t));
   }

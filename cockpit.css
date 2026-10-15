@@ -1,5 +1,46 @@
 /* Driving cockpit skin. Loaded after garage.css; existing control nodes and
    IDs remain authoritative. Only the settings region scrolls on small screens. */
+.jet-only { display: none; }
+body.jet-bench-active .jet-only { display: block; }
+body.jet-bench-active .jet-incompatible,
+body.jet-bench-active .garage-cockpit .trans-mode-bar,
+body.jet-bench-active .garage-cockpit .driving-gear-readout,
+body.jet-bench-active .garage-cockpit #at-controls,
+body.jet-bench-active .garage-cockpit #amt-controls,
+body.jet-bench-active .garage-cockpit #pedal-brake,
+body.jet-bench-active #transmission-context-note { display: none !important; }
+body.jet-bench-active .garage-cockpit .pedals-row { grid-template-columns: minmax(0, 1fr); }
+body.jet-bench-active .garage-cockpit .pedal-unit { max-width: 230px; width: 100%; justify-self: center; }
+body.jet-bench-active .garage-cockpit .trans-section { overflow: auto; }
+body.jet-bench-active .garage-layout[data-tab="garage"] .garage-inspector { display: none; }
+.jet-bench-controls { width: 100%; min-width: 0; }
+.jet-bench-controls .garage-eyebrow { font-size: .6rem; }
+.jet-operating-status { display: block; margin: 6px 0 10px; color: #8eceff; font: 700 .86rem var(--font-main); letter-spacing: .7px; }
+.jet-afterburner-toggle { display: flex; align-items: center; gap: 9px; min-height: 42px; padding: 8px 12px; border: 1px solid #624333; border-radius: 10px; background: #201810; color: #ffc48d; cursor: pointer; font-size: .9rem; }
+.jet-afterburner-toggle input { accent-color: #ff9540; width: 19px; height: 19px; flex: 0 0 auto; }
+.jet-ab-status { display: block; color: #a8a9ad; margin-top: 7px; font-size: .67rem; }
+.jet-readings-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }
+.jet-reading { padding: 9px; background: #10151b; border: 1px solid #28313b; border-radius: 8px; min-width: 0; }
+.jet-reading dt { font-size: .65rem; color: #aeb5bc; }
+.jet-reading dd { font: 700 1.05rem var(--font-main); margin: 7px 0 0; color: #f3f6f8; overflow-wrap: anywhere; }
+.jet-bench-setup p, .jet-architecture p { font-size: .82rem; line-height: 1.75; margin: 12px 0; }
+.jet-bench-setup a { display: inline-block; padding: 8px 0; color: #8eceff; font-size: .8rem; }
+body.jet-bench-active .garage-workspace #sticky-hud-gear { min-width: 42px; font-size: .65rem; }
+@media (max-width: 900px) {
+  .jet-readings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+  .jet-reading { padding: 7px; }
+  .jet-reading dd { font-size: .95rem; }
+  .jet-bench-controls .garage-eyebrow { font-size: .43rem; }
+  .jet-operating-status { font-size: .64rem; letter-spacing: 0; margin: 3px 0 7px; overflow-wrap: anywhere; }
+  .jet-afterburner-toggle { min-height: 36px; font-size: .8rem; padding: 5px 7px; gap: 6px; }
+  .jet-ab-status { font-size: .55rem; margin-top: 5px; }
+  body.jet-bench-active .garage-cockpit .pedal-text { font-size: .5rem; }
+}
+@media (max-height: 650px) and (min-height: 521px) {
+  .jet-bench-controls .garage-eyebrow { display: none; }
+  .jet-operating-status { font-size: .55rem; margin: 1px 0 5px; }
+  .jet-afterburner-toggle { min-height: 31px; font-size: .7rem; }
+}
 body.driving-active {
   --bg-primary: #030405;
   --bg-surface: #111214;

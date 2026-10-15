@@ -27,7 +27,7 @@ function assertLiveMatchesDyno(engine, rpm) {
 }
 
 test('all stock engines enter idle catch without a torque step across the former 100 RPM boundary', () => {
-  for (const id of Object.keys(ENGINE_CONFIGS)) {
+  for (const id of Object.keys(ENGINE_CONFIGS).filter(id => ENGINE_CONFIGS[id].propulsionKind !== 'turbojet')) {
     const engine = new EngineModel(id, 'oem', () => 0.5);
     engine.setRunning(true);
     engine.rpm = engine.idleRPM + 100.1;
@@ -42,7 +42,7 @@ test('all stock engines enter idle catch without a torque step across the former
 });
 
 test('stock neutral coast-down remains physical and settles to idle after the continuous catch', () => {
-  for (const id of Object.keys(ENGINE_CONFIGS)) {
+  for (const id of Object.keys(ENGINE_CONFIGS).filter(id => ENGINE_CONFIGS[id].propulsionKind !== 'turbojet')) {
     const engine = new EngineModel(id, 'oem', () => 0.5);
     const drive = new Drivetrain(engine);
     engine.setRunning(true);
@@ -61,7 +61,7 @@ test('stock neutral coast-down remains physical and settles to idle after the co
 });
 
 test('complete ignition cuts cannot produce idle combustion or carry an external load in any engine', () => {
-  for (const id of Object.keys(ENGINE_CONFIGS)) for (const type of ['na', 'supercharger']) {
+  for (const id of Object.keys(ENGINE_CONFIGS).filter(id => ENGINE_CONFIGS[id].propulsionKind !== 'turbojet')) for (const type of (ENGINE_CONFIGS[id].layout === 'turbine' ? ['na'] : ['na', 'supercharger'])) {
     const engine = make(id, type);
     if (type === 'supercharger') engine.setMaxBoost(3);
     engine.setRunning(true);
@@ -81,7 +81,7 @@ test('complete ignition cuts cannot produce idle combustion or carry an external
 });
 
 test('partial ignition cuts retain bounded idle air authority rather than bypassing the cut', () => {
-  for (const id of Object.keys(ENGINE_CONFIGS)) {
+  for (const id of Object.keys(ENGINE_CONFIGS).filter(id => ENGINE_CONFIGS[id].propulsionKind !== 'turbojet')) {
     const full = make(id), half = make(id);
     for (const engine of [full, half]) {
       engine.setRunning(true);
@@ -137,6 +137,13 @@ test('modification API rejects invalid parts, respects architecture and inductio
     }
     const snapshot = engine.snapshot();
     snapshot.modifications.intake = 'stock';
+    if (['turbine', 'turbojet'].includes(config.layout)) {
+      assert.ok(Object.values(engine.modifications).every(value => value === 'stock'));
+      assert.equal(engine.setForcedInduction('supercharger'), false);
+      assert.equal(engine.setForcedInduction('turbo'), false);
+      assert.equal(engine.setModification('pulley', 'overdrive'), false);
+      continue;
+    }
     assert.equal(engine.modifications.intake, 'sport', 'telemetry must not expose mutable tuning state');
     engine.setConfig(id);
     assert.ok(Object.values(engine.modifications).every(value => value === 'stock'));

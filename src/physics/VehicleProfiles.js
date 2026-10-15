@@ -52,19 +52,21 @@ export const VEHICLE_PROFILES = {
     gearingKind: 'published', referenceSource: 'https://news.mazdausa.com/download/RX-8-Spec-Sheet-Final.pdf',
   }),
   gas_turbine: vehicle(380, {
-    // Aviation turboshaft in a high-speed demonstrator chassis (MTT 420RR / Allison 250).
+    // Estimated single-shaft road demonstration, not an MTT 420RR rebuild.
+    // MTT's real two-speed automatic/free-power-turbine model is not implemented.
     referenceKind: 'experimental', dragArea: 0.40, tireRadius: rollingRadius(200, 50, 17),
     primaryRatio: 6.60, finalDrive: 2.60,
     gearRatios: ratios([2.20, 1.60, 1.25, 1.00, 0.85, 0.72], 2.20), transmissionKind: 'amt',
-    gearingKind: 'published', referenceSource: 'https://marineturbine.com/motorcycles/',
+    gearingKind: 'experimental', referenceSource: 'https://marineturbine.com/motorcycles/',
   }),
-  turbojet: vehicle(1050, {
-    // Supersonic thrust-driven jet demonstrator chassis (GE J85-GE-21 afterburning turbojet).
-    referenceKind: 'experimental', dragArea: 0.72, tireRadius: rollingRadius(315, 30, 21),
-    primaryRatio: 1.40, finalDrive: 2.10,
-    gearRatios: ratios([3.20, 2.15, 1.55, 1.20, 0.95, 0.78], 3.20), transmissionKind: 'amt',
-    gearingKind: 'published', referenceSource: 'https://www.nationalmuseum.af.mil/Visit/Museum-Exhibits/Fact-Sheets/Display/Article/195821/general-electric-j85-ge-21-turbojet-engine/',
-  }),
+  turbojet: {
+    // A stationary engine test stand has no road wheels or gearbox. Mass here
+    // is a placeholder for the stand, not a calibrated vehicle acceleration load.
+    referenceKind: 'test-bench', curbMass: 0, driverMass: 0, mass: 0,
+    dragArea: 0, tireRadius: 0, primaryRatio: 1, finalDrive: 1,
+    gearRatios: { 0: 0 }, gearCount: 0, transmissionKind: 'none',
+    gearingKind: 'not-applicable', referenceSource: 'https://ntrs.nasa.gov/citations/19800012848',
+  },
   i1: vehicle(163, {
     dragArea: 0.43, tireRadius: rollingRadius(160, 60, 17), primaryRatio: 79 / 36, finalDrive: 40 / 16,
     gearRatios: ratios([35 / 14, 28 / 16, 28 / 21, 23 / 21, 22 / 23, 20 / 23]), transmissionKind: 'manual',

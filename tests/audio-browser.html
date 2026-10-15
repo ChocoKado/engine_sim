@@ -160,6 +160,29 @@ async function renderRotaryModeChanges() {
   await context.resume();
   return { data: (await rendering).getChannelData(0), backend: sound.acousticBackend };
 }
+async function renderTurbine({ config = ENGINE_CONFIGS.gas_turbine, rpm = 30000, afterburner = 0,
+  fallback = false, muted = false, coast = false } = {}) {
+  const context = new OfflineAudioContext(1, sampleRate * 3, sampleRate);
+  const sound = new SoundEngine(() => context);
+  if (fallback) sound.setupPressureGenerator = async () => {};
+  sound.setVolume(muted ? 0 : 0.5); sound.setEngineConfig(config);
+  await sound.init(); sound.setRunning(true);
+  const state = { rpm, coreRPM: rpm, throttle: 0.85, isIgnitionOn: true, isCombusting: true,
+    massFlowKgS: 18, jetVelocity: 1000, pressureRatio: 8.3, afterburnerAmount: afterburner };
+  sound.update(state, config);
+  if (!coast) return { data: (await context.startRendering()).getChannelData(0), backend: sound.acousticBackend };
+  let suspended = context.suspend(1);
+  const rendering = context.startRendering();
+  await suspended;
+  sound.setRunning(false);
+  sound.update({ ...state, coreRPM: rpm * 0.4, rpm: rpm * 0.4, isIgnitionOn: false,
+    isCombusting: false, afterburnerAmount: 0, massFlowKgS: 4, jetVelocity: 100 }, config);
+  suspended = context.suspend(2); await context.resume(); await suspended;
+  sound.update({ ...state, coreRPM: 0, rpm: 0, isIgnitionOn: false,
+    isCombusting: false, afterburnerAmount: 0, massFlowKgS: 0, jetVelocity: 0 }, config);
+  await context.resume();
+  return { data: (await rendering).getChannelData(0), backend: sound.acousticBackend };
+}
 const envelopeVariation = (data, from = 0.5, to = 4) => {
   const levels = [];
   for (let t = from; t + 0.05 <= to; t += 0.05) levels.push(rms(data, t, t + 0.05));
@@ -320,6 +343,29 @@ try {
     && stockHighVariation < switchedBrapVariation * 0.25 && Math.abs(switchedHighVariation - stockHighVariation) < 0.03
     && highLevelRatio > 0.9 && highLevelRatio < 1.1,
     `6000 RPM 包絡 CV ${switchedHighVariation.toFixed(3)} / ${stockHighVariation.toFixed(3)}；音量比 ${highLevelRatio.toFixed(3)}`);
+  for (const fallback of [false, true]) {
+    for (const rpm of [30000, 54000]) {
+      const { data, backend } = await renderTurbine({ fallback, rpm });
+      const expected = normalizedTone(data, rpm / 60, 0.5, 2.9);
+      const wrong = normalizedTone(data, rpm === 30000 ? 900 : 500, 0.5, 2.9);
+      check(`${fallback ? '備援' : 'Worklet'} 渦輪 ${rpm} RPM 音高正常且無削波`,
+        backend === (fallback ? 'turbine-script' : 'turbine-worklet') && finite(data)
+          && expected > 0.1 && expected > wrong * 4,
+        `${backend}；軸頻 ${expected.toFixed(3)} / 錯頻 ${wrong.toFixed(3)}`);
+    }
+  }
+  const dryJet = await renderTurbine({ config: ENGINE_CONFIGS.turbojet, rpm: 15000 });
+  const wetJet = await renderTurbine({ config: ENGINE_CONFIGS.turbojet, rpm: 15000, afterburner: 1 });
+  check('後燃器增加連續轟鳴且保留核心轉子音高', finite(wetJet.data)
+    && rms(wetJet.data, 0.5, 2.9) > rms(dryJet.data, 0.5, 2.9) * 1.15
+    && normalizedTone(wetJet.data, 250, 0.5, 2.9) > 0.1,
+    `乾／濕 RMS ${rms(dryJet.data, 0.5, 2.9).toFixed(4)} / ${rms(wetJet.data, 0.5, 2.9).toFixed(4)}`);
+  const jetCoast = await renderTurbine({ config: ENGINE_CONFIGS.turbojet, rpm: 15000, afterburner: 1, coast: true });
+  check('停機後轉子滑降仍有聲音、停止後無舊後燃器殘留', finite(jetCoast.data)
+    && rms(jetCoast.data, 1.4, 1.9) > 0.001 && rms(jetCoast.data, 2.6, 2.9) < 0.00001,
+    `滑降 RMS ${rms(jetCoast.data, 1.4, 1.9).toFixed(4)}；停止 ${rms(jetCoast.data, 2.6, 2.9).toExponential(2)}`);
+  const silentJet = await renderTurbine({ config: ENGINE_CONFIGS.turbojet, muted: true, afterburner: 1 });
+  check('連續噴射／後燃聲浪仍遵守靜音', rms(silentJet.data) === 0, 'RMS = ' + rms(silentJet.data));
   addAudioPreview(rotaryIdle['stock:straight'], '原廠轉子怠速', 'rotary-stock-idle.wav');
   addAudioPreview(rotaryIdle['brap:straight'], '改裝 Brap 怠速', 'rotary-brap-idle.wav');
   lines.push('全部 ' + count + ' 項音訊渲染檢查通過');

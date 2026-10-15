@@ -279,7 +279,8 @@ function recordingContext() {
     scale(x, y) { matrix[0] *= x; matrix[1] *= x; matrix[2] *= y; matrix[3] *= y; },
     point(x, y) { assert.ok(Number.isFinite(x) && Number.isFinite(y));
       const [a,b,c,d,e,f] = matrix; points.push({ x: a*x+c*y+e, y: b*x+d*y+f }); },
-    beginPath() {}, closePath() {}, fill() {}, stroke() {},
+    beginPath() {}, closePath() {}, fill() {}, stroke() {}, clip() {},
+    quadraticCurveTo(cx,cy,x,y) { this.point(cx,cy); this.point(x,y); },
     moveTo(x, y) { this.point(x, y); }, lineTo(x, y) { this.point(x, y); },
     arc(x, y, r) { assert.ok(Number.isFinite(r) && r >= 0, `invalid circle radius ${r}`);
       this.point(x-r,y-r); this.point(x+r,y+r); },
@@ -381,4 +382,78 @@ test('CP4 drawing follows physical 1-3-2-4 absolute ignition events in both view
   const oldConfig = ENGINE_CONFIGS.i4_flat;
   assert.equal(pistonCyclePhase(100, { firingOffset: 180 }, oldConfig), 280,
     'unmodified additive configurations retain their existing phase convention');
+});
+
+test('aviation combustor focus magnifies actual geometry on phone and desktop, and telemetry reads model fields', () => {
+  for (const id of ['gas_turbine', 'turbojet']) for (const [width, height] of [[308, 81], [780, 380]]) {
+    const engine = { config: ENGINE_CONFIGS[id], rpm: 9999, corePercent: 83.2, thrustN: 15340,
+      exhaustTemperatureC: 821, isCombusting: true, afterburnerAmount: 0, nozzleAreaRatio: 1 };
+    const renderer = Object.create(EngineRenderer.prototype);
+    Object.assign(renderer, { visualCrankAngle: 30, viewMode: 'multi' });
+    const scales = [], texts = [];
+    const ctx = recordingContext(); const originalScale = ctx.scale;
+    ctx.scale = (x, y) => { scales.push(x); originalScale(x, y); };
+    ctx.fillText = text => texts.push(text);
+    renderer.drawAviationEngine(ctx, engine, width, height, false, id === 'turbojet');
+    renderer.viewMode = 'focused';
+    renderer.drawAviationEngine(ctx, engine, width, height, false, id === 'turbojet');
+    assert.ok(scales[1] >= scales[0] * 1.2, `${id}: focus cannot be a relabelled overview`);
+    assert.ok(texts.some(text => text.includes('821°C') && text.includes('83.2%')));
+    assert.ok(!texts.some(text => text.includes('720°') || text.includes('四行程')));
+  }
+});
+
+test('aviation fuel, afterburner and coast visuals follow engine state instead of pedal position', () => {
+  const renderer = Object.create(EngineRenderer.prototype);
+  Object.assign(renderer, { viewMode: 'multi', visualCrankAngle: 0 });
+  const engine = { config: ENGINE_CONFIGS.turbojet, rpm: 12000, idleRPM: 3500,
+    isIgnitionOn: true, manifoldThrottle: 0, isCombusting: true, afterburnerAmount: 0, nozzleAreaRatio: 1 };
+  assert.equal(renderer.hasCombustion(engine), true, 'continuous core flame persists during a throttle reduction');
+  const colors = [], gradients = [];
+  const ctx = recordingContext();
+  ctx.createLinearGradient = (...coordinates) => { gradients.push(coordinates); return { addColorStop(_position, color) { colors.push(color); } }; };
+  const hasReheat = () => colors.some(color => color.startsWith('rgba(113,183,255,'));
+  engine.manifoldThrottle = 1;
+  renderer.drawAviationEngine(ctx, engine, 308, 81, true, true);
+  assert.equal(hasReheat(), false, 'full pedal without physical reheat cannot draw afterburner');
+  colors.length = gradients.length = 0; engine.manifoldThrottle = 0; engine.afterburnerAmount = .7;
+  renderer.drawAviationEngine(ctx, engine, 308, 81, true, true);
+  assert.equal(hasReheat(), true);
+  assert.ok(gradients.some(([x1, _y1, x2]) => x1 === 174 && x2 > 230), 'reheat must create visible external exhaust, not just an interior flame');
+  engine.isCombusting = false; colors.length = 0;
+  renderer.drawAviationEngine(ctx, engine, 308, 81, true, true);
+  assert.equal(renderer.hasCombustion(engine), false);
+  assert.equal(hasReheat(), false, 'fuel-off core coast must be flame-free');
+});
+
+test('turbojet combustor focus actually removes the front compressor from phone and compact desktop viewports', () => {
+  const engine = { config: ENGINE_CONFIGS.turbojet, rpm: 17000, corePercent: 100, isCombusting: true,
+    afterburnerAmount: 1, nozzleAreaRatio: 1.7, jetVelocity: 1200 };
+  for (const [width, height] of [[308, 81], [625, 161]]) {
+    const renderer = Object.create(EngineRenderer.prototype);
+    Object.assign(renderer, { visualCrankAngle: 0, viewMode: 'focused' });
+    const ctx = recordingContext(); const originalRect = ctx.fillRect;
+    let firstRotorX;
+    ctx.fillRect = function(x,y,w,h) {
+      const index = this.points.length; originalRect.call(this,x,y,w,h);
+      if (x === -128 && y === -40) firstRotorX = this.points[index].x;
+    };
+    renderer.drawAviationEngine(ctx, engine, width, height, true, true);
+    assert.ok(firstRotorX < 0, `${width}: focus must crop away the front compressor rather than squeezing in the entire engine`);
+  }
+});
+
+test('aviation visual shaft phase remains one physical revolution across the wrap and stops at zero', () => {
+  const renderer = Object.create(EngineRenderer.prototype);
+  Object.assign(renderer, { width: 308, height: 81, animationSpeed: 1, cleanMode: true, viewMode: 'multi',
+    visualConfigId: 'turbojet', visualCrankAngle: 359, sparkParticles: [], ctx: recordingContext() });
+  const engine = { config: ENGINE_CONFIGS.turbojet, rpm: 54000, coreRPM: 10, crankAngle: 180,
+    cylinderStates: [], isCombusting: false, afterburnerAmount: 0, nozzleAreaRatio: 1 };
+  renderer.render(engine, {}, 1 / 30);
+  assert.ok(Math.abs(renderer.visualCrankAngle - 1) < 1e-10, 'core RPM is authoritative and wraps without arbitrary 1.5/1.8 multipliers');
+  engine.coreRPM = 0; renderer.render(engine, {}, 1 / 30);
+  assert.ok(Math.abs(renderer.visualCrankAngle - 1) < 1e-10);
+  engine.coreRPM = 10; renderer.animationSpeed = .1; renderer.render(engine, {}, 1 / 30);
+  assert.ok(Math.abs(renderer.visualCrankAngle - 1.2) < 1e-10);
+  assert.equal(engine.coreRPM, 10, 'inspection slow motion cannot slow the physical shaft');
 });

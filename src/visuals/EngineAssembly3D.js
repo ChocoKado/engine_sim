@@ -36,6 +36,8 @@ export function engineBanks3D(config) {
 export class EngineAssembly3D {
   constructor(engine) {
     this.config = engine.config;
+    this.aviation = ['turbine', 'turbojet'].includes(this.config.layout);
+    this.nozzlePetals = [];
     this.mods = { ...BASE_MODS, ...engine.modifications };
     this.induction = engine.forcedInduction || 'na';
     this.group = new THREE.Group();
@@ -51,7 +53,8 @@ export class EngineAssembly3D {
     this.materials = new Set();
     this.instances = new Set();
     this.disposed = false;
-    this.phase = { crank: (engine.crankAngle || 0) * Math.PI / 180, turbo: 0, supercharger: 0 };
+    this.phase = { core: (engine.crankAngle || 0) * Math.PI / 180,
+      crank: (engine.crankAngle || 0) * Math.PI / 180, turbo: 0, supercharger: 0 };
     this.palette = this.createMaterials();
     this.banks = engineBanks3D(this.config);
     this.length = this.config.layout === 'rotary' ? 1.08 : this.config.layout === 'radial' ? 0.72
@@ -64,15 +67,17 @@ export class EngineAssembly3D {
     this.caseWidth = ['v', 'w'].includes(this.config.layout) ? 0.78 : this.config.layout === 'boxer' ? 0.66 : 0.5;
     if (this.config.layout === 'radial') this.buildRadial();
     else if (this.config.layout === 'rotary') this.buildRotary();
-    else if (this.config.layout === 'turbine') this.buildTurbine();
-    else if (this.config.layout === 'turbojet') this.buildTurbojet();
+    else if (this.config.layout === 'turbine') this.buildTurbine(engine);
+    else if (this.config.layout === 'turbojet') this.buildTurbojet(engine);
     else this.buildPistonBanks();
-    this.buildIntake(engine);
-    this.buildExhaust(engine);
-    this.buildFrontDrive();
-    this.buildFlywheel();
-    this.buildMounts();
-    this.buildInduction(engine);
+    if (!this.aviation) {
+      this.buildIntake(engine);
+      this.buildExhaust(engine);
+      this.buildFrontDrive();
+      this.buildFlywheel();
+      this.buildMounts();
+      this.buildInduction(engine);
+    }
     this.batchRepeatedMeshes();
     const baseCC = this.config.defaultDisplacement || this.config.displacement || engine.displacement || 1000;
     // Changing displacement changes the assembly scale without implying OEM dimensions.
@@ -326,147 +331,123 @@ export class EngineAssembly3D {
     this.cylinder(block, 0.27, 0.07, [0, 0.17, this.front - 0.045], this.palette.cast, 'z', 0.27, 'eccentric shaft front cover');
   }
 
-  buildTurbine() {
-    const block = this.part('block');
-    const { cast, machined, dark, hot, steel, brass } = this.palette;
-
-    // 1. Aerodynamic titanium nacelle outer casing
-    this.cylinder(block, 0.35, 1.22, [0, 0, 0], cast, 'z', 0.33, 'turbine nacelle casing');
-    for (const z of [-0.45, -0.15, 0.15, 0.45]) {
-      this.ring(block, 0.356, 0.018, [0, 0, z], machined);
-    }
-
-    // 2. Turboshaft reduction gearbox / accessory casing
-    this.box(block, [0.42, 0.24, 0.58], [0, -0.32, 0.05], dark, true, 'turboshaft reduction gearbox');
-
-    // 3. Annular combustor casing & fuel nozzles
-    this.ring(block, 0.366, 0.024, [0, 0, -0.05], hot);
-    for (let n = 0; n < 8; n++) {
-      const a = n * TAU / 8;
-      this.cylinder(block, 0.022, 0.065, [Math.cos(a) * 0.36, Math.sin(a) * 0.36, -0.05], brass, 'z');
-    }
-
-    // 4. Rotating Turbine Rotor Spool (Compressor stages + Turbine wheels + Drive shaft)
-    const rotor = new THREE.Group();
-    rotor.name = 'turbine rotor spool';
-    block.add(rotor);
-
-    // Central spool drive shaft
-    this.cylinder(rotor, 0.048, 1.34, [0, 0, 0], steel, 'z');
-
-    // Intake aerodynamic nose cone (spinner)
-    this.cylinder(rotor, 0.14, 0.18, [0, 0, this.front - 0.03], machined, 'z', 0.02, 'turbine intake spinner');
-
-    // Axial compressor bladed disks (4 stages)
-    for (let s = 0; s < 4; s++) {
-      const z = 0.42 - s * 0.15;
-      const r = 0.30 - s * 0.02;
-      this.cylinder(rotor, r, 0.035, [0, 0, z], machined, 'z');
-      for (let b = 0; b < 8; b++) {
-        const a = b * TAU / 8;
-        const blade = this.box(rotor, [0.016, r * 0.45, 0.032], [Math.sin(a) * r * 0.72, Math.cos(a) * r * 0.72, z], steel, false);
-        blade.rotation.z = -a;
-      }
-    }
-
-    // High pressure and power turbine stages (hot alloy bladed wheels)
-    for (let t = 0; t < 2; t++) {
-      const z = -0.22 - t * 0.16;
-      const r = 0.28 + t * 0.02;
-      this.cylinder(rotor, r, 0.040, [0, 0, z], hot, 'z');
-      for (let b = 0; b < 8; b++) {
-        const a = b * TAU / 8;
-        const blade = this.box(rotor, [0.018, r * 0.42, 0.036], [Math.sin(a) * r * 0.72, Math.cos(a) * r * 0.72, z], this.palette.tuned, false);
-        blade.rotation.z = -a;
-      }
-    }
-
-    // Spin the rotor spool with crankshaft rotation
-    this.spin(rotor, 'crank');
-
-    // 5. Connect intake, exhaust, and bank mounting anchors
-    this.intakeAnchors.push(new THREE.Vector3(-0.35, 0.38, 0.25));
-    this.headerAnchors.push(new THREE.Vector3(0.35, -0.05, -0.25));
-    this.bankAnchors.push(new THREE.Vector3(0, 0.38, 0));
+  // Hollow castings have actual inner walls and annular end lips. A closed
+  // CylinderGeometry would seal the inlet and hide the rotating compressor.
+  aviationSleeve(parent, outer, inner, length, z, material, name) {
+    const profile = [new THREE.Vector2(inner, -length / 2), new THREE.Vector2(outer, -length / 2),
+      new THREE.Vector2(outer, length / 2), new THREE.Vector2(inner, length / 2), new THREE.Vector2(inner, -length / 2)];
+    const geometry = this.geometry('sleeve:' + [outer, inner, length].join(','), () => new THREE.LatheGeometry(profile, 48));
+    const sleeve = this.mesh(parent, geometry, material, [0, 0, z], name);
+    sleeve.rotation.x = Math.PI / 2;
+    sleeve.userData.hollow = true;
+    sleeve.userData.innerRadius = inner;
+    return sleeve;
   }
 
-  buildTurbojet() {
+  buildTurbine(engine) { this.buildAviation(engine, false); }
+  buildTurbojet(engine) { this.buildAviation(engine, true); }
+
+  buildAviation(engine, jet) {
+    const { cast, machined, dark, hot, steel, brass } = this.palette;
     const block = this.part('block');
-    const { cast, machined, dark, hot, steel, brass, tuned } = this.palette;
-
-    // 1. Supersonic military turbojet titanium nacelle outer casing
-    this.cylinder(block, 0.36, 1.36, [0, 0, 0], cast, 'z', 0.33, 'turbojet nacelle casing');
-    for (const z of [-0.55, -0.35, -0.05, 0.25, 0.55]) {
-      this.ring(block, 0.366, 0.018, [0, 0, z], machined);
+    block.userData.flowDirection = 'positive-z inlet to negative-z exhaust';
+    const intake = this.part('intake');
+    const compressor = this.part('compressor');
+    const combustor = this.part('combustor');
+    const turbine = this.part('turbine');
+    const nozzle = this.part('nozzle');
+    // The model is a family illustration, not dimensional OEM CAD.
+    this.aviationSleeve(intake, .355, .321, .17, .69, machined, 'open inlet bellmouth');
+    this.aviationSleeve(block, .35, .322, .65, .28, cast, jet ? 'turbojet open compressor casing' : 'turboshaft open compressor casing');
+    this.aviationSleeve(combustor, .375, .33, .27, -.18, hot, 'annular combustor casing');
+    this.aviationSleeve(turbine, .35, .322, .25, -.43, hot, 'open turbine casing');
+    this.aviationSleeve(nozzle, .345, .315, jet ? .45 : .19, jet ? -.77 : -.64, hot, 'open exhaust duct');
+    for (const z of [.605, -.045, -.315, -.555]) {
+      this.ring(block, .358, .012, [0, 0, z], machined);
+      for (let n = 0; n < 8; n++) {
+        const angle = TAU * n / 8;
+        this.cylinder(block, .012, .035, [Math.cos(angle) * .367, Math.sin(angle) * .367, z], steel, 'z', .012, 'casing flange bolt');
+      }
     }
-
-    // 2. Annular Combustor casing & fuel manifolds
-    this.ring(block, 0.375, 0.024, [0, 0, 0.02], hot);
+    // A narrow hub and separate airfoil illustrations leave visible air
+    // passages. Stators belong to stationary groups, not the spinning shaft.
+    const stages = (parent, count, startZ, gap, hotSection) => {
+      for (let stage = 0; stage < count; stage++) {
+        const rotor = new THREE.Group();
+        rotor.name = (hotSection ? 'turbine' : 'compressor') + ' rotor ' + (stage + 1);
+        rotor.position.z = startZ - stage * gap;
+        rotor.userData.stageIndex = stage;
+        parent.add(rotor);
+        this.spin(rotor, 'core');
+        const radius = hotSection ? .285 + stage * .008 : .302 - stage * .009;
+        this.cylinder(rotor, .105, .024, [0, 0, 0], hotSection ? hot : machined, 'z', .105, 'rotor hub');
+        for (let blade = 0; blade < 18; blade++) {
+          const angle = TAU * blade / 18;
+          const leaf = this.box(rotor, [.026, radius - .102, .018], [Math.sin(angle) * (radius + .102) / 2, Math.cos(angle) * (radius + .102) / 2, 0], hotSection ? hot : steel, false, 'rotor blade');
+          leaf.rotation.set(0, .32, -angle);
+        }
+        const stator = new THREE.Group();
+        stator.name = (hotSection ? 'turbine' : 'compressor') + ' stator ' + (stage + 1);
+        stator.position.z = rotor.position.z - gap * .48;
+        parent.add(stator);
+        for (let vane = 0; vane < 12; vane++) {
+          const angle = TAU * vane / 12;
+          const leaf = this.box(stator, [.017, radius - .105, .018], [Math.sin(angle) * (radius + .105) / 2, Math.cos(angle) * (radius + .105) / 2, 0], dark, false, 'stationary guide vane');
+          leaf.rotation.set(0, -.28, -angle);
+        }
+      }
+    };
+    const compressorCount = jet ? (this.config.compressorStages || 9) : 4;
+    stages(compressor, compressorCount, .58, .56 / compressorCount, false);
+    stages(turbine, jet ? (this.config.turbineStages || 2) : 2, -.35, .10, true);
+    const shaft = new THREE.Group(); shaft.name = 'core shaft'; block.add(shaft);
+    this.cylinder(shaft, .045, 1.12, [0, 0, .08], steel, 'z', .045, 'core shaft spindle');
+    this.cylinder(shaft, .105, .16, [0, 0, .68], machined, 'z', .012, 'inlet spinner');
+    this.spin(shaft, 'core');
     for (let n = 0; n < 10; n++) {
-      const a = n * TAU / 10;
-      this.cylinder(block, 0.020, 0.060, [Math.cos(a) * 0.37, Math.sin(a) * 0.37, 0.02], brass, 'z');
+      const angle = n * TAU / 10;
+      this.cylinder(combustor, .014, .065, [Math.cos(angle) * .365, Math.sin(angle) * .365, -.16], brass, 'z', .014, 'fuel nozzle fitting');
     }
-
-    // 3. Afterburner reheat duct & circular flameholder rings
-    this.cylinder(block, 0.35, 0.42, [0, 0, -0.42], hot, 'z', 0.34, 'afterburner duct');
-    for (const r of [0.18, 0.28]) {
-      this.ring(block, r, 0.015, [0, 0, -0.38], tuned);
-    }
-    for (let n = 0; n < 8; n++) {
-      const a = n * TAU / 8;
-      this.cylinder(block, 0.012, 0.24, [Math.cos(a) * 0.23, Math.sin(a) * 0.23, -0.38], brass, 'z');
-    }
-
-    // 4. Convergent-divergent variable exhaust nozzle petals
-    for (let p = 0; p < 12; p++) {
-      const a = p * TAU / 12;
-      const petal = this.box(block, [0.075, 0.012, 0.16], [Math.cos(a) * 0.34, Math.sin(a) * 0.34, -0.66], dark, false);
-      petal.rotation.z = a;
-      petal.rotation.x = 0.15;
-    }
-
-    // 5. Rotating Spool (Axial compressor stages + Turbine disks + Central shaft)
-    const rotor = new THREE.Group();
-    rotor.name = 'turbojet rotor spool';
-    block.add(rotor);
-
-    // Central spool drive shaft
-    this.cylinder(rotor, 0.052, 1.38, [0, 0, 0], steel, 'z');
-
-    // Supersonic intake nose cone (bullet spike)
-    this.cylinder(rotor, 0.13, 0.22, [0, 0, this.front - 0.01], machined, 'z', 0.01, 'turbojet intake spike');
-
-    // 8-stage axial compressor rotor disks
-    for (let s = 0; s < 8; s++) {
-      const z = 0.50 - s * 0.065;
-      const r = 0.31 - s * 0.014;
-      this.cylinder(rotor, r, 0.022, [0, 0, z], machined, 'z');
-      for (let b = 0; b < 8; b++) {
-        const a = b * TAU / 8;
-        const blade = this.box(rotor, [0.012, r * 0.44, 0.022], [Math.sin(a) * r * 0.72, Math.cos(a) * r * 0.72, z], steel, false);
-        blade.rotation.z = -a;
+    this.ring(combustor, .38, .009, [0, 0, -.16], brass);
+    if (jet) {
+      const afterburner = this.part('afterburner');
+      for (const radius of [.16, .25]) this.ring(afterburner, radius, .009, [0, 0, -.68], hot);
+      for (let n = 0; n < 8; n++) {
+        const angle = n * TAU / 8;
+        const vane = this.box(afterburner, [.012, .15, .02], [Math.sin(angle) * .215, Math.cos(angle) * .215, -.68], hot, false, 'stationary flameholder');
+        vane.rotation.z = -angle;
       }
-    }
-
-    // 2-stage high temperature turbine wheels
-    for (let t = 0; t < 2; t++) {
-      const z = -0.12 - t * 0.10;
-      const r = 0.28 + t * 0.015;
-      this.cylinder(rotor, r, 0.035, [0, 0, z], hot, 'z');
-      for (let b = 0; b < 8; b++) {
-        const a = b * TAU / 8;
-        const blade = this.box(rotor, [0.016, r * 0.42, 0.030], [Math.sin(a) * r * 0.72, Math.cos(a) * r * 0.72, z], tuned, false);
-        blade.rotation.z = -a;
+      for (let n = 0; n < 16; n++) {
+        const angle = n * TAU / 16;
+        const hinge = new THREE.Group();
+        hinge.position.set(Math.cos(angle) * .325, Math.sin(angle) * .325, -.94);
+        hinge.rotation.z = angle + Math.PI / 2;
+        nozzle.add(hinge);
+        const petal = new THREE.Group();
+        hinge.add(petal);
+        this.box(petal, [.13, .015, .19], [0, 0, -.095], dark, false, 'variable nozzle petal');
+        this.nozzlePetals.push({ object: petal, hinge, angle });
       }
+      const flameMaterial = new THREE.MeshBasicMaterial({ color: 0x75aeff, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
+      this.materials.add(flameMaterial);
+      this.jetPlume = this.mesh(nozzle, this.geometry('jet plume', () => new THREE.ConeGeometry(.24, .6, 32, 1, true)), flameMaterial, [0, 0, -1.4], 'afterburner luminous plume');
+      this.jetPlume.rotation.x = -Math.PI / 2;
+      this.jetPlume.castShadow = this.jetPlume.receiveShadow = false;
+      this.jetPlume.userData.excludeBounds = true;
+    } else {
+      const gearbox = this.part('gearbox');
+      this.box(gearbox, [.43, .23, .40], [0, -.37, -.05], dark, true, 'turboshaft reduction gearbox');
     }
-
-    // Spin the rotor spool with engine crankshaft
-    this.spin(rotor, 'crank');
-
-    // 6. Connect intake, exhaust, and mounting anchors
-    this.intakeAnchors.push(new THREE.Vector3(-0.36, 0.38, 0.30));
-    this.headerAnchors.push(new THREE.Vector3(0.36, -0.05, -0.40));
-    this.bankAnchors.push(new THREE.Vector3(0, 0.38, 0));
+    const mounts = this.part('mounts');
+    for (const z of [.37, -.40]) {
+      for (const side of [-1, 1]) {
+        this.box(mounts, [.065, .32, .075], [side * .39, -.37, z], dark, false, 'test stand upright');
+        this.tube(mounts, [[side * .39, -.22, z], [side * .31, -.16, z]], .022, steel, 'case mounting strut');
+      }
+      this.box(mounts, [.94, .055, .13], [0, -.55, z], dark, true, 'static bench crossmember');
+    }
+    this.box(mounts, [.10, .06, 1.15], [-.41, -.58, -.01], dark, false, 'bench rail');
+    this.box(mounts, [.10, .06, 1.15], [.41, -.58, -.01], dark, false, 'bench rail');
   }
 
   buildIntake() {
@@ -829,18 +810,45 @@ export class EngineAssembly3D {
     // rather than the ignition flag, determines that physical motion.
     this.phase.turbo = (this.phase.turbo + Math.max(0, engine.turboRPM || 0) * TAU / 60 * step) % TAU;
     this.phase.supercharger = (this.phase.supercharger + Math.max(0, engine.superchargerRPM || 0) * TAU / 60 * step) % TAU;
+    this.phase.core = (this.phase.core + Math.max(0, engine.coreRPM ?? engine.rpm ?? 0) * TAU / 60 * step) % TAU;
     this.phase.crank += Math.max(0, engine.rpm || 0) * TAU / 60 * step;
     const crank = this.phase.crank;
     for (const item of this.animated) {
       const phase = item.source === 'crank' ? crank : item.source === 'cam' ? crank / 2 : this.phase[item.source];
       item.object.rotation.z = item.initialZ + phase * item.ratio;
     }
+    if (this.aviation) {
+      const area = clamp(Number(engine.nozzleAreaRatio) || 1, .65, 2);
+      for (const { object } of this.nozzlePetals) {
+        const exitRadius = .302 * Math.sqrt(area);
+        object.rotation.x = -Math.asin(clamp((exitRadius - .325) / .19, -.95, .95));
+      }
+      if (this.jetPlume) {
+        const burning = typeof engine.isCombusting === 'boolean' ? engine.isCombusting : engine.isIgnitionOn && engine.rpm > 0;
+        const amount = burning ? clamp(Number(engine.afterburnerAmount) || 0, 0, 1) : 0;
+        this.jetPlume.material.opacity = amount * .52;
+        this.jetPlume.visible = amount > .001;
+        this.jetPlume.scale.set(Math.sqrt(area), Math.max(.1, amount), Math.sqrt(area));
+      }
+    }
     this.palette.hot.emissive.setRGB(Math.min(0.08, Math.max(0, engine.exhaustHeat || 0) * 0.02), 0.005, 0);
   }
 
   getBounds(partId) {
     this.group.updateMatrixWorld(true);
-    return new THREE.Box3().setFromObject(this.parts.get(partId) || this.group);
+    if (!this.aviation) return new THREE.Box3().setFromObject(this.parts.get(partId) || this.group);
+    const bounds = new THREE.Box3();
+    (this.parts.get(partId) || this.group).traverse(object => {
+      if (!object.isMesh || object.userData.excludeBounds) return;
+      if (object.isInstancedMesh) {
+        object.computeBoundingBox();
+        bounds.union(object.boundingBox.clone().applyMatrix4(object.matrixWorld));
+      } else {
+        if (!object.geometry.boundingBox) object.geometry.computeBoundingBox();
+        bounds.union(object.geometry.boundingBox.clone().applyMatrix4(object.matrixWorld));
+      }
+    });
+    return bounds;
   }
 
   dispose() {

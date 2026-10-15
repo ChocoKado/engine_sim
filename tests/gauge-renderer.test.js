@@ -57,6 +57,7 @@ test('dual dials resize independently for their own wrapper and display pixel ra
 test('the speed scale covers every preset forward-gear redline speed and follows final-drive changes', () => {
   const { gauge } = cockpit();
   for (const id of Object.keys(ENGINE_CONFIGS)) {
+    if (ENGINE_CONFIGS[id].layout === 'turbojet') continue; // Static thrust bench has no road-speed dial.
     const engine = new EngineModel(id, 'oem', () => 0.5);
     const drive = new Drivetrain(engine);
     const topSpeed = () => Math.max(...Object.keys(drive.gearRatios).map(Number)
@@ -106,4 +107,25 @@ test('speed needle settling is stable across display frame rates and the old two
   const legacy = new GaugeRenderer(canvas(240, 240), canvas(300, 100));
   assert.equal(legacy.speedCtx, null);
   assert.doesNotThrow(() => legacy.render(engine, drive));
+});
+
+test('static turbojet dials use N1 percent and thrust kN, including coasting and switching back to a road engine', () => {
+  const { gauge, tacho, speed } = cockpit();
+  const engine = { config: ENGINE_CONFIGS.turbojet, isIgnitionOn: false, rpm: 17000,
+    corePercent: 63, thrustN: 12340 };
+  const drive = { speedKmh: 999 };
+  gauge.renderTachometer(engine, drive);
+  gauge.renderSpeedometer(engine, drive);
+  assert.equal(gauge.needleRPM, 63, 'ignition-off rotor coast still appears on N1');
+  assert.equal(gauge.needleSpeed, 12.34, 'road speed cannot masquerade as thrust');
+  assert.deepEqual(gauge.speedScale(engine, drive), { maximum: 24, majorStep: 4 });
+  assert.ok(tacho.calls.some(call => call[0] === 'fillText' && call[1] === 'N1'));
+  assert.ok(tacho.calls.some(call => call[0] === 'fillText' && call[1] === '%'));
+  assert.ok(speed.calls.some(call => call[0] === 'fillText' && call[1] === 'THRUST'));
+  assert.ok(speed.calls.some(call => call[0] === 'fillText' && call[1] === 'kN'));
+  const road = new EngineModel('i4_cross'); road.setRunning(true); road.rpm = 4500;
+  gauge.renderTachometer(road, { speedKmh: 80 }, 0);
+  gauge.renderSpeedometer(road, { speedKmh: 80 }, 0);
+  assert.equal(gauge.needleRPM, 4500, 'changing units cannot leave a percent value on an RPM dial');
+  assert.equal(gauge.needleSpeed, 80);
 });

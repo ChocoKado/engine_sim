@@ -342,6 +342,7 @@ export class GaragePanel {
   }
 
   unavailableReason(id) {
+    if (['turbine', 'turbojet'].includes(this.engine?.config?.layout)) return '航空燃氣渦輪不適用這組活塞引擎零件。';
     if (id === 'camshaft' && this.engine?.config?.layout === 'rotary') return '轉子以進排氣口控制換氣，沒有活塞式凸輪。';
     if (id === 'camshaft' && this.engine?.config?.layout === 'radial') return '星型引擎使用不同的配氣機構，此套件不適用。';
     if (id === 'intercooler') return '增壓冷卻器只適用 Turbo 或機械增壓。';
@@ -431,7 +432,9 @@ export class GaragePanel {
     if (this.canvas) this.canvas.hidden = mode !== '3d';
     if (this.oldCanvas) this.oldCanvas.hidden = mode === '3d';
     for (const [key, button] of this.viewButtons || []) button.setAttribute('aria-pressed', String(key === mode));
-    setText(this.viewHint, mode === '3d' ? '拖曳旋轉 · 滾輪／雙指縮放' : '觀察四行程 · 慢動作只改變動畫速度');
+    setText(this.viewHint, mode === '3d' ? '拖曳旋轉 · 滾輪／雙指縮放'
+      : ['turbine', 'turbojet'].includes(this.engine?.config?.layout)
+        ? '連續燃燒與轉子 · 慢動作只改變動畫速度' : '觀察四行程 · 慢動作只改變動畫速度');
     const part = this.catalog.find(candidate => candidate.id === focus);
     setText(this.stageStatus, mode === 'cutaway' ? '機械剖面' : part ? `安裝位置 · ${part.name}` : '完整引擎');
     this.emitView({ focus });

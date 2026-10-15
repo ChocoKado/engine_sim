@@ -46,6 +46,10 @@ export class PerformancePanel {
     this.renderHistory(); this.renderComparison(); this.update();
   }
   arm() {
+    if (this.engine.config.propulsionKind === 'turbojet') {
+      this.meter.cancel('噴射測試台以靜態推力量測，不進行道路加速測試。');
+      return;
+    }
     if (['armed', 'running'].includes(this.meter.state)) return;
     const setup = capturePerformanceSetup(this.engine, this.drive);
     const mode = document.getElementById('perf-mode')?.value || 'standing';
@@ -55,6 +59,10 @@ export class PerformancePanel {
     this.update();
   }
   beforeStep() {
+    if (this.engine.config.propulsionKind === 'turbojet') {
+      if (['armed', 'running'].includes(this.meter.state)) this.meter.cancel('已切換為噴射測試台。');
+      return;
+    }
     if (['armed', 'running'].includes(this.meter.state)
       && this.signature !== JSON.stringify(capturePerformanceSetup(this.engine, this.drive))) {
       this.meter.cancel('引擎或改裝設定已變更，請重新準備測試。');
@@ -64,6 +72,7 @@ export class PerformancePanel {
     return this.meter.state === 'armed' && this.meter.mode === 'standing' && throttle <= 0.02 ? 1 : brake;
   }
   update() {
+    if (this.engine.config.propulsionKind === 'turbojet') return;
     const meter = this.meter;
     if (meter.result && meter.result.id !== this.savedId) {
       this.savedId = meter.result.id;

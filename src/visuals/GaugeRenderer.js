@@ -92,7 +92,7 @@ export class GaugeRenderer {
       this.flameJet = null;
       this.exhaustId = engine.exhaust.id;
     }
-    this.consumePopEvents(popEvents);
+    if (!['turbine', 'turbojet'].includes(engine.config?.layout)) this.consumePopEvents(popEvents);
     this.renderTachometer(engine, drivetrain, dt);
     this.renderSpeedometer(engine, drivetrain, dt);
     this.renderExhaustPipe(engine, dt);
@@ -226,14 +226,29 @@ export class GaugeRenderer {
 
   renderTachometer(engine, drivetrain, dt = 1 / 60) {
     if (!this.tachoCtx || !this.tachoSize) return;
+    const jet = engine.config?.propulsionKind === 'turbojet' || engine.config?.layout === 'turbojet';
+    const mode = jet ? 'core-percent' : 'rpm';
+    const target = jet ? Math.max(0, Number(engine.corePercent) || 0) : engine.isIgnitionOn ? engine.rpm : 0;
+    if (this.tachoMode !== mode) {
+      this.tachoMode = mode;
+      this.needleRPM = target;
+      this.needleVelocity = 0;
+    }
     if (this.needleRPM === undefined) {
       this.needleRPM = engine.isIgnitionOn ? engine.rpm : 0;
       this.needleVelocity = 0;
     }
     const needle = advanceGaugeNeedle(this.needleRPM, this.needleVelocity,
-      engine.isIgnitionOn ? engine.rpm : 0, dt);
+      target, dt);
     this.needleRPM = needle.position;
     this.needleVelocity = needle.velocity;
+    if (jet) {
+      const dial = this.beginDial(this.tachoCtx, this.tachoSize);
+      this.drawDialScale(this.tachoCtx, dial, 110, 10, 'N1', '%', 100);
+      this.drawDialNeedle(this.tachoCtx, dial, this.needleRPM, 110);
+      this.tachoCtx.restore();
+      return;
+    }
     const redline = Math.max(1, engine.redlineRPM);
     const majorStep = redline > 40000 ? 10000 : redline > 20000 ? 5000 : redline > 10000 ? 2000 : redline < 5000 ? 500 : 1000;
     const maximum = Math.ceil((redline + majorStep * 0.5) / majorStep) * majorStep;
@@ -244,6 +259,9 @@ export class GaugeRenderer {
   }
 
   speedScale(engine, drivetrain) {
+    if (engine.config?.propulsionKind === 'turbojet' || engine.config?.layout === 'turbojet') {
+      return { maximum: 24, majorStep: 4 };
+    }
     let theoretical = 0;
     // Use every forward ratio, rather than assuming all presets have six gears.
     if (drivetrain?.calcSpeedFromRPM) {
@@ -263,8 +281,15 @@ export class GaugeRenderer {
 
   renderSpeedometer(engine, drivetrain, dt = 1 / 60) {
     if (!this.speedCtx || !this.speedSize) return;
+    const jet = engine.config?.propulsionKind === 'turbojet' || engine.config?.layout === 'turbojet';
     // A speedometer reads road motion even with ignition off, including reverse.
-    const speed = Math.abs(Number(drivetrain?.speedKmh) || 0);
+    const speed = jet ? Math.max(0, Number(engine.thrustN) || 0) / 1000 : Math.abs(Number(drivetrain?.speedKmh) || 0);
+    const mode = jet ? 'thrust' : 'speed';
+    if (this.speedMode !== mode) {
+      this.speedMode = mode;
+      this.needleSpeed = speed;
+      this.speedNeedleVelocity = 0;
+    }
     if (this.needleSpeed === undefined) {
       this.needleSpeed = speed;
       this.speedNeedleVelocity = 0;
@@ -275,14 +300,45 @@ export class GaugeRenderer {
     const { maximum, majorStep } = this.speedScale(engine, drivetrain);
     this.speedMaxKmh = maximum;
     const dial = this.beginDial(this.speedCtx, this.speedSize);
-    this.drawDialScale(this.speedCtx, dial, maximum, majorStep, 'SPEED', 'km/h');
+    this.drawDialScale(this.speedCtx, dial, maximum, majorStep, jet ? 'THRUST' : 'SPEED', jet ? 'kN' : 'km/h');
     this.drawDialNeedle(this.speedCtx, dial, this.needleSpeed, maximum);
     this.speedCtx.restore();
+  }
+
+  renderAviationExhaust(engine) {
+    const ctx = this.exhaustCtx, w = this.exWidth, h = this.exHeight;
+    ctx.clearRect(0, 0, w, h);
+    const center = h / 2;
+    const jet = engine.config.layout === 'turbojet';
+    const area = Math.max(.65, Math.min(2, Number(engine.nozzleAreaRatio) || 1));
+    const radius = Math.min(h * .27, 28) * Math.sqrt(area);
+    const exit = Math.min(w * .4, 110);
+    ctx.fillStyle = '#4a5967'; ctx.strokeStyle = '#a3afb9'; ctx.lineWidth = 2;
+    for (const side of [-1, 1]) {
+      ctx.beginPath(); ctx.moveTo(0, center + side * 35);
+      ctx.lineTo(exit, center + side * radius); ctx.lineTo(exit, center + side * (radius + 7));
+      ctx.lineTo(0, center + side * 42); ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+    const burning = typeof engine.isCombusting === 'boolean' ? engine.isCombusting : engine.isIgnitionOn && engine.rpm > 0;
+    const afterburner = jet && burning ? Math.max(0, Math.min(1, Number(engine.afterburnerAmount) || 0)) : 0;
+    if (afterburner > 0) {
+      const length = Math.max(1, (w - exit - 12) * afterburner);
+      const plume = ctx.createLinearGradient(exit, 0, exit + length, 0);
+      plume.addColorStop(0, 'rgba(170,215,255,' + afterburner * .8 + ')');
+      plume.addColorStop(.5, 'rgba(255,166,79,' + afterburner * .6 + ')');
+      plume.addColorStop(1, 'rgba(127,172,255,0)'); ctx.fillStyle = plume;
+      ctx.beginPath(); ctx.moveTo(exit, center - radius * .8); ctx.lineTo(exit + length, center);
+      ctx.lineTo(exit, center + radius * .8); ctx.closePath(); ctx.fill();
+    }
   }
 
   // Render Exhaust Tailpipe & Backfire Flame Spit
   renderExhaustPipe(engine, dt = 1 / 60) {
     if (!this.exhaustCtx) return;
+    if (['turbine', 'turbojet'].includes(engine.config?.layout)) {
+      this.renderAviationExhaust(engine);
+      return;
+    }
     const ctx = this.exhaustCtx;
     const w = this.exWidth;
     const h = this.exHeight;

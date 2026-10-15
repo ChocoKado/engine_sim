@@ -5,6 +5,9 @@
 import { EXHAUST_MODELS } from './ExhaustModels.js';
 import { ENGINE_CONFIGS } from '../physics/EngineConfigurations.js';
 import { combustionWorkletSource, inductionEventShape } from './CombustionDSP.js';
+import { TurbineDSP } from './TurbineDSP.js';
+
+const continuousTurbine = config => ['turbine', 'turbojet'].includes(config?.layout);
 
 export class SoundEngine {
   constructor(contextFactory = null) {
@@ -64,6 +67,7 @@ export class SoundEngine {
     this.acousticBackend = 'oscillator-fallback';
     this.rotaryIdleMode = 'stock';
     this.lastAudioState = null;
+    this.turbineParameters = { rpm: 0, turbineFlow: 0, turbineFuel: 0, afterburner: 0 };
   }
 
   // Initialize Web Audio graph upon user gesture
@@ -131,12 +135,14 @@ export class SoundEngine {
     // 5. Build Acoustic Oscillators and Sound Generators
     this.setupAcousticGenerators();
     await this.setupPressureGenerator();
+    this.setupTurbineAudio();
 
     this.isStarted = true;
     this.setSoundProfile(this.soundProfile);
     this.setExhaustModel(this.currentExhaust);
     // Never expose the generators' default 440 Hz tones on the first start.
-    this.update({ rpm: this.engineConfig.defaultIdleRPM, displacement: this.engineConfig.defaultDisplacement,
+    this.update({ rpm: continuousTurbine(this.engineConfig) && !this.running ? 0 : this.engineConfig.defaultIdleRPM,
+      displacement: this.engineConfig.defaultDisplacement,
       manifoldThrottle: 0.045, forcedInduction: 'na' }, this.engineConfig, {});
     this.setRunning(this.running);
   }
@@ -159,6 +165,8 @@ export class SoundEngine {
         this.pressureNode = null;
         this.acousticBackend = 'oscillator-fallback';
         this.combustionGain.gain.setTargetAtTime(0.55, this.ctx.currentTime, 0.005);
+        this.setupTurbineFallback();
+        if (this.lastAudioState) this.update(this.lastAudioState.engineState, this.engineConfig, this.lastAudioState.drivetrainState);
       };
       this.pressureNode.onprocessorerror = () => failed();
       this.pressureNode.port.onmessage = ({ data }) => { if (data.error) failed(data.error); };
@@ -166,6 +174,7 @@ export class SoundEngine {
       this.pressureGain.gain.setValueAtTime(1.25, this.ctx.currentTime);
       this.pressureNode.connect(this.pressureGain);
       this.pressureGain.connect(this.saturationDriveGain);
+      if (this.turbineGain) this.pressureNode.connect(this.turbineGain);
       this.combustionGain.gain.setValueAtTime(0, this.ctx.currentTime);
       this.acousticBackend = 'pressure-worklet';
     } catch (error) {
@@ -183,6 +192,109 @@ export class SoundEngine {
       ...this.engineConfig, displacement, profile: this.soundProfile,
     } });
     this.pressureConfigurationKey = `${this.engineConfig.id}:${displacement}:${this.soundProfile}`;
+  }
+
+  setupTurbineAudio() {
+    // Jet exhaust has no piston collector / road muffler. Keep this continuous
+    // source separate while retaining the same master volume and safety stage.
+    this.turbineGain = this.ctx.createGain();
+    this.turbineGain.gain.setValueAtTime(0, this.ctx.currentTime);
+    this.turbineHighpass = this.ctx.createBiquadFilter();
+    this.turbineHighpass.type = 'highpass';
+    this.turbineHighpass.frequency.setValueAtTime(18, this.ctx.currentTime);
+    this.turbineLowpass = this.ctx.createBiquadFilter();
+    this.turbineLowpass.type = 'lowpass';
+    this.turbineLowpass.Q.setValueAtTime(0.6, this.ctx.currentTime);
+    this.turbineGain.connect(this.turbineHighpass);
+    this.turbineHighpass.connect(this.turbineLowpass);
+    this.turbineLowpass.connect(this.masterGain);
+    this.pressureNode?.connect(this.turbineGain);
+    if (!this.pressureNode) this.setupTurbineFallback();
+  }
+
+  setupTurbineFallback() {
+    if (!this.turbineGain || this.turbineProcessor || this.turbineNativeGain) return;
+    if (typeof this.ctx.createScriptProcessor === 'function') {
+      // The callback fallback uses exactly the same pressure-free continuous
+      // synthesis as the Worklet; block boundaries never reset rotor phase.
+      try {
+        this.turbineDSP = new TurbineDSP(this.ctx.sampleRate);
+        this.turbineDSP.configure(this.engineConfig);
+        this.turbineProcessor = this.ctx.createScriptProcessor(1024, 0, 1);
+        this.turbineProcessor.onaudioprocess = event => {
+          const output = event.outputBuffer.getChannelData(0);
+          if (continuousTurbine(this.engineConfig)) this.turbineDSP.process(output, this.turbineParameters);
+          else output.fill(0);
+        };
+        this.turbineProcessor.connect(this.turbineGain);
+        return;
+      } catch { this.turbineProcessor = null; }
+    }
+    // Last resort for contexts without either processor API: native oscillators
+    // retain phase, with independent broadband flow rather than firing pulses.
+    this.turbineNativeGain = this.ctx.createGain();
+    this.turbineNativeGain.gain.setValueAtTime(0, this.ctx.currentTime);
+    this.turbineNativeGain.connect(this.turbineGain);
+    this.turbineNativeOsc = this.ctx.createOscillator();
+    this.turbineNativeOsc.type = 'sine';
+    this.turbineNativeTone = this.ctx.createGain();
+    this.turbineNativeOsc.connect(this.turbineNativeTone);
+    this.turbineNativeTone.connect(this.turbineNativeGain);
+    this.turbineNativeOsc.start();
+    this.turbineNativeNoise = this.ctx.createBiquadFilter();
+    this.turbineNativeNoise.type = 'lowpass';
+    this.turbineNativeNoiseGain = this.ctx.createGain();
+    this.intakeNoiseNode.connect(this.turbineNativeNoise);
+    this.turbineNativeNoise.connect(this.turbineNativeNoiseGain);
+    this.turbineNativeNoiseGain.connect(this.turbineNativeGain);
+  }
+
+  updateTurbine(engineState, config) {
+    const t = this.ctx.currentTime;
+    const rpm = Math.max(0, Math.min(120000, Number(engineState.coreRPM ?? engineState.rpm) || 0));
+    const normalized = Math.min(1.5, rpm / Math.max(1000, config.defaultRedlineRPM));
+    const burning = Boolean(engineState.isCombusting ?? engineState.isIgnitionOn ?? this.running);
+    const throttle = Math.max(0, Math.min(1, engineState.throttle ?? engineState.manifoldThrottle ?? 0));
+    // Actual jet flow / exit speed are used when supplied. The older turboshaft
+    // preset only has RPM, so its acoustics explicitly retain a flow estimate.
+    const flowReference = Math.max(0.01, Number(engineState.designMassFlowKgS)
+      || config.jetDesign?.maxMassFlowKgS || config.designMassFlowKgS || 20);
+    const flow = Number.isFinite(engineState.massFlowKgS)
+      ? Math.min(2, Math.max(0, engineState.massFlowKgS) / flowReference) : normalized;
+    const velocity = Math.max(0, Math.min(2200, Number(engineState.jetVelocity) || 0));
+    const afterburner = burning ? Math.max(0, Math.min(1, engineState.afterburnerAmount || 0)) : 0;
+    this.turbineParameters = { rpm, turbineFlow: flow,
+      turbineFuel: burning ? 0.35 + throttle * 0.65 : 0,
+      afterburner, jetVelocity: velocity, pressureRatio: engineState.pressureRatio || 1 };
+    if (`${config.id}:${engineState.displacement || config.defaultDisplacement}:${this.soundProfile}` !== this.pressureConfigurationKey) {
+      this.configurePressureGenerator(engineState.displacement || config.defaultDisplacement);
+    }
+    if (this.pressureNode) {
+      for (const [name, value] of Object.entries(this.turbineParameters)) {
+        this.pressureNode.parameters.get(name)?.setTargetAtTime(value, t, name === 'rpm' ? 0.005 : 0.012);
+      }
+      // Piston-only cuts and their 18 Hz gate do not interrupt a Brayton flame.
+      for (const name of ['ignitionCut', 'limiter', 'rotaryBrap']) this.pressureNode.parameters.get(name)?.setValueAtTime(0, t);
+    }
+    this.pressureGain?.gain.setTargetAtTime(0, t, 0.010);
+    this.turbineGain.gain.setTargetAtTime(1.8, t, 0.010);
+    this.turbineLowpass.frequency.setTargetAtTime(3800 + (1 - this.toneWarmth) * 4300, t, 0.035);
+    for (const name of ['combustionGain', 'harmonicGain', 'subBassGain', 'camshaftGain', 'gearWhineGain',
+      'intakeGain', 'turboSpoolGain', 'turboAirGain', 'scWhineGain', 'rotaryIdleModGain', 'limiterModGain']) {
+      this[name]?.gain.setTargetAtTime(0, t, 0.008);
+    }
+    this.limiterGate.gain.setTargetAtTime(1, t, 0.008);
+    if (this.turbineNativeGain) {
+      this.turbineNativeGain.gain.setTargetAtTime(1, t, 0.010);
+      this.turbineNativeOsc.frequency.setTargetAtTime(Math.min(this.ctx.sampleRate * 0.35, rpm / 60), t, 0.012);
+      this.turbineNativeTone.gain.setTargetAtTime(Math.min(0.12, Math.sqrt(normalized) * 0.085), t, 0.012);
+      this.turbineNativeNoise.frequency.setTargetAtTime(Math.min(this.ctx.sampleRate * 0.35, 700 + normalized * 3000), t, 0.012);
+      this.turbineNativeNoiseGain.gain.setTargetAtTime(Math.sqrt(flow)
+        * (0.07 + (burning ? 0.20 + afterburner * 0.35 : 0)), t, 0.025);
+    }
+    this.acousticBackend = this.pressureNode ? 'turbine-worklet' : this.turbineProcessor ? 'turbine-script' : 'turbine-oscillator';
+    const audible = this.running || rpm > 5 || flow > 0.0001;
+    this.outputGain.gain.setTargetAtTime(audible ? 1 : 0, t, 0.035);
   }
 
   trackBurst(source, nodes) {
@@ -286,15 +398,10 @@ export class SoundEngine {
     real[0] = 0;
     imag[0] = 0;
 
-    if (config.layout === 'turbine' || config.layout === 'turbojet') {
-      const isTurbojet = config.layout === 'turbojet';
-      for (let i = 1; i < numHarmonics; i++) {
-        // High blade-passing harmonics + continuous combustion hiss & roar
-        const peakHarmonic = isTurbojet ? 8 : 12;
-        const bladePass = Math.exp(-Math.abs(i - peakHarmonic) * 0.12) * 0.8 + Math.exp(-i * 0.05) * 0.6;
-        real[i] = bladePass / (1 + (i * 0.06) ** 2);
-        imag[i] = (i % 2 === 0 ? 0.35 : -0.35) * bladePass;
-      }
+    if (continuousTurbine(config)) {
+      // This piston oscillator stays muted for turbines. All turbine backends
+      // use continuous flow and independent rotor orders instead of this wave.
+      real[1] = 1;
       return this.ctx.createPeriodicWave(real, imag, { disableNormalization: false });
     }
 
@@ -478,6 +585,10 @@ export class SoundEngine {
     this.combustionOsc.setPeriodicWave(wave);
     this.waveKey = '';
     this.configurePressureGenerator(this.currentDisplacement);
+    if (continuousTurbine(this.engineConfig)) {
+      if (this.lastAudioState) this.updateTurbine(this.lastAudioState.engineState, this.engineConfig);
+      return;
+    }
 
     if (profile === 'muscle') {
       this.subBassGain.gain.setTargetAtTime(0.65, this.ctx.currentTime, 0.05);
@@ -506,6 +617,7 @@ export class SoundEngine {
 
     const antiHarshFreq = 1800 + (1.0 - this.toneWarmth) * 1100;
     this.mufflerLowpass2.frequency.setTargetAtTime(antiHarshFreq, this.ctx.currentTime, 0.05);
+    this.turbineLowpass?.frequency.setTargetAtTime(3800 + (1 - this.toneWarmth) * 4300, this.ctx.currentTime, 0.035);
   }
 
   setExhaustModel(exhaustModel) {
@@ -529,7 +641,7 @@ export class SoundEngine {
 
   // Play an explosive overrun pop, gun-shot rev-limiter bang, or crisp shift crack
   playBackfirePop(intensity = 1.0, hasFlame = false, isLimiter = false, when, isShift = false, displacement = 1000) {
-    if (!this.ctx || !this.isStarted || !this.running
+    if (!this.ctx || !this.isStarted || !this.running || continuousTurbine(this.engineConfig)
       || (this.currentExhaust.id === 'oem' && !isShift)
       || !Number.isFinite(intensity) || intensity <= 0) return;
 
@@ -592,7 +704,7 @@ export class SoundEngine {
 
   // Valve sound follows the stored charge pressure and vent duration.
   playBovSound(eventOrIntensity = 1.0) {
-    if (!this.ctx || !this.isStarted || !this.running) return;
+    if (!this.ctx || !this.isStarted || !this.running || continuousTurbine(this.engineConfig)) return;
     const event = inductionEventShape(eventOrIntensity, 'bov');
     if (event.intensity <= 0) return;
     const t = Math.max(this.ctx.currentTime, Number(event.when) || this.ctx.currentTime);
@@ -632,7 +744,7 @@ export class SoundEngine {
 
   // Surge pulses slow and weaken as charge pressure and rotor energy decay.
   playFlutterSound(eventOrIntensity = 1.0) {
-    if (!this.ctx || !this.isStarted || !this.running) return;
+    if (!this.ctx || !this.isStarted || !this.running || continuousTurbine(this.engineConfig)) return;
     const event = inductionEventShape(eventOrIntensity, 'flutter');
     if (event.intensity <= 0) return;
     const t = Math.max(this.ctx.currentTime, Number(event.when) || this.ctx.currentTime);
@@ -684,10 +796,18 @@ export class SoundEngine {
   // Real-time audio frame update
   update(engineState, config, drivetrainState = {}) {
     if (!this.ctx || !this.isStarted) return;
-    this.lastAudioState = { engineState, config, drivetrainState };
 
     const t = this.ctx.currentTime;
     this.setEngineConfig(config);
+    this.lastAudioState = { engineState, config, drivetrainState };
+    if (continuousTurbine(config)) {
+      this.updateTurbine(engineState, config);
+      return;
+    }
+    this.turbineGain?.gain.setTargetAtTime(0, t, 0.008);
+    this.turbineNativeGain?.gain.setTargetAtTime(0, t, 0.008);
+    this.pressureGain?.gain.setTargetAtTime(1.25, t, 0.008);
+    this.acousticBackend = this.pressureNode ? 'pressure-worklet' : 'oscillator-fallback';
     const rpm = Math.max(120, engineState.rpm || 1000);
     const throttle = Math.max(0, Math.min(1, engineState.manifoldThrottle ?? engineState.throttle ?? 0));
     const cylinders = (config && config.cylinders) || 4;
@@ -948,7 +1068,8 @@ export class SoundEngine {
 
   applyVolume() {
     if (!this.ctx || !this.masterGain) return;
-    this.masterGain.gain.setTargetAtTime(this.volume * 0.85 * this.currentExhaust.volumeMultiplier, this.ctx.currentTime, 0.04);
+    const exhaustVolume = continuousTurbine(this.engineConfig) ? 1 : this.currentExhaust.volumeMultiplier;
+    this.masterGain.gain.setTargetAtTime(this.volume * 0.85 * exhaustVolume, this.ctx.currentTime, 0.04);
   }
 
   setRunning(running) {
@@ -959,12 +1080,36 @@ export class SoundEngine {
       }
       this.activeBursts.clear();
     }
-    if (this.outputGain) this.outputGain.gain.setTargetAtTime(this.running ? 1 : 0, this.ctx.currentTime, 0.035);
+    if (this.outputGain) {
+      if (continuousTurbine(this.engineConfig) && this.lastAudioState) {
+        const state = this.lastAudioState.engineState;
+        this.updateTurbine(this.running ? state : { ...state, isIgnitionOn: false,
+          isCombusting: false, fuelFlowKgS: 0, afterburnerAmount: 0 }, this.engineConfig);
+      } else this.outputGain.gain.setTargetAtTime(this.running ? 1 : 0, this.ctx.currentTime, 0.035);
+    }
   }
 
   setEngineConfig(config) {
+    const changed = this.engineConfig.id !== config.id;
     this.engineConfig = config;
     if (!this.isStarted) return;
+    if (changed) {
+      this.lastAudioState = null;
+      this.currentDisplacement = config.defaultDisplacement;
+      for (const source of this.activeBursts) {
+        try { source.stop(); } catch { /* already ended */ }
+      }
+      this.activeBursts.clear();
+      this.turbineParameters = { rpm: 0, turbineFlow: 0, turbineFuel: 0, afterburner: 0 };
+      this.turbineGain?.gain.setTargetAtTime(0, this.ctx.currentTime, 0.008);
+      this.turbineNativeGain?.gain.setTargetAtTime(0, this.ctx.currentTime, 0.008);
+      if (this.turbineDSP) {
+        this.turbineDSP = new TurbineDSP(this.ctx.sampleRate);
+        this.turbineDSP.configure(config);
+      }
+      this.outputGain.gain.setTargetAtTime(this.running ? 1 : 0, this.ctx.currentTime, 0.012);
+      this.applyVolume();
+    }
     const key = [config.id, this.soundProfile, ...config.firingAngles].join(':');
     if (key === this.waveKey) return;
     this.combustionOsc.setPeriodicWave(this.createCombustionPulseWave(this.soundProfile, config));

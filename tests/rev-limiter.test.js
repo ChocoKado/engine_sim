@@ -21,7 +21,7 @@ function setup(id, variant, mode = 'amt') {
 }
 
 test('all engine architectures hold full-throttle neutral near their limiter without a broad RPM cycle', () => {
-  for (const id of Object.keys(ENGINE_CONFIGS)) for (const variant of variants) {
+  for (const id of Object.keys(ENGINE_CONFIGS).filter(id => ENGINE_CONFIGS[id].propulsionKind !== 'turbojet')) for (const variant of variants) {
     const { engine, drive } = setup(id, variant);
     let min = Infinity, max = 0;
     for (let frame = 0; frame < 12 * 60; frame++) {

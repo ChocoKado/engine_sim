@@ -127,15 +127,16 @@ function fixture() {
   const ids = new Map(['displacement-slider', 'displacement-val', 'redline-slider', 'redline-val',
     'turbo-controls-panel', 'boost-slider', 'boost-val', 'boost-slider-title', 'boost-status-badge', 'supercharger-note',
     'tuning-state-badge', 'vehicle-mass-slider', 'vehicle-mass-val', 'rotary-idle-controls', 'rotary-idle-mode',
-    'supercharger-range-note']
+    'supercharger-range-note', 'at-controls', 'amt-controls']
     .map(id => [id, new Element()]));
   const induction = ['na', 'turbo', 'supercharger'].map(value => new Element({ induction: value }));
   const sizes = ['small', 'large'].map(value => new Element({ turboSize: value }));
   const bov = ['flutter', 'bov'].map(value => new Element({ bov: value }));
+  const transmission = ['at', 'amt'].map(mode => new Element({ mode }));
   const turboOnly = [new Element(), new Element()];
   const gears = new Element();
   const reverse = new Element({ pos: 'R' });
-  const selectors = new Map([['.induction-btn', induction], ['.turbo-size-btn', sizes], ['.bov-btn', bov],
+  const selectors = new Map([['.trans-btn', transmission], ['.induction-btn', induction], ['.turbo-size-btn', sizes], ['.bov-btn', bov],
     ['.bov-selection-row, .turbo-size-row', turboOnly], ['.at-btn[data-pos="R"]', [reverse]]]);
   const original = globalThis.document;
   globalThis.document = {
@@ -149,8 +150,27 @@ function fixture() {
   app.drivetrain = { maxGear: 7, currentGear: 0, gearRatios: { '-1': -3.2 } };
   app.updateDynoOverview = () => {};
   app.updateReferenceStatus = () => {};
-  return { app, ids, induction, sizes, bov, turboOnly, gears, reverse, restore: () => { globalThis.document = original; } };
+  return { app, ids, induction, sizes, bov, transmission, turboOnly, gears, reverse, restore: () => { globalThis.document = original; } };
 }
+
+test('returning from a jet bench restores actual transmission controls instead of stale AMT selection', () => {
+  const state = fixture();
+  try {
+    const e = new EngineModel('i4_cross');
+    const d = new Drivetrain(e);
+    state.app.engine = e; state.app.drivetrain = d;
+    d.setMode('amt'); state.app.syncTransmissionUI();
+    assert.equal(state.ids.get('amt-controls').style.display, 'flex');
+    e.setConfig('turbojet'); d.configureVehicle(); state.app.syncTransmissionUI();
+    assert.equal(state.ids.get('amt-controls').style.display, 'none');
+    e.setConfig('i4_cross'); d.configureVehicle(); state.app.syncTransmissionUI();
+    assert.equal(d.mode, 'at');
+    assert.equal(state.ids.get('at-controls').style.display, 'flex');
+    assert.equal(state.ids.get('amt-controls').style.display, 'none');
+    assert.equal(state.transmission[0].attributes['aria-pressed'], 'true');
+    assert.equal(state.transmission[1].attributes['aria-pressed'], 'false');
+  } finally { state.restore(); }
+});
 
 test('preset reset replaces every visible induction setting with current model state', () => {
   const state = fixture();

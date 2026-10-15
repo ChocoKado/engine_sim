@@ -28,7 +28,7 @@ const run = (drive, seconds, throttle = 1, brake = 0, fps = 60) => {
   return { state, events };
 };
 
-for (const id of Object.keys(ENGINE_CONFIGS)) {
+for (const id of Object.keys(ENGINE_CONFIGS).filter(id => ENGINE_CONFIGS[id].propulsionKind !== 'turbojet')) {
   for (const mode of ['at', 'amt']) {
     test(id + ' / ' + mode + ': launch, accelerate and brake to idle', () => {
       const { engine, drive } = setup(id, mode);

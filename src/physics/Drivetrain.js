@@ -36,15 +36,29 @@ export class Drivetrain {
     this.driveEfficiency = profile.driveEfficiency || (this.engine.config.layout === "radial" ? 0.94 : profile.mass < 500 ? 0.965 : 0.94);
     this.vehicleProfile = profile;
     this.gearRatios = { ...profile.gearRatios };
-    this.maxGear = Math.max(...Object.keys(this.gearRatios).map(Number).filter(g => g > 0));
+    this.maxGear = Math.max(0, ...Object.keys(this.gearRatios).map(Number).filter(g => g > 0));
     this.tireCircumference = 2 * Math.PI * this.tireRadius;
+    if (this.engine.config.propulsionKind === 'turbojet') {
+      this.mode = 'bench';
+      this.currentGear = 0;
+      this.atSelector = 'N';
+      this.speedKmh = this.distanceMeters = 0;
+      this.resetShift();
+    } else if (this.mode === 'bench') {
+      this.mode = 'at';
+      this.currentGear = 0;
+      this.atSelector = 'N';
+      this.resetShift();
+    }
   }
 
   setVehicleMass(value) {
+    if (this.engine.config.propulsionKind === 'turbojet') return false;
     if (Number.isFinite(Number(value))) this.vehicleMass = clamp(Number(value), 180, 3000);
   }
 
   setFinalDriveScale(value) {
+    if (this.engine.config.propulsionKind === 'turbojet') return false;
     const scale = Number(value);
     if (!Number.isFinite(scale) || Math.abs(this.speedKmh) > 1 || this.shiftState === 'shifting') return false;
     this.finalDriveScale = clamp(scale, 0.75, 1.25);
@@ -79,16 +93,19 @@ export class Drivetrain {
   }
 
   calcRPMFromSpeed(gear, speedKmh) {
+    if (this.engine.config.propulsionKind === 'turbojet') return 0;
     const ratio = Math.abs(this.gearRatios[gear] * this.finalDrive * this.primaryRatio);
     return Math.abs(speedKmh) / 3.6 / this.tireCircumference * 60 * ratio;
   }
 
   calcSpeedFromRPM(gear, rpm) {
+    if (this.engine.config.propulsionKind === 'turbojet') return 0;
     const ratio = Math.abs(this.gearRatios[gear] * this.finalDrive * this.primaryRatio);
     return ratio ? rpm / ratio * this.tireCircumference / 60 * 3.6 : 0;
   }
 
   setMode(mode) {
+    if (this.engine.config.propulsionKind === 'turbojet') return this.reject('噴射測試台沒有汽車變速箱');
     if (!['at', 'amt'].includes(mode)) return false;
     if (mode === this.mode) return true;
     this.mode = mode;
@@ -100,6 +117,7 @@ export class Drivetrain {
   }
 
   canSelectGear(gear) {
+    if (this.engine.config.propulsionKind === 'turbojet') return this.reject('噴射測試台沒有檔位');
     if (!Number.isInteger(gear) || gear < -1 || gear > this.maxGear) return this.reject('無效檔位');
     if (gear === 0) return true;
     if (!this.gearRatios[gear]) return this.reject('此車型沒有倒檔');
@@ -113,6 +131,7 @@ export class Drivetrain {
   }
 
   setAtSelector(position) {
+    if (this.engine.config.propulsionKind === 'turbojet') return this.reject('噴射測試台沒有汽車檔位');
     if (this.mode !== 'at' || !['P', 'R', 'N', 'D'].includes(position)) return false;
     if (position === this.atSelector) return true;
     if (position === 'P' && Math.abs(this.speedKmh) > 0.5) return this.reject('請先煞停，再切入 P 檔');
@@ -160,6 +179,7 @@ export class Drivetrain {
   setAmtGear(gear) { return this.mode === 'amt' && this.startShift(gear); }
 
   shiftUp() {
+    if (this.engine.config.propulsionKind === 'turbojet') return this.reject('噴射測試台不需要換檔');
     if (this.mode === 'at' && this.atSelector !== 'D') return false;
     if (this.currentGear >= this.maxGear) return false;
     const result = this.startShift(this.currentGear + 1);
@@ -168,6 +188,7 @@ export class Drivetrain {
   }
 
   shiftDown() {
+    if (this.engine.config.propulsionKind === 'turbojet') return this.reject('噴射測試台不需要換檔');
     if (this.mode === 'at' && (this.atSelector !== 'D' || this.currentGear <= 1)) return false;
     if (this.currentGear <= -1) return false;
     const result = this.startShift(this.currentGear - 1);
@@ -176,6 +197,7 @@ export class Drivetrain {
   }
 
   getGearDisplay() {
+    if (this.engine.config.propulsionKind === 'turbojet') return 'TEST';
     if (this.mode === 'at') return this.atSelector === 'D' ? 'D' + this.currentGear : this.atSelector;
     return this.currentGear === -1 ? 'R' : this.currentGear === 0 ? 'N' : String(this.currentGear);
   }
@@ -236,6 +258,7 @@ export class Drivetrain {
   // RPM jump. The exact same reaction torque accelerates the vehicle and slows
   // the crank. Hydraulic pump/turbine torques can differ during AT launch.
   couple(dt, gear, capacity, pump = 0, turbine = 0) {
+    if (this.engine.config.propulsionKind === 'turbojet') return false;
     const e = this.engine;
     const ratio = Math.abs(this.gearRatios[gear] * this.finalDrive * this.primaryRatio);
     const direction = Math.sign(gear);
@@ -355,6 +378,15 @@ export class Drivetrain {
 
   step(dt, throttle) {
     const e = this.engine;
+    if (e.config.propulsionKind === 'turbojet') {
+      this.mode = 'bench';
+      this.currentGear = 0;
+      this.speedKmh = this.distanceMeters = 0;
+      this.resetShift();
+      e.prepareStep(dt, throttle);
+      e.advanceStep(dt);
+      return;
+    }
     this.automaticShift(dt, throttle);
     if (e.isIgnitionOn && this.shiftState === 'shifting') {
       this.stepShift(dt, throttle);

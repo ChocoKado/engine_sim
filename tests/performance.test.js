@@ -7,6 +7,17 @@ import { capturePerformanceSetup, PerformancePanel } from '../src/controls/Perfo
 
 const setup = { model: 'Test engine', mass: 1200 };
 const sample = (time, speed, distance = 0) => ({ time, speed, distance, running: true, gear: 1 });
+test('switching to a static jet bench cancels road timing and cannot arm a fabricated acceleration run', () => {
+  const panel = Object.create(PerformancePanel.prototype);
+  panel.engine = { config: { propulsionKind: 'turbojet' } };
+  panel.meter = new PerformanceMeter();
+  panel.meter.arm(sample(0, 0), setup);
+  panel.beforeStep();
+  assert.equal(panel.meter.state, 'cancelled');
+  panel.arm();
+  assert.equal(panel.meter.state, 'cancelled');
+  assert.equal(panel.meter.result, null);
+});
 test('timing interpolates speed and quarter-mile crossings independent of sample frequency', () => {
   const run = dt => {
     const meter = new PerformanceMeter(); meter.arm(sample(0, 0), setup);

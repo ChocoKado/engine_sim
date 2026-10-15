@@ -24,7 +24,13 @@ for (const [id, config] of Object.entries(ENGINE_CONFIGS)) {
     const engine = new EngineModel(id, 'oem');
     const assembly = new EngineAssembly3D(engine);
     try {
-      for (const part of ['block', 'intake', 'headers', 'flywheel', 'exhaust', 'accessories', 'mounts']) assert.ok(assembly.parts.has(part), `${id} ${part}`);
+      const aviation = ['turbine', 'turbojet'].includes(config.layout);
+      const expectedParts = aviation ? ['block', 'intake', 'compressor', 'combustor', 'turbine', 'nozzle', 'mounts']
+        : ['block', 'intake', 'headers', 'flywheel', 'exhaust', 'accessories', 'mounts'];
+      for (const part of expectedParts) assert.ok(assembly.parts.has(part), `${id} ${part}`);
+      if (aviation) for (const part of ['headers', 'flywheel', 'exhaust', 'accessories', 'camshaft', 'pulley', 'intercooler']) {
+        assert.equal(assembly.parts.has(part), false, `${id}: fictitious automotive ${part}`);
+      }
       const cylinders = [], rotors = [];
       assembly.group.traverse(node => {
         if (!node.isMesh && node.userData.cylinderIndex !== undefined) cylinders.push(node.userData.cylinderIndex);
@@ -357,7 +363,7 @@ test('renderer can be imported in Node and reports a missing WebGL canvas withou
 });
 
 test('camera fits actual projected box corners across wide desktop and narrow phone viewports', () => {
-  for (const id of ['i1', 'i6', 'w16', 'boxer6', 'radial_7', 'rotary_2']) {
+  for (const id of ['i1', 'i6', 'w16', 'boxer6', 'radial_7', 'rotary_2', 'gas_turbine', 'turbojet']) {
     const assembly = new EngineAssembly3D(new EngineModel(id));
     try {
       for (const aspect of [688 / 220, 306 / 200, 320 / 420, 844 / 190]) {
@@ -378,4 +384,60 @@ test('camera fits actual projected box corners across wide desktop and narrow ph
       }
     } finally { assembly.dispose(); }
   }
+});
+
+function jetVisualState(values = {}) {
+  return { config: ENGINE_CONFIGS.turbojet, displacement: ENGINE_CONFIGS.turbojet.defaultDisplacement,
+    exhaust: { id: 'oem' }, modifications: {}, forcedInduction: 'na', rpm: 0, coreRPM: 0,
+    isIgnitionOn: false, isCombusting: false, afterburnerAmount: 0, nozzleAreaRatio: 1, ...values };
+}
+
+test('J85 compressor has nine distinct rotor/stator stages and its open inlet exposes actual blades', () => {
+  const assembly = new EngineAssembly3D(jetVisualState());
+  try {
+    for (const [part, count] of [['compressor', 9], ['turbine', 2]]) {
+      assert.equal(assembly.parts.get(part).children.filter(child => child.name.startsWith(part + ' rotor ')).length, count);
+      assert.equal(assembly.parts.get(part).children.filter(child => child.name.startsWith(part + ' stator ')).length, count);
+    }
+    const ray = new THREE.Raycaster(new THREE.Vector3(0, .22, 2), new THREE.Vector3(0, 0, -1));
+    const first = ray.intersectObject(assembly.group, true)[0];
+    assert.ok(first, 'inlet inspection ray reaches real hardware');
+    assert.equal(first.object.name, 'rotor blade', 'neither an end cap nor automotive pulley may block the inlet');
+    assert.equal(first.object.parent.name, 'compressor rotor 1');
+  } finally { assembly.dispose(); }
+});
+
+test('core rotors coast at model RPM with stationary stators and afterburner has no throttle shortcut', () => {
+  const engine = jetVisualState({ rpm: 12000, coreRPM: 300, manifoldThrottle: 1 });
+  const assembly = new EngineAssembly3D(engine);
+  try {
+    const stators = assembly.parts.get('compressor').children.filter(child => child.name.includes('stator'));
+    const original = stators.map(child => child.rotation.z);
+    assembly.update(engine, .05);
+    near(assembly.animated.find(item => item.source === 'core').object.rotation.z, Math.PI / 2);
+    assert.deepEqual(stators.map(child => child.rotation.z), original);
+    assert.equal(assembly.jetPlume.visible, false, 'wide-open throttle alone cannot engage the afterburner');
+    Object.assign(engine, { isCombusting: true, afterburnerAmount: .8, manifoldThrottle: 0 });
+    assembly.update(engine, 0);
+    assert.equal(assembly.jetPlume.visible, true, 'visual follows the physical burner while throttle may be transitioning');
+    Object.assign(engine, { isCombusting: false, afterburnerAmount: .8 });
+    assembly.update(engine, .05);
+    assert.equal(assembly.jetPlume.visible, false, 'fuel-off extinguishes flame while the core keeps coasting');
+    near(assembly.animated.find(item => item.source === 'core').object.rotation.z, Math.PI);
+  } finally { assembly.dispose(); }
+});
+
+test('variable nozzle petals retain fixed hinges while their exit area follows the physical area ratio', () => {
+  const engine = jetVisualState();
+  const assembly = new EngineAssembly3D(engine);
+  try {
+    const { object, hinge } = assembly.nozzlePetals[0];
+    const pivot = hinge.getWorldPosition(new THREE.Vector3());
+    for (const ratio of [.75, 1, 1.6]) {
+      engine.nozzleAreaRatio = ratio; assembly.update(engine, 0); assembly.group.updateMatrixWorld(true);
+      near(hinge.getWorldPosition(new THREE.Vector3()).distanceTo(pivot), 0);
+      const exit = object.localToWorld(new THREE.Vector3(0, 0, -.19));
+      near(Math.hypot(exit.x, exit.y) ** 2 / .302 ** 2, ratio);
+    }
+  } finally { assembly.dispose(); }
 });

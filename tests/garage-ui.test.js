@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { GaragePanel } from '../src/controls/GaragePanel.js';
+import { JetBenchPanel } from '../src/controls/JetBenchPanel.js';
 import { createStockModifications } from '../src/physics/Modifications.js';
 
 // A small DOM fixture loads the real index, so the preservation regression checks
@@ -116,6 +117,58 @@ function fixture(overrides = {}) {
   garage.init();
   return { document, engine, drive, garage, requests, installations };
 }
+
+test('jet bench reuses the driving controls, shares actual telemetry and restores the car shell', () => {
+  const { engine, garage, document } = fixture();
+  const originalGas = document.getElementById('pedal-gas');
+  const originalStart = document.getElementById('btn-start-engine');
+  const bench = new JetBenchPanel({ engine, garage, document });
+  assert.equal(bench.active, false);
+  engine.config = { ...engine.config, id: 'turbojet', propulsionKind: 'turbojet', ratedAfterburnerThrustN: 22241 };
+  bench.sync();
+  assert.equal(document.body.classList.contains('jet-bench-active'), true);
+  assert.equal(document.getElementById('pedal-gas'), originalGas);
+  assert.equal(document.getElementById('btn-start-engine'), originalStart);
+  assert.equal(document.getElementById('speedometer-canvas').getAttribute('aria-label'), '靜態噴射推力 kN 儀表');
+  bench.update({ corePercent: 92.4, thrustN: 12300, exhaustTemperatureC: 650,
+    pressureRatio: 7.8, fuelFlowKgS: .47, massFlowKgS: 17, nozzleTemperatureC: 800,
+    jetVelocity: 700, afterburnerAmount: 0, afterburnerEnabled: true, isIgnitionOn: true });
+  assert.equal(document.getElementById('hud-digital-rpm').textContent, '92.4');
+  assert.equal(document.getElementById('hud-digital-speed').textContent, '12.30');
+  assert.equal(bench.readings.get('egt').textContent, '650 °C');
+  assert.equal(bench.status.textContent, 'RUNNING');
+  assert.equal(bench.abStatus.textContent, 'ARMED · 等待高 N1');
+  engine.config = { ...engine.config, id: 'i4_flat', propulsionKind: undefined };
+  bench.sync();
+  assert.equal(bench.active, false);
+  assert.equal(document.body.classList.contains('jet-bench-active'), false);
+  assert.equal(document.getElementById('speedometer-canvas').getAttribute('aria-label'), '車速指針儀表');
+  bench.destroy();
+  assert.equal(document.getElementById('jet-afterburner-enabled'), null);
+  assert.equal(garage.partList.classList.contains('jet-incompatible'), false);
+});
+
+test('jet afterburner control requests the model; displayed light-off and coast follow its state', () => {
+  const { engine, garage, document } = fixture();
+  engine.config.propulsionKind = 'turbojet';
+  let requested;
+  engine.setAfterburnerEnabled = value => { requested = value; };
+  const bench = new JetBenchPanel({ engine, garage, document });
+  bench.afterburner.checked = true;
+  bench.afterburner.dispatch('change');
+  assert.equal(requested, true);
+  const state = { corePercent: 100, thrustN: 22000, isIgnitionOn: true,
+    afterburnerEnabled: true, afterburnerAmount: .8 };
+  bench.update(state);
+  assert.equal(bench.status.textContent, 'AFTERBURNER');
+  assert.equal(bench.abStatus.textContent, '80%');
+  bench.update({ ...state, isIgnitionOn: false, corePercent: 43, thrustN: 0,
+    afterburnerEnabled: false, afterburnerAmount: 0 });
+  assert.equal(bench.status.textContent, 'SPOOLING DOWN');
+  assert.equal(bench.abStatus.textContent, 'OFF');
+  assert.equal(document.getElementById('hud-digital-speed').textContent, '0.00');
+  bench.destroy();
+});
 
 test('garage reuses every original control and preserves its bound events across mount and destroy', () => {
   const document = documentFixture();

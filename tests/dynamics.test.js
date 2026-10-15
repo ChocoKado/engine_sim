@@ -14,7 +14,7 @@ function setup(id = 'i4_flat', mode = 'amt') {
   return { engine, drive };
 }
 
-for (const id of Object.keys(ENGINE_CONFIGS)) {
+for (const id of Object.keys(ENGINE_CONFIGS).filter(id => ENGINE_CONFIGS[id].propulsionKind !== 'turbojet')) {
   for (const mode of ['at', 'amt']) {
     test(`${id}/${mode}: early launch, continuous lock-up, usable partial throttle`, () => {
       for (const throttle of [0.25, 1]) {
@@ -107,7 +107,7 @@ test('more load slows acceleration without pinning the engine to a scripted laun
 });
 
 test('continuous exhaust torque curve has no artificial 65% redline step', () => {
-  for (const id of Object.keys(ENGINE_CONFIGS)) {
+  for (const id of Object.keys(ENGINE_CONFIGS).filter(id => ENGINE_CONFIGS[id].propulsionKind !== 'turbojet')) {
     const engine = new EngineModel(id, 'straight');
     const a = engine.torqueAtRPM(engine.redlineRPM * 0.65 - 0.01);
     const b = engine.torqueAtRPM(engine.redlineRPM * 0.65 + 0.01);

@@ -1,3 +1,5 @@
+import { TurbineDSP } from './TurbineDSP.js';
+
 /**
  * Sample-rate, phase-continuous pressure-pulse synthesis. This is a compact
  * acoustic model, not a CFD solver or a recording of a particular vehicle.
@@ -23,6 +25,11 @@ export class CombustionDSP {
   }
 
   configure(config) {
+    const continuous = ['turbine', 'turbojet'].includes(config.layout);
+    if (!continuous) this.turbine = null;
+    else if (!this.turbine || this.turbineConfigId !== config.id) this.turbine = new TurbineDSP(this.sampleRate);
+    this.turbine?.configure(config);
+    this.turbineConfigId = config.id;
     this.cycleDegrees = config.cycleDegrees || 720;
     this.rotary = config.layout === 'rotary';
     const angles = config.firingAngles?.length ? config.firingAngles : [0, 180, 360, 540];
@@ -49,6 +56,7 @@ export class CombustionDSP {
   }
 
   process(output, parameters = {}) {
+    if (this.turbine) return this.turbine.process(output, parameters);
     const read = (name, i, fallback) => {
       const value = parameters[name];
       if (value == null) return fallback;
@@ -147,11 +155,12 @@ export class CombustionDSP {
 
 // Embed the same DSP in a worklet without external imports or path assumptions.
 export function combustionWorkletSource() {
-  return `const CombustionDSP = (${CombustionDSP.toString()});
+  return `const TurbineDSP = (${TurbineDSP.toString()});
+const CombustionDSP = (${CombustionDSP.toString()});
 class CombustionProcessor extends AudioWorkletProcessor {
   static get parameterDescriptors() {
     return [
-      { name: 'rpm', defaultValue: 900, minValue: 0, maxValue: 24000, automationRate: 'a-rate' },
+      { name: 'rpm', defaultValue: 900, minValue: 0, maxValue: 120000, automationRate: 'a-rate' },
       { name: 'load', defaultValue: 0, minValue: 0, maxValue: 1.6, automationRate: 'k-rate' },
       { name: 'ignitionCut', defaultValue: 0, minValue: 0, maxValue: 1, automationRate: 'a-rate' },
       { name: 'limiter', defaultValue: 0, minValue: 0, maxValue: 1, automationRate: 'k-rate' },
@@ -160,6 +169,11 @@ class CombustionProcessor extends AudioWorkletProcessor {
       { name: 'limiterDepth', defaultValue: 0.85, minValue: 0.3, maxValue: 1, automationRate: 'k-rate' },
       { name: 'camBlend', defaultValue: 0, minValue: 0, maxValue: 1, automationRate: 'k-rate' },
       { name: 'rotaryBrap', defaultValue: 0, minValue: 0, maxValue: 1, automationRate: 'k-rate' },
+      { name: 'turbineFlow', defaultValue: 0, minValue: 0, maxValue: 2, automationRate: 'k-rate' },
+      { name: 'turbineFuel', defaultValue: 0, minValue: 0, maxValue: 1, automationRate: 'k-rate' },
+      { name: 'afterburner', defaultValue: 0, minValue: 0, maxValue: 1, automationRate: 'k-rate' },
+      { name: 'jetVelocity', defaultValue: 0, minValue: 0, maxValue: 2200, automationRate: 'k-rate' },
+      { name: 'pressureRatio', defaultValue: 1, minValue: 1, maxValue: 50, automationRate: 'k-rate' },
     ];
   }
   constructor(options) {

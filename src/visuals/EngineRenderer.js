@@ -88,8 +88,11 @@ export class EngineRenderer {
     }
     this.frameDt = Math.max(0, Math.min(0.1, Number(dt) || 0));
     const visualDegPerSec = engine.rpm * 6 * this.animationSpeed;
-    this.visualCrankAngle = this.animationSpeed === 1 ? engine.crankAngle
-      : (this.visualCrankAngle + visualDegPerSec * this.frameDt) % (engine.config.mechanicalCycleDegrees || 720);
+    const aviation = ['turbine', 'turbojet'].includes(engine.config.layout);
+    this.visualCrankAngle = aviation
+      ? (this.visualCrankAngle + Math.max(0, engine.coreRPM ?? engine.rpm) * 6 * this.animationSpeed * this.frameDt) % 360
+      : this.animationSpeed === 1 ? engine.crankAngle
+        : (this.visualCrankAngle + visualDegPerSec * this.frameDt) % (engine.config.mechanicalCycleDegrees || 720);
 
     // Clear background with rich dark mechanical slate gradient
     const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
@@ -139,7 +142,7 @@ export class EngineRenderer {
     this.renderParticles(ctx, this.frameDt);
 
     // Draw Telemetry Overlay inside canvas (clean animation hides text)
-    if (!hideText) {
+    if (!hideText && !aviation) {
       this.drawCanvasOverlay(ctx, engine, drivetrain, w, h);
     }
   }
@@ -226,626 +229,143 @@ export class EngineRenderer {
   }
 
   drawTurbineEngine(ctx, engine, w, h, hideText) {
-    const top = hideText ? 4 : 28;
-    const availH = h - top - 8;
-    const availW = w - 16;
-    const scale = Math.max(0.001, Math.min(availW / 370, availH / 135));
-    const cx = w * 0.5;
-    const cy = top + availH * 0.5;
-    const firing = this.hasCombustion(engine);
-    const throttle = Math.max(0, Math.min(1, engine.manifoldThrottle || 0));
-    const rpmFrac = Math.max(0, Math.min(1, engine.rpm / (engine.redlineRPM || 54000)));
-    const spinRad = (this.visualCrankAngle * Math.PI / 180) * 1.5;
-
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.scale(scale, scale);
-
-    // 1. Airflow stream entering intake (cyan gradient)
-    const intakeFlowGrad = ctx.createLinearGradient(-180, 0, -130, 0);
-    intakeFlowGrad.addColorStop(0, 'rgba(56, 189, 248, 0.05)');
-    intakeFlowGrad.addColorStop(1, 'rgba(56, 189, 248, 0.40)');
-    ctx.fillStyle = intakeFlowGrad;
-    ctx.beginPath();
-    ctx.moveTo(-180, -50);
-    ctx.lineTo(-135, -42);
-    ctx.lineTo(-135, 42);
-    ctx.lineTo(-180, 50);
-    ctx.closePath();
-    ctx.fill();
-
-    // 2. Outer Casing (Upper & Lower Nacelle Cowls)
-    const casingGrad = ctx.createLinearGradient(0, -60, 0, 60);
-    casingGrad.addColorStop(0, '#475569');
-    casingGrad.addColorStop(0.5, '#1e293b');
-    casingGrad.addColorStop(1, '#475569');
-    ctx.fillStyle = casingGrad;
-    ctx.strokeStyle = '#94a3b8';
-    ctx.lineWidth = 2.5;
-
-    // Upper Casing Half
-    ctx.beginPath();
-    ctx.moveTo(-175, -55);
-    ctx.lineTo(-135, -44);
-    ctx.lineTo(-40, -36);
-    ctx.lineTo(60, -42);
-    ctx.lineTo(125, -38);
-    ctx.lineTo(150, -32);
-    ctx.lineTo(175, -36);
-    ctx.lineTo(175, -45);
-    ctx.lineTo(150, -40);
-    ctx.lineTo(125, -46);
-    ctx.lineTo(60, -50);
-    ctx.lineTo(-40, -44);
-    ctx.lineTo(-135, -52);
-    ctx.lineTo(-175, -60);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // Lower Casing Half
-    ctx.beginPath();
-    ctx.moveTo(-175, 55);
-    ctx.lineTo(-135, 44);
-    ctx.lineTo(-40, 36);
-    ctx.lineTo(60, 42);
-    ctx.lineTo(125, 38);
-    ctx.lineTo(150, 32);
-    ctx.lineTo(175, 36);
-    ctx.lineTo(175, 45);
-    ctx.lineTo(150, 40);
-    ctx.lineTo(125, 46);
-    ctx.lineTo(60, 50);
-    ctx.lineTo(-40, 44);
-    ctx.lineTo(-135, 52);
-    ctx.lineTo(-175, 60);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // 3. Central Drive Spool Shaft (Rotating core)
-    const shaftGrad = ctx.createLinearGradient(0, -7, 0, 7);
-    shaftGrad.addColorStop(0, '#cbd5e1');
-    shaftGrad.addColorStop(0.5, '#64748b');
-    shaftGrad.addColorStop(1, '#334155');
-    ctx.fillStyle = shaftGrad;
-    ctx.strokeStyle = '#94a3b8';
-    ctx.lineWidth = 1;
-    ctx.fillRect(-135, -6, 260, 12);
-    ctx.strokeRect(-135, -6, 260, 12);
-
-    // Intake Nose Cone (Spinner)
-    ctx.beginPath();
-    ctx.moveTo(-165, 0);
-    ctx.lineTo(-152, -14);
-    ctx.lineTo(-135, -14);
-    ctx.lineTo(-135, 14);
-    ctx.lineTo(-152, 14);
-    ctx.closePath();
-    ctx.fillStyle = '#64748b';
-    ctx.fill();
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // 4. Axial Compressor Stages (4 progressive rotor/stator stages)
-    const compStages = [
-      { x: -122, r: 40 },
-      { x: -100, r: 37 },
-      { x: -78, r: 34 },
-      { x: -56, r: 31 }
-    ];
-    compStages.forEach((stage, idx) => {
-      // Stator Vanes (stationary guides)
-      ctx.fillStyle = 'rgba(100, 116, 139, 0.6)';
-      ctx.fillRect(stage.x - 3, -stage.r, 2, stage.r - 6);
-      ctx.fillRect(stage.x - 3, 6, 2, stage.r - 6);
-
-      // Rotating Rotor Disk & Blades
-      const bladeW = Math.cos(spinRad + idx * 0.9) * 3;
-      const bladeGrad = ctx.createLinearGradient(0, -stage.r, 0, stage.r);
-      bladeGrad.addColorStop(0, '#38bdf8');
-      bladeGrad.addColorStop(0.5, '#c084fc');
-      bladeGrad.addColorStop(1, '#38bdf8');
-      ctx.fillStyle = bladeGrad;
-      ctx.fillRect(stage.x + 2, -stage.r, Math.max(2, 4 + bladeW), stage.r - 6);
-      ctx.fillRect(stage.x + 2, 6, Math.max(2, 4 - bladeW), stage.r - 6);
-
-      // Stage disk hub
-      ctx.fillStyle = '#94a3b8';
-      ctx.fillRect(stage.x, -8, 6, 16);
-    });
-
-    // 5. Fuel Injectors (Nozzles at x = -38)
-    for (const y of [-23, 23]) {
-      ctx.fillStyle = '#fbbf24';
-      ctx.fillRect(-38, y - 2, 6, 4);
-      if (firing) {
-        ctx.fillStyle = 'rgba(254, 240, 138, 0.8)';
-        ctx.beginPath();
-        ctx.moveTo(-32, y);
-        ctx.lineTo(-24, y - 5);
-        ctx.lineTo(-24, y + 5);
-        ctx.closePath();
-        ctx.fill();
-      }
-    }
-
-    // 6. Annular Combustion Chamber Liners & Continuous Brayton Flame
-    // Upper Combustor Liner
-    ctx.strokeStyle = '#64748b';
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(-28, -32, 85, 23);
-    // Lower Combustor Liner
-    ctx.strokeRect(-28, 9, 85, 23);
-
-    // Perforations on combustor liners
-    ctx.fillStyle = '#94a3b8';
-    for (let i = 0; i < 7; i++) {
-      ctx.fillRect(-22 + i * 11, -33, 2, 2);
-      ctx.fillRect(-22 + i * 11, -10, 2, 2);
-      ctx.fillRect(-22 + i * 11, 8, 2, 2);
-      ctx.fillRect(-22 + i * 11, 31, 2, 2);
-    }
-
-    if (firing) {
-      // Continuous flame inside upper & lower combustion zones
-      const flicker = Math.sin(this.visualCrankAngle * 0.25) * 2;
-      const flameExpansion = 1 + throttle * 0.45 + rpmFrac * 0.35;
-      for (const [zoneY, sign] of [[-20.5, -1], [20.5, 1]]) {
-        const flameGrad = ctx.createRadialGradient(-10, zoneY, 2, 10, zoneY, 26 * flameExpansion);
-        flameGrad.addColorStop(0, '#ffffff');
-        flameGrad.addColorStop(0.2, '#fef08a');
-        flameGrad.addColorStop(0.5, '#f97316');
-        flameGrad.addColorStop(0.8, '#dc2626');
-        flameGrad.addColorStop(1, 'rgba(124, 58, 237, 0.05)');
-        ctx.fillStyle = flameGrad;
-        ctx.beginPath();
-        const rx = Math.min(38, 32 * flameExpansion) + flicker;
-        const ry = 8.5 * flameExpansion;
-        ctx.moveTo(12 - rx, zoneY);
-        ctx.lineTo(12 - rx * 0.5, zoneY - ry);
-        ctx.lineTo(12 + rx * 0.5, zoneY - ry);
-        ctx.lineTo(12 + rx, zoneY);
-        ctx.lineTo(12 + rx * 0.5, zoneY + ry);
-        ctx.lineTo(12 - rx * 0.5, zoneY + ry);
-        ctx.closePath();
-        ctx.fill();
-      }
-    } else {
-      // Unfired chamber (dark thermal coating)
-      ctx.fillStyle = 'rgba(30, 41, 59, 0.8)';
-      ctx.fillRect(-26, -30, 81, 19);
-      ctx.fillRect(-26, 11, 81, 19);
-    }
-
-    // 7. Gas Generator Turbine & Power Turbine Stages
-    const turbStages = [
-      { x: 70, r: 33, name: 'HPT' },
-      { x: 92, r: 35, name: 'LPT' },
-      { x: 114, r: 37, name: 'PT' }
-    ];
-    turbStages.forEach((stage, idx) => {
-      // Stator nozzle guide vanes
-      ctx.fillStyle = '#ea580c';
-      ctx.fillRect(stage.x - 3, -stage.r, 2.5, stage.r - 6);
-      ctx.fillRect(stage.x - 3, 6, 2.5, stage.r - 6);
-
-      // Turbine rotor blades (glow cherry-gold when running)
-      const bladeW = Math.cos(spinRad + idx * 1.3) * 3;
-      const tGrad = ctx.createLinearGradient(0, -stage.r, 0, stage.r);
-      tGrad.addColorStop(0, firing ? '#fbbf24' : '#94a3b8');
-      tGrad.addColorStop(0.5, firing ? '#ef4444' : '#64748b');
-      tGrad.addColorStop(1, firing ? '#fbbf24' : '#94a3b8');
-      ctx.fillStyle = tGrad;
-      ctx.fillRect(stage.x + 2, -stage.r, Math.max(2, 4 + bladeW), stage.r - 6);
-      ctx.fillRect(stage.x + 2, 6, Math.max(2, 4 - bladeW), stage.r - 6);
-
-      // Hub disk
-      ctx.fillStyle = '#e2e8f0';
-      ctx.fillRect(stage.x, -8, 6, 16);
-    });
-
-    // 8. Exhaust Cone & Supersonic Jet Plume
-    // Tailcone bullet
-    ctx.beginPath();
-    ctx.moveTo(125, -8);
-    ctx.lineTo(162, 0);
-    ctx.lineTo(125, 8);
-    ctx.closePath();
-    ctx.fillStyle = '#475569';
-    ctx.fill();
-    ctx.strokeStyle = '#94a3b8';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    if (firing) {
-      // Supersonic exhaust jet plume exiting nozzle
-      const jetGrad = ctx.createLinearGradient(150, 0, 175, 0);
-      jetGrad.addColorStop(0, 'rgba(251, 191, 36, 0.85)');
-      jetGrad.addColorStop(0.5, 'rgba(249, 115, 22, 0.70)');
-      jetGrad.addColorStop(1, 'rgba(56, 189, 248, 0.40)');
-      ctx.fillStyle = jetGrad;
-      ctx.beginPath();
-      ctx.moveTo(150, -18);
-      ctx.lineTo(174, -24);
-      ctx.lineTo(174, 24);
-      ctx.lineTo(150, 18);
-      ctx.closePath();
-      ctx.fill();
-
-      // Shock diamonds (Mach diamonds)
-      const diamondPulse = Math.sin(this.visualCrankAngle * 0.3) * 0.8;
-      for (const dx of [159, 168]) {
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.moveTo(dx - 3, 0);
-        ctx.lineTo(dx, -3.5 - diamondPulse);
-        ctx.lineTo(dx + 3, 0);
-        ctx.lineTo(dx, 3.5 + diamondPulse);
-        ctx.closePath();
-        ctx.fill();
-      }
-    }
-
-    // 9. Technical Callouts & Labels (visible on desktop / when !hideText)
-    if (!hideText && scale > 0.42) {
-      ctx.font = '600 9px Rajdhani, sans-serif';
-      ctx.textAlign = 'center';
-
-      // Section labels
-      const labels = [
-        { text: '進氣導流 (INTAKE)', x: -145, y: -54, color: '#38bdf8' },
-        { text: '軸流壓縮 (COMPRESSOR)', x: -90, y: -45, color: '#a78bfa' },
-        { text: '環狀燃燒室 (COMBUSTOR)', x: 15, y: -52, color: '#fb923c' },
-        { text: '動力渦輪 (TURBINE)', x: 95, y: -48, color: '#f59e0b' },
-        { text: '噴射尾管 (JET EXHAUST)', x: 155, y: -42, color: '#38bdf8' }
-      ];
-      for (const lbl of labels) {
-        ctx.fillStyle = lbl.color;
-        ctx.fillText(lbl.text, lbl.x, lbl.y);
-      }
-
-      // Telemetry sub-badge
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = '500 8.5px Inter, sans-serif';
-      const egt = Math.round(420 + 480 * rpmFrac * (0.4 + 0.6 * throttle));
-      ctx.fillText(`燃氣渦輪軸輸出: ${Math.round(engine.rpm)} RPM  |  排氣溫度 (EGT): ${firing ? egt : 25}°C  |  布雷頓連續燃燒`, 0, 58);
-    }
-
-    ctx.restore();
+    this.drawAviationEngine(ctx, engine, w, h, hideText, false);
   }
 
   drawTurbojetEngine(ctx, engine, w, h, hideText) {
-    const top = hideText ? 4 : 54;
-    const availH = Math.max(10, h - top - 8);
-    const availW = Math.max(10, w - 16);
-    const scale = Math.max(0.001, Math.min(availW / 370, availH / 135)) * 0.96;
-    const cx = w * 0.5;
-    const cy = top + availH * 0.5;
-    const firing = this.hasCombustion(engine);
-    const throttle = Math.max(0, Math.min(1, engine.manifoldThrottle || 0));
-    const rpmFrac = Math.max(0, Math.min(1, engine.rpm / (engine.redlineRPM || 17200)));
-    const spinRad = (this.visualCrankAngle * Math.PI / 180) * 1.8;
+    this.drawAviationEngine(ctx, engine, w, h, hideText, true);
+  }
 
+  drawAviationEngine(ctx, engine, w, h, hideText, jet) {
+    const focused = this.viewMode === 'focused';
+    const marginTop = hideText ? 4 : 31;
+    const marginBottom = hideText ? 4 : 23;
+    const region = focused ? (jet ? { left: -30, right: 272, height: 72 } : { left: -42, right: 66, height: 72 })
+      : { left: -187, right: jet ? 272 : 187, height: 132 };
+    const scale = Math.max(0.001, Math.min((w - 12) / (region.right - region.left),
+      Math.max(1, h - marginTop - marginBottom) / region.height));
+    const midX = (region.left + region.right) / 2;
+    const midY = marginTop + Math.max(1, h - marginTop - marginBottom) / 2;
+    const burning = this.hasCombustion(engine);
+    const afterburner = jet && burning ? Math.max(0, Math.min(1, Number(engine.afterburnerAmount) || 0)) : 0;
+    const nozzleArea = jet ? Math.max(.65, Math.min(2, Number(engine.nozzleAreaRatio) || 1)) : 1;
+    const nozzleRadius = 22 * Math.sqrt(nozzleArea);
+    const shaftPhase = this.visualCrankAngle * Math.PI / 180;
     ctx.save();
-    ctx.translate(cx, cy);
-    ctx.scale(scale, scale);
+    // A real view change crops the drawing to the combustor/reheat area.
+    ctx.beginPath(); ctx.rect(5, marginTop, w - 10, Math.max(1, h - marginTop - marginBottom)); ctx.clip();
+    ctx.translate(w / 2 - midX * scale, midY); ctx.scale(scale, scale);
+    ctx.lineCap = 'round';
 
-    // 1. Supersonic Intake Shockwave & Airflow Ramp
-    const intakeFlowGrad = ctx.createLinearGradient(-180, 0, -130, 0);
-    intakeFlowGrad.addColorStop(0, 'rgba(56, 189, 248, 0.04)');
-    intakeFlowGrad.addColorStop(1, 'rgba(56, 189, 248, 0.38)');
-    ctx.fillStyle = intakeFlowGrad;
-    ctx.beginPath();
-    ctx.moveTo(-180, -48);
-    ctx.lineTo(-135, -42);
-    ctx.lineTo(-135, 42);
-    ctx.lineTo(-180, 48);
-    ctx.closePath();
-    ctx.fill();
-
-    // 2. Supersonic Military Turbojet Nacelle Casing
-    const casingGrad = ctx.createLinearGradient(0, -60, 0, 60);
-    casingGrad.addColorStop(0, '#334155');
-    casingGrad.addColorStop(0.5, '#0f172a');
-    casingGrad.addColorStop(1, '#334155');
-    ctx.fillStyle = casingGrad;
-    ctx.strokeStyle = '#64748b';
-    ctx.lineWidth = 1.5;
-
-    // Upper cowl
-    ctx.beginPath();
-    ctx.moveTo(-175, -58);
-    ctx.lineTo(-135, -50);
-    ctx.lineTo(-40, -42);
-    ctx.lineTo(40, -46);
-    ctx.lineTo(130, -42);
-    ctx.lineTo(165, -34);
-    ctx.lineTo(165, -42);
-    ctx.lineTo(130, -50);
-    ctx.lineTo(40, -54);
-    ctx.lineTo(-40, -52);
-    ctx.lineTo(-135, -58);
-    ctx.lineTo(-175, -58);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // Lower cowl
-    ctx.beginPath();
-    ctx.moveTo(-175, 58);
-    ctx.lineTo(-135, 50);
-    ctx.lineTo(-40, 42);
-    ctx.lineTo(40, 46);
-    ctx.lineTo(130, 42);
-    ctx.lineTo(165, 34);
-    ctx.lineTo(165, 42);
-    ctx.lineTo(130, 50);
-    ctx.lineTo(40, 54);
-    ctx.lineTo(-40, 52);
-    ctx.lineTo(-135, 58);
-    ctx.lineTo(-175, 58);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // 3. Central Titanium Rotor Spool Shaft
-    const shaftGrad = ctx.createLinearGradient(0, -7, 0, 7);
-    shaftGrad.addColorStop(0, '#e2e8f0');
-    shaftGrad.addColorStop(0.5, '#64748b');
-    shaftGrad.addColorStop(1, '#1e293b');
-    ctx.fillStyle = shaftGrad;
-    ctx.strokeStyle = '#94a3b8';
-    ctx.lineWidth = 1;
-    ctx.fillRect(-135, -6, 175, 12);
-    ctx.strokeRect(-135, -6, 175, 12);
-
-    // Supersonic Intake Conical Shock Cone (Centerbody Spike)
-    ctx.beginPath();
-    ctx.moveTo(-172, 0);
-    ctx.lineTo(-156, -12);
-    ctx.lineTo(-135, -12);
-    ctx.lineTo(-135, 12);
-    ctx.lineTo(-156, 12);
-    ctx.closePath();
-    ctx.fillStyle = '#475569';
-    ctx.fill();
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // 4. 8-Stage Axial Compressor Disks & Blades
-    const compStages = [
-      { x: -126, r: 40 },
-      { x: -113, r: 38 },
-      { x: -100, r: 36 },
-      { x: -87, r: 34 },
-      { x: -74, r: 32 },
-      { x: -61, r: 30 },
-      { x: -48, r: 28 },
-      { x: -35, r: 27 }
-    ];
-    compStages.forEach((stage, idx) => {
-      // Stator guide vanes
-      ctx.fillStyle = 'rgba(100, 116, 139, 0.6)';
-      ctx.fillRect(stage.x - 2.5, -stage.r, 1.8, stage.r - 6);
-      ctx.fillRect(stage.x - 2.5, 6, 1.8, stage.r - 6);
-
-      // Rotating rotor blades
-      const bladeW = Math.cos(spinRad + idx * 0.8) * 2.8;
-      const bladeGrad = ctx.createLinearGradient(0, -stage.r, 0, stage.r);
-      bladeGrad.addColorStop(0, '#38bdf8');
-      bladeGrad.addColorStop(0.5, '#818cf8');
-      bladeGrad.addColorStop(1, '#38bdf8');
-      ctx.fillStyle = bladeGrad;
-      ctx.fillRect(stage.x + 1.5, -stage.r, Math.max(1.8, 3.2 + bladeW), stage.r - 6);
-      ctx.fillRect(stage.x + 1.5, 6, Math.max(1.8, 3.2 - bladeW), stage.r - 6);
-
-      // Hub disk
-      ctx.fillStyle = '#cbd5e1';
-      ctx.fillRect(stage.x, -7, 4.5, 14);
-    });
-
-    // 5. Fuel Injectors (Nozzles at x = -20)
-    for (const y of [-21, 21]) {
-      ctx.fillStyle = '#fbbf24';
-      ctx.fillRect(-22, y - 2, 5, 4);
-      if (firing) {
-        ctx.fillStyle = 'rgba(254, 240, 138, 0.85)';
-        ctx.beginPath();
-        ctx.moveTo(-17, y);
-        ctx.lineTo(-10, y - 4);
-        ctx.lineTo(-10, y + 4);
-        ctx.closePath();
-        ctx.fill();
-      }
-    }
-
-    // 6. Annular Combustor Liners & Core Flame
-    ctx.strokeStyle = '#94a3b8';
-    ctx.lineWidth = 1.2;
-    ctx.strokeRect(-16, -28, 48, 20);
-    ctx.strokeRect(-16, 8, 48, 20);
-
-    // Liner air holes
-    ctx.fillStyle = '#64748b';
-    for (let i = 0; i < 5; i++) {
-      ctx.fillRect(-12 + i * 9, -29, 2, 2);
-      ctx.fillRect(-12 + i * 9, -9, 2, 2);
-      ctx.fillRect(-12 + i * 9, 7, 2, 2);
-      ctx.fillRect(-12 + i * 9, 27, 2, 2);
-    }
-
-    if (firing) {
-      // Intense combustion flame in core
-      const flicker = Math.sin(this.visualCrankAngle * 0.3) * 1.5;
-      const flameExp = 1 + throttle * 0.4 + rpmFrac * 0.3;
-      for (const [zoneY, sign] of [[-18, -1], [18, 1]]) {
-        const flameGrad = ctx.createRadialGradient(-2, zoneY, 1, 8, zoneY, 20 * flameExp);
-        flameGrad.addColorStop(0, '#ffffff');
-        flameGrad.addColorStop(0.25, '#67e8f9');
-        flameGrad.addColorStop(0.55, '#f59e0b');
-        flameGrad.addColorStop(0.85, '#ef4444');
-        flameGrad.addColorStop(1, 'rgba(147, 51, 234, 0.05)');
-        ctx.fillStyle = flameGrad;
-        ctx.beginPath();
-        const rx = Math.min(22, 18 * flameExp) + flicker;
-        const ry = 7 * flameExp;
-        ctx.moveTo(8 - rx, zoneY);
-        ctx.lineTo(8 - rx * 0.5, zoneY - ry);
-        ctx.lineTo(8 + rx * 0.5, zoneY - ry);
-        ctx.lineTo(8 + rx, zoneY);
-        ctx.lineTo(8 + rx * 0.5, zoneY + ry);
-        ctx.lineTo(8 - rx * 0.5, zoneY + ry);
-        ctx.closePath();
-        ctx.fill();
-      }
-    }
-
-    // 7. 2-Stage Turbine Wheels (HPT & LPT)
-    const turbStages = [
-      { x: 38, r: 31 },
-      { x: 52, r: 33 }
-    ];
-    turbStages.forEach((stage, idx) => {
-      // Stator guide vanes
-      ctx.fillStyle = '#f97316';
-      ctx.fillRect(stage.x - 2.5, -stage.r, 2, stage.r - 6);
-      ctx.fillRect(stage.x - 2.5, 6, 2, stage.r - 6);
-
-      // Turbine blades
-      const bladeW = Math.cos(spinRad + idx * 1.2) * 2.5;
-      const tGrad = ctx.createLinearGradient(0, -stage.r, 0, stage.r);
-      tGrad.addColorStop(0, firing ? '#fde047' : '#94a3b8');
-      tGrad.addColorStop(0.5, firing ? '#dc2626' : '#64748b');
-      tGrad.addColorStop(1, firing ? '#fde047' : '#94a3b8');
-      ctx.fillStyle = tGrad;
-      ctx.fillRect(stage.x + 1.5, -stage.r, Math.max(1.8, 3.2 + bladeW), stage.r - 6);
-      ctx.fillRect(stage.x + 1.5, 6, Math.max(1.8, 3.2 - bladeW), stage.r - 6);
-
-      // Hub
-      ctx.fillStyle = '#f1f5f9';
-      ctx.fillRect(stage.x, -7, 5, 14);
-    });
-
-    // 8. Afterburner Section (Reheat Fuel Spray Rings & Flameholders)
-    // Fuel spray rings
-    for (const sx of [68, 80]) {
-      ctx.fillStyle = '#a855f7';
-      ctx.fillRect(sx, -35, 3, 70);
-    }
-    // V-gutter flameholders
-    for (const gx of [92, 106]) {
-      ctx.strokeStyle = '#f59e0b';
-      ctx.lineWidth = 1.5;
-      for (const gy of [-20, 20]) {
-        ctx.beginPath();
-        ctx.moveTo(gx - 4, gy - 6);
-        ctx.lineTo(gx + 3, gy);
-        ctx.lineTo(gx - 4, gy + 6);
-        ctx.stroke();
-      }
-    }
-
-    // Afterburner Flame Sheet (Reheat combustion)
-    if (firing && throttle > 0.25) {
-      const abIntensity = (throttle - 0.25) / 0.75;
-      const abGrad = ctx.createLinearGradient(75, 0, 160, 0);
-      abGrad.addColorStop(0, 'rgba(56, 189, 248, 0.4)');
-      abGrad.addColorStop(0.2, 'rgba(251, 191, 36, 0.85)');
-      abGrad.addColorStop(0.6, 'rgba(239, 68, 68, 0.90)');
-      abGrad.addColorStop(1, 'rgba(249, 115, 22, 0.95)');
-      ctx.fillStyle = abGrad;
+    const casing = ctx.createLinearGradient(0, -60, 0, 60);
+    casing.addColorStop(0, '#8b969e'); casing.addColorStop(.5, '#303e4b'); casing.addColorStop(1, '#87929a');
+    ctx.fillStyle = casing; ctx.strokeStyle = '#a0abb3'; ctx.lineWidth = 1.6;
+    // Cut-open stationary casing, with unobstructed inlet and outlet.
+    for (const side of [-1, 1]) {
       ctx.beginPath();
-      ctx.moveTo(76, -18 * abIntensity);
-      ctx.lineTo(135, -28 * abIntensity);
-      ctx.lineTo(160, -22 * abIntensity);
-      ctx.lineTo(160, 22 * abIntensity);
-      ctx.lineTo(135, 28 * abIntensity);
-      ctx.lineTo(76, 18 * abIntensity);
-      ctx.closePath();
-      ctx.fill();
+      ctx.moveTo(-176, side * 51); ctx.lineTo(-128, side * 46); ctx.lineTo(-33, side * 37);
+      ctx.lineTo(32, side * 42); ctx.lineTo(jet ? 126 : 144, side * 39);
+      ctx.lineTo(jet ? 126 : 144, side * 47); ctx.lineTo(32, side * 50);
+      ctx.lineTo(-33, side * 45); ctx.lineTo(-128, side * 54); ctx.lineTo(-176, side * 59);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
     }
-
-    // 9. Convergent-Divergent Variable Exhaust Nozzle Petals
-    const nozzleOpen = firing ? throttle * 4 : 0;
-    ctx.strokeStyle = '#94a3b8';
-    ctx.fillStyle = '#334155';
-    ctx.lineWidth = 2;
-    // Upper petal
-    ctx.beginPath();
-    ctx.moveTo(132, -38);
-    ctx.lineTo(152, -26 - nozzleOpen);
-    ctx.lineTo(168, -32 - nozzleOpen);
-    ctx.lineTo(168, -40);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    // Lower petal
-    ctx.beginPath();
-    ctx.moveTo(132, 38);
-    ctx.lineTo(152, 26 + nozzleOpen);
-    ctx.lineTo(168, 32 + nozzleOpen);
-    ctx.lineTo(168, 40);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // 10. Supersonic Jet Plume with Mach Shock Diamonds
-    if (firing) {
-      const jetGrad = ctx.createLinearGradient(155, 0, 178, 0);
-      jetGrad.addColorStop(0, 'rgba(254, 240, 138, 0.95)');
-      jetGrad.addColorStop(0.4, 'rgba(249, 115, 22, 0.80)');
-      jetGrad.addColorStop(1, 'rgba(56, 189, 248, 0.45)');
-      ctx.fillStyle = jetGrad;
-      ctx.beginPath();
-      ctx.moveTo(155, -20 - nozzleOpen * 0.5);
-      ctx.lineTo(176, -24 - nozzleOpen * 0.5);
-      ctx.lineTo(176, 24 + nozzleOpen * 0.5);
-      ctx.lineTo(155, 20 + nozzleOpen * 0.5);
-      ctx.closePath();
-      ctx.fill();
-
-      // Shock diamonds
-      const shockP = Math.sin(this.visualCrankAngle * 0.4) * 0.7;
-      for (const sx of [162, 171]) {
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.moveTo(sx - 3, 0);
-        ctx.lineTo(sx, -3.2 - shockP);
-        ctx.lineTo(sx + 3, 0);
-        ctx.lineTo(sx, 3.2 + shockP);
-        ctx.closePath();
-        ctx.fill();
+    ctx.fillStyle = '#81909d'; ctx.fillRect(-138, -5, jet ? 198 : 267, 10);
+    ctx.fillStyle = '#4b5c6a';
+    ctx.beginPath(); ctx.moveTo(-169, 0); ctx.lineTo(-135, -12); ctx.lineTo(-135, 12); ctx.closePath(); ctx.fill();
+    // Shaft-aligned rotor blades alternate behind and in front of stationary
+    // guide vanes. Their phase wraps by 360°, exactly one physical revolution.
+    const disk = (x, radius, index, hot = false) => {
+      const blade = 3.5 + 1.8 * Math.cos(shaftPhase + index * .6);
+      ctx.fillStyle = '#516779';
+      for (const side of [-1, 1]) ctx.fillRect(x - 5, side > 0 ? 6 : -radius, 2, radius - 6);
+      ctx.fillStyle = hot ? (burning ? '#cf986c' : '#8f9396') : '#96b5c7';
+      ctx.fillRect(x, -radius, blade, radius - 6); ctx.fillRect(x, 6, 7 - blade, radius - 6);
+      ctx.fillStyle = '#d3dbe1'; ctx.fillRect(x - 1, -7, 5, 14);
+    };
+    const compressorCount = jet ? (engine.config.compressorStages || 9) : 4;
+    for (let stage = 0; stage < compressorCount; stage++) {
+      disk(-128 + stage * (jet ? 90 / Math.max(1, compressorCount - 1) : 22), 40 - stage * (jet ? 1.65 : 3), stage);
+    }
+    // Annular flame zones: no reciprocating piston, valves, spark timing or
+    // pedal-based fuel cut. Combustion comes from the engine's actual state.
+    for (const side of [-1, 1]) {
+      ctx.strokeStyle = '#81909d'; ctx.lineWidth = 1.2;
+      ctx.strokeRect(-27, side > 0 ? 9 : -31, 59, 22);
+      ctx.fillStyle = '#b89b58'; ctx.fillRect(-33, side * 20 - 2, 7, 4);
+      for (let hole = 0; hole < 6; hole++) {
+        ctx.fillStyle = '#a9b4bc'; ctx.fillRect(-23 + hole * 10, side * 31 - 1, 2, 2);
+      }
+      if (burning) {
+        const flame = ctx.createLinearGradient(-25, 0, 31, 0);
+        flame.addColorStop(0, 'rgba(155,218,255,.7)'); flame.addColorStop(.3, 'rgba(255,234,164,.95)'); flame.addColorStop(1, 'rgba(243,112,50,.15)');
+        ctx.fillStyle = flame; ctx.beginPath();
+        ctx.moveTo(-25, side * 20); ctx.quadraticCurveTo(0, side * 7, 30, side * 20);
+        ctx.quadraticCurveTo(0, side * 33, -25, side * 20); ctx.fill();
       }
     }
-
-    // 11. Technical Telemetry Callouts
-    if (!hideText && scale > 0.42) {
-      ctx.font = '600 9px Rajdhani, sans-serif';
-      ctx.textAlign = 'center';
-
-      const labels = [
-        { text: '超音速進氣錐', x: -150, y: -52, color: '#38bdf8' },
-        { text: '8級軸流壓縮', x: -80, y: -44, color: '#a78bfa' },
-        { text: '環形燃燒室', x: 8, y: -48, color: '#fb923c' },
-        { text: '後燃器 (REHEAT)', x: 95, y: -45, color: '#f43f5e' },
-        { text: '收斂擴散噴嘴', x: 155, y: -44, color: '#38bdf8' }
-      ];
-      for (const lbl of labels) {
-        ctx.fillStyle = lbl.color;
-        ctx.fillText(lbl.text, lbl.x, lbl.y);
+    const turbineCount = jet ? 2 : 3;
+    for (let stage = 0; stage < turbineCount; stage++) disk(40 + stage * (jet ? 14 : 25), 31 + stage * 2, stage + 8, true);
+    if (jet) {
+      ctx.strokeStyle = '#ac9468'; ctx.lineWidth = 2;
+      for (const x of [74, 91]) for (const side of [-1, 1]) {
+        ctx.beginPath(); ctx.moveTo(x - 4, side * 15); ctx.lineTo(x + 3, side * 21); ctx.lineTo(x - 4, side * 27); ctx.stroke();
       }
-
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = '500 8.5px Inter, sans-serif';
-      const thrustKN = (firing ? (8.5 + 13.7 * throttle * rpmFrac) : 0).toFixed(1);
-      const egt = Math.round(520 + 720 * rpmFrac * (0.4 + 0.6 * throttle));
-      ctx.fillText(`GE J85-GE-21 | 轉子核心轉速: ${Math.round(engine.rpm)} RPM | 噴射推力: ${thrustKN} kN | 後燃器 EGT: ${firing ? egt : 25}°C`, 0, 58);
+      if (afterburner > 0) {
+        const flame = ctx.createLinearGradient(72, 0, 174, 0);
+        flame.addColorStop(0, 'rgba(113,183,255,' + (.4 * afterburner) + ')');
+        flame.addColorStop(.6, 'rgba(255,168,77,' + (.8 * afterburner) + ')');
+        flame.addColorStop(1, 'rgba(246,105,61,' + (.2 * afterburner) + ')');
+        ctx.fillStyle = flame; ctx.beginPath(); ctx.moveTo(72, -14);
+        ctx.lineTo(174, -nozzleRadius); ctx.lineTo(174, nozzleRadius); ctx.lineTo(72, 14); ctx.closePath(); ctx.fill();
+      }
+    } else {
+      ctx.fillStyle = '#667786'; ctx.beginPath(); ctx.moveTo(124, -7); ctx.lineTo(156, 0); ctx.lineTo(124, 7); ctx.closePath(); ctx.fill();
     }
-
+    ctx.fillStyle = '#697785'; ctx.strokeStyle = '#a6b0b8'; ctx.lineWidth = 1.5;
+    for (const side of [-1, 1]) {
+      ctx.beginPath(); ctx.moveTo(128, side * 40); ctx.lineTo(151, side * nozzleRadius);
+      ctx.lineTo(174, side * (nozzleRadius + 4)); ctx.lineTo(174, side * (nozzleRadius + 10));
+      ctx.lineTo(128, side * 47); ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+    // Only physical reheat draws luminous exhaust. Flame shape and mixing
+    // brightness are illustrative, not a CFD prediction of shock-cell spacing.
+    if (afterburner > .01) {
+      const velocityFactor = Number.isFinite(engine.jetVelocity) ? Math.max(.45, Math.min(1, engine.jetVelocity / 1200)) : 1;
+      const length = 90 * Math.sqrt(afterburner) * velocityFactor;
+      const end = 174 + length;
+      const outer = ctx.createLinearGradient(174, 0, end, 0);
+      outer.addColorStop(0, 'rgba(108,181,255,' + .62 * afterburner + ')');
+      outer.addColorStop(.42, 'rgba(255,163,73,' + .85 * afterburner + ')');
+      outer.addColorStop(1, 'rgba(211,102,72,0)');
+      ctx.fillStyle = outer; ctx.beginPath(); ctx.moveTo(174, -nozzleRadius * .78);
+      ctx.quadraticCurveTo(198, -nozzleRadius * 1.05, end, -2);
+      ctx.lineTo(end, 2); ctx.quadraticCurveTo(198, nozzleRadius * 1.05, 174, nozzleRadius * .78);
+      ctx.closePath(); ctx.fill();
+      const core = ctx.createLinearGradient(174, 0, end, 0);
+      core.addColorStop(0, 'rgba(221,242,255,' + .95 * afterburner + ')');
+      core.addColorStop(.38, 'rgba(144,196,255,' + .88 * afterburner + ')');
+      core.addColorStop(1, 'rgba(132,177,255,0)');
+      ctx.fillStyle = core; ctx.beginPath(); ctx.moveTo(174, -nozzleRadius * .42);
+      ctx.lineTo(end, 0); ctx.lineTo(174, nozzleRadius * .42); ctx.closePath(); ctx.fill();
+      for (const fraction of [.22, .48, .73]) {
+        const x = 174 + length * fraction;
+        const radius = nozzleRadius * .20 * (1 - fraction * .65);
+        ctx.fillStyle = 'rgba(218,235,255,' + (.48 * afterburner * (1 - fraction)) + ')';
+        ctx.beginPath(); ctx.moveTo(x - 5, 0); ctx.lineTo(x, -radius);
+        ctx.lineTo(x + 5, 0); ctx.lineTo(x, radius); ctx.closePath(); ctx.fill();
+      }
+    }
     ctx.restore();
+    if (!hideText) {
+      ctx.save(); ctx.font = '600 12px Rajdhani, sans-serif'; ctx.fillStyle = '#c1cbd4'; ctx.textAlign = 'left';
+      ctx.fillText(focused ? (jet ? '燃燒室 / 後燃器 / 可變噴嘴' : '連續燃燒室特寫') : engine.config.shortName + ' · 機構示意剖面', 12, 18);
+      ctx.font = '500 10px Rajdhani, sans-serif';
+      const egt = Number.isFinite(engine.exhaustTemperatureC) ? Math.round(engine.exhaustTemperatureC) + '°C' : '—';
+      const n1 = Number.isFinite(engine.corePercent) ? engine.corePercent.toFixed(1) + '%' : Math.round(engine.rpm) + ' RPM';
+      const thrust = Number.isFinite(engine.thrustN) ? ' · 推力 ' + (engine.thrustN / 1000).toFixed(2) + ' kN' : '';
+      ctx.fillText((burning ? (afterburner > .01 ? '後燃器工作' : '燃燒中') : '未燃燒 / 轉子惰轉') + ' · N1 ' + n1 + thrust + ' · EGT ' + egt, 12, h - 7);
+      ctx.restore();
+    }
   }
 
   drawRotaryEngine(ctx, engine, w, h, hideText) {
@@ -932,6 +452,9 @@ export class EngineRenderer {
   }
 
   hasCombustion(engine) {
+    if (['turbine', 'turbojet'].includes(engine.config?.layout)) {
+      return typeof engine.isCombusting === 'boolean' ? engine.isCombusting : engine.rpm > 0 && engine.isIgnitionOn;
+    }
     return engine.rpm > 0 && engine.isIgnitionOn && !engine.isRevLimitingCut && !engine.ignitionCut
       && ((engine.manifoldThrottle || 0) > 0.01 || engine.rpm < engine.idleRPM * 1.15);
   }

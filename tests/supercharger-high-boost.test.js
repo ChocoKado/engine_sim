@@ -48,7 +48,7 @@ function fixture(id, mode, displacement, mass) {
 // Full Cartesian coverage, including a heavy car load on a small motorcycle
 // engine. Finishing with an honest 120-second timeout is legitimate when the
 // selected gearing/power cannot reach 200; a stall or silent restart is not.
-for (const [id, config] of Object.entries(ENGINE_CONFIGS)) {
+for (const [id, config] of Object.entries(ENGINE_CONFIGS).filter(([, config]) => !['turbine', 'turbojet'].includes(config.layout))) {
   for (const mode of ['at', 'amt']) {
     const referenceMass = new Drivetrain(new EngineModel(id)).vehicleMass;
     for (const displacement of [...new Set([config.minDisplacement, config.defaultDisplacement, config.maxDisplacement])]) {

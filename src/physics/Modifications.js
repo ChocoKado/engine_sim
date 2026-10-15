@@ -36,6 +36,9 @@ export function createStockModifications() {
 
 export function isModificationSupported(config, induction, kind) {
   if (!MODIFICATION_CATALOG.some(part => part.id === kind)) return false;
+  // These are road-engine hardware packages, not turbine compressor maps,
+  // combustor/nozzle changes or replaceable aviation rotor assemblies.
+  if (['turbine', 'turbojet'].includes(config.layout)) return false;
   if (kind === 'camshaft') return !['rotary', 'radial', 'turbine', 'turbojet'].includes(config.layout);
   if (kind === 'intercooler') return induction !== 'na';
   if (kind === 'pulley') return induction === 'supercharger';
@@ -52,6 +55,7 @@ export function sanitizeModifications(config, induction, values = {}) {
 }
 
 export function modificationEffects(config, mods = {}, rpm = 0, displacement = config.defaultDisplacement) {
+  if (['turbine', 'turbojet'].includes(config.layout)) mods = createStockModifications();
   // Absolute factory powerband keeps a changed rev limiter from moving the
   // same part's torque curve at a fixed physical RPM.
   const reference = config.ratedPowerRPM || config.defaultRedlineRPM * 0.92;

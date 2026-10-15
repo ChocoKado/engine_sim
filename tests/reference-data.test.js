@@ -9,7 +9,7 @@ const gearSpeed = (config, profile, gear, rpm = config.defaultRedlineRPM) =>
   rpm * 2 * Math.PI * profile.tireRadius / 60 /
   (profile.primaryRatio * profile.finalDrive * profile.gearRatios[gear]) * 3.6;
 
-for (const config of Object.values(ENGINE_CONFIGS)) {
+for (const config of Object.values(ENGINE_CONFIGS).filter(config => config.propulsionKind !== 'turbojet')) {
   test(`${config.id}: stock curve keeps both published torque and power anchors`, () => {
     const powerPoint = config.torquePoints.find(([rpm]) => rpm === config.ratedPowerRPM);
     const torquePoint = config.torquePoints.find(([rpm]) => rpm === config.ratedTorqueRPM);
@@ -131,7 +131,7 @@ test('the seven-cylinder radial is R2800, with crank RPM and an explicitly exper
 });
 
 test('vehicle loads include driver mass and forward ratios decrease in every preset', () => {
-  for (const profile of Object.values(VEHICLE_PROFILES)) {
+  for (const profile of Object.values(VEHICLE_PROFILES).filter(profile => profile.referenceKind !== 'test-bench')) {
     assert.equal(profile.mass, profile.curbMass + 75);
     assert.ok(profile.primaryRatio > 0 && profile.finalDrive > 0);
     assert.ok(profile.tireRadius > 0.28 && profile.tireRadius < 0.40);
@@ -152,7 +152,7 @@ test('crossplane and flatplane V8 bank pulses retain different spacing', () => {
 });
 
 test('OEM interpolation retains published power and torque peaks between anchors', () => {
-  for (const [id, config] of Object.entries(ENGINE_CONFIGS)) {
+  for (const [id, config] of Object.entries(ENGINE_CONFIGS).filter(([, config]) => config.propulsionKind !== 'turbojet')) {
     const engine = new EngineModel(id, 'oem');
     for (let rpm = 500; rpm <= engine.redlineRPM; rpm += 7) {
       const torque = engine.steadyTorqueAtRPM(rpm);
