@@ -235,7 +235,7 @@ export class GaugeRenderer {
     this.needleRPM = needle.position;
     this.needleVelocity = needle.velocity;
     const redline = Math.max(1, engine.redlineRPM);
-    const majorStep = redline > 10000 ? 2000 : redline < 5000 ? 500 : 1000;
+    const majorStep = redline > 40000 ? 10000 : redline > 20000 ? 5000 : redline > 10000 ? 2000 : redline < 5000 ? 500 : 1000;
     const maximum = Math.ceil((redline + majorStep * 0.5) / majorStep) * majorStep;
     const dial = this.beginDial(this.tachoCtx, this.tachoSize);
     this.drawDialScale(this.tachoCtx, dial, maximum, majorStep, 'RPM', '×1000 r/min', redline);

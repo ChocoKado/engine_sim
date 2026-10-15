@@ -14,7 +14,7 @@ export const MODIFICATION_CATALOG = Object.freeze([
     options: [{ value: 'stock', label: '原廠集管' }, { value: 'tuned', label: '調諧長管集管' }] },
   { id: 'camshaft', name: '運動凸輪', mount: '汽缸頭內部，觀察時掀開汽門蓋',
     purpose: '將充氣能力偏向高轉，改變氣門作動與高轉輸出。',
-    tradeoff: '低轉扭力略減；轉子沒有凸輪，星型本輪不提供此套件。',
+    tradeoff: '低轉扭力略減；轉子與航太渦輪沒有凸輪，星型本輪不提供此套件。',
     options: [{ value: 'stock', label: '原廠凸輪' }, { value: 'sport', label: '街道運動凸輪' }] },
   { id: 'flywheel', name: '飛輪', mount: '曲軸後端／離合器側',
     purpose: '降低飛輪轉動慣量，空檔升降轉與同步反應更快。',
@@ -36,7 +36,7 @@ export function createStockModifications() {
 
 export function isModificationSupported(config, induction, kind) {
   if (!MODIFICATION_CATALOG.some(part => part.id === kind)) return false;
-  if (kind === 'camshaft') return !['rotary', 'radial'].includes(config.layout);
+  if (kind === 'camshaft') return !['rotary', 'radial', 'turbine', 'turbojet'].includes(config.layout);
   if (kind === 'intercooler') return induction !== 'na';
   if (kind === 'pulley') return induction === 'supercharger';
   return true;
@@ -59,7 +59,7 @@ export function modificationEffects(config, mods = {}, rpm = 0, displacement = c
   let torqueFactor = 1;
   if (mods.intake === 'sport') torqueFactor *= 1 + 0.025 * band;
   if (mods.headers === 'tuned') torqueFactor *= 0.99 + 0.045 * band;
-  if (mods.camshaft === 'sport' && !['radial', 'rotary'].includes(config.layout)) torqueFactor *= 0.96 + 0.105 * band;
+  if (mods.camshaft === 'sport' && !['radial', 'rotary', 'turbine', 'turbojet'].includes(config.layout)) torqueFactor *= 0.96 + 0.105 * band;
   return { torqueFactor,
     inertiaFactor: mods.flywheel === 'light' ? 0.70 : 1,
     fillRateFactor: mods.intake === 'sport' ? 1.15 : 1,

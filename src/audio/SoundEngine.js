@@ -286,6 +286,18 @@ export class SoundEngine {
     real[0] = 0;
     imag[0] = 0;
 
+    if (config.layout === 'turbine' || config.layout === 'turbojet') {
+      const isTurbojet = config.layout === 'turbojet';
+      for (let i = 1; i < numHarmonics; i++) {
+        // High blade-passing harmonics + continuous combustion hiss & roar
+        const peakHarmonic = isTurbojet ? 8 : 12;
+        const bladePass = Math.exp(-Math.abs(i - peakHarmonic) * 0.12) * 0.8 + Math.exp(-i * 0.05) * 0.6;
+        real[i] = bladePass / (1 + (i * 0.06) ** 2);
+        imag[i] = (i % 2 === 0 ? 0.35 : -0.35) * bladePass;
+      }
+      return this.ctx.createPeriodicWave(real, imag, { disableNormalization: false });
+    }
+
     for (let i = 1; i < numHarmonics; i++) {
       const width = (config.layout === 'rotary' ? 0.20 : character === 'screamer' ? 0.22 : 0.36) / config.cylinders;
       const decay = Math.exp(-i * 0.012) / (1 + (i * width) ** 2);
@@ -706,7 +718,13 @@ export class SoundEngine {
     let subBassFreq = crankFreq * 0.5;
     let camshaftFreq = cycleFreq;
 
-    if (config.layout === 'rotary') {
+    if (config.layout === 'turbine') {
+      subBassFreq = Math.min(1200, crankFreq * 0.5);
+      camshaftFreq = Math.min(4800, crankFreq * 2); // High-frequency blade pass harmonic
+    } else if (config.layout === 'turbojet') {
+      subBassFreq = Math.min(800, crankFreq * 0.75); // Jet blast rumble
+      camshaftFreq = Math.min(3600, crankFreq * 4); // 8-stage axial compressor blade passing
+    } else if (config.layout === 'rotary') {
       subBassFreq = crankFreq;
       camshaftFreq = crankFreq / 3; // Rotor order, no camshafts on a Wankel.
     } else if (config.soundCharacter === 'boxer_rumble') {
@@ -733,8 +751,8 @@ export class SoundEngine {
       camshaftFreq = cycleFreq * 6.0;
     }
 
-    this.subBassOsc.frequency.setTargetAtTime(Math.max(config.layout === 'rotary' ? 0.1 : 14, subBassFreq), t, smoothTime);
-    this.camshaftOsc.frequency.setTargetAtTime(Math.max(config.layout === 'rotary' ? 0.1 : 12, camshaftFreq), t, smoothTime);
+    this.subBassOsc.frequency.setTargetAtTime(Math.max(['rotary', 'turbine', 'turbojet'].includes(config.layout) ? 0.1 : 14, subBassFreq), t, smoothTime);
+    this.camshaftOsc.frequency.setTargetAtTime(Math.max(['rotary', 'turbine', 'turbojet'].includes(config.layout) ? 0.1 : 12, camshaftFreq), t, smoothTime);
 
     // 4. Transmission Straight-Cut Gear Whine
     if (speedKmh > 5 && drivetrainState.currentGear !== 0) {
@@ -831,7 +849,9 @@ export class SoundEngine {
       ? vtecBlend + (1 - vtecBlend) * 0.25 : vtecBlend;
     const camRoar = valveProfileBlend * Math.min(1, rpm / (config.ratedPowerRPM || config.defaultRedlineRPM || 9000));
     const intakeHardwareGain = Math.max(1, Math.min(1.3, Number(engineState.intakeGain) || 1));
-    const intakeVol = Math.pow(throttle, 1.35) * (0.020 + 0.045 * intakeAirflow) * (1 + 0.9 * camRoar) * intakeHardwareGain;
+    const turbineRush = ['turbine', 'turbojet'].includes(config.layout)
+      ? (0.025 + 0.065 * Math.min(1.5, rpm / (config.ratedPowerRPM || 16500))) : 0;
+    const intakeVol = (Math.pow(throttle, 1.35) * (0.020 + 0.045 * intakeAirflow) * (1 + 0.9 * camRoar) + turbineRush) * intakeHardwareGain;
     this.intakeGain.gain.setTargetAtTime(intakeVol, t, 0.015);
     // Induction formant shifts with displacement and revs
     const intakeCenterFreq = Math.max(110, Math.min(1600, (220 + rpm * 0.028) * Math.pow(1.0 / dispLiters, 0.14) * (1 + camRoar * 0.25)));

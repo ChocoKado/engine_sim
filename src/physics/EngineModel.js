@@ -189,7 +189,7 @@ export class EngineModel {
 
   setRedlineRPM(value) {
     if (!Number.isFinite(Number(value))) return;
-    this.redlineRPM = clamp(Number(value), this.config.minRedlineRPM || 2500, this.config.maxRedlineRPM || 18000);
+    this.redlineRPM = clamp(Number(value), this.config.minRedlineRPM || 2500, this.config.maxRedlineRPM || 65000);
     this.idleRPM = Math.min(this.idleRPM, this.redlineRPM - 1000);
     if (this.cam?.spec) this.cam.setEngageRPM(this.cam.engageRPM, this.redlineRPM);
     this.dynoData = this.calculateDynoCurve();
@@ -206,7 +206,7 @@ export class EngineModel {
     // pistons, counterweights or the mechanically driven compressor.
     const flywheel = this.config.flywheelInertia * (motorcycle ? 0.30 : 1);
     const crankAccessories = motorcycle ? 0.004 : 0.02;
-    const reciprocating = Math.pow(liters, 1.1) * (motorcycle ? 0.009 : this.config.layout === 'radial' ? 0.055 : this.config.layout === 'rotary' ? 0.012 : 0.024);
+    const reciprocating = Math.pow(liters, 1.1) * (['turbine', 'turbojet'].includes(this.config.layout) ? 0.005 : motorcycle ? 0.009 : this.config.layout === 'radial' ? 0.055 : this.config.layout === 'rotary' ? 0.012 : 0.024);
     const effects = this.modificationEffects;
     return flywheel * effects.inertiaFactor + crankAccessories + reciprocating
       + (this.forcedInduction === 'supercharger' ? liters * 0.004 * effects.pulleyRatio ** 2 : 0);
@@ -465,6 +465,22 @@ export class EngineModel {
         cyl.blowdownPulse = Math.max(0, ...cyl.chambers.filter(c => c.stroke === 'exhaust').map(c => c.pressure - 1));
         cyl.isFiring = this.isIgnitionOn && !this.ignitionCut && cyl.chambers.some(c => c.isIgnitionPhase);
         maxP = Math.max(maxP, cyl.gasPressure);
+        continue;
+      }
+      if (this.config.layout === 'turbine' || this.config.layout === 'turbojet') {
+        cyl.phaseAngle = this.crankAngle % 360;
+        cyl.stroke = 'power';
+        cyl.intakeValve = 0;
+        cyl.exhaustValve = 0;
+        const burnP = this.rpm < 1 ? manifoldP
+          : manifoldP * (1.6 + 2.5 * this.manifoldThrottle * this.torqueScale * (1 - this.revLimiterCutAmount));
+        cyl.gasPressure = Number(Math.max(1.0, burnP).toFixed(1));
+        cyl.blowdownPulse = Math.max(0, (cyl.gasPressure - 1.0) * 0.8);
+        cyl.isFiring = this.isIgnitionOn && !this.ignitionCut;
+        cyl.sparkTimer = cyl.isFiring ? 0.05 : 0;
+        cyl.pistonPos = 0.5;
+        cyl.gasTorque = Number(((cyl.gasPressure - 1.013) * (this.displacement / 1000) * 10.5).toFixed(1));
+        if (cyl.gasPressure > maxP) maxP = cyl.gasPressure;
         continue;
       }
       const angle = radialGeometry ? radialCyclePhase(this.crankAngle, cyl.index, this.config.cylinders)

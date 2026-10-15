@@ -34,6 +34,9 @@ for (const [id, config] of Object.entries(ENGINE_CONFIGS)) {
         assert.deepEqual(rotors.sort((a, b) => a - b), Array.from({ length: config.rotors }, (_, i) => i));
         assert.equal(assembly.parts.has('camshaft'), false);
         assert.equal(cylinders.length, 0);
+      } else if (config.layout === 'turbine' || config.layout === 'turbojet') {
+        assert.equal(assembly.parts.has('camshaft'), false);
+        assert.equal(cylinders.length, 0);
       } else {
         assert.deepEqual(cylinders.sort((a, b) => a - b), Array.from({ length: config.cylinders }, (_, i) => i));
         assert.equal(assembly.parts.has('camshaft'), config.layout !== 'radial');

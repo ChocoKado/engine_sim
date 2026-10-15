@@ -180,7 +180,7 @@ export class App {
       for (let key in ENGINE_CONFIGS) {
         const opt = document.createElement('option');
         opt.value = key;
-        opt.textContent = `${ENGINE_CONFIGS[key].name} (${ENGINE_CONFIGS[key].cylinders}${ENGINE_CONFIGS[key].layout === 'rotary' ? '轉子' : '缸'})`;
+        opt.textContent = `${ENGINE_CONFIGS[key].name} (${ENGINE_CONFIGS[key].layout === 'turbine' ? '航太渦輪軸' : ENGINE_CONFIGS[key].layout === 'turbojet' ? '航空渦輪噴射' : `${ENGINE_CONFIGS[key].cylinders}${ENGINE_CONFIGS[key].layout === 'rotary' ? '轉子' : '缸'}`})`;
         if (key === 'i4_flat') opt.selected = true;
         engineSelect.appendChild(opt);
       }
@@ -635,12 +635,12 @@ export class App {
 
     if (descEl) descEl.textContent = this.engine.config.description;
     if (tagLayout) tagLayout.textContent = `${this.engine.config.layout.toUpperCase()} 架構`;
-    if (tagCyls) tagCyls.textContent = `${this.engine.config.cylinders} ${this.engine.config.layout === 'rotary' ? '轉子' : '汽缸'}`;
+    if (tagCyls) tagCyls.textContent = this.engine.config.layout === 'turbine' ? '航太連續燃燒渦輪級' : this.engine.config.layout === 'turbojet' ? '航空8級軸流/後燃器噴射級' : `${this.engine.config.cylinders} ${this.engine.config.layout === 'rotary' ? '轉子' : '汽缸'}`;
     if (tagSound) tagSound.textContent = `聲浪風格: ${this.engine.config.soundCharacter || this.engine.config.shortName}`;
     const heading = document.getElementById('mechanical-view-title');
-    if (heading) heading.textContent = this.engine.config.layout === 'rotary' ? '轉子引擎剖面動態' : '四行程引擎剖面動態';
+    if (heading) heading.textContent = this.engine.config.layout === 'turbine' ? '航太燃氣渦輪發動機剖面動態' : this.engine.config.layout === 'turbojet' ? '航空超音速渦輪噴射發動機剖面動態' : this.engine.config.layout === 'rotary' ? '轉子引擎剖面動態' : '四行程引擎剖面動態';
     const focus = document.getElementById('btn-view-focus');
-    if (focus) { focus.textContent = this.engine.config.layout === 'rotary' ? '轉子特寫' : '單缸特寫'; focus.title = focus.textContent; }
+    if (focus) { focus.textContent = this.engine.config.layout === 'turbine' ? '燃燒室特寫' : this.engine.config.layout === 'turbojet' ? '燃燒室與後燃器特寫' : this.engine.config.layout === 'rotary' ? '轉子特寫' : '單缸特寫'; focus.title = focus.textContent; }
   }
 
   initECUControls() {

@@ -20,7 +20,7 @@ export function engineAssemblySignature(engine) {
 
 export function engineBanks3D(config) {
   const n = config.cylinders;
-  if (config.layout === 'radial' || config.layout === 'rotary') return [];
+  if (config.layout === 'radial' || config.layout === 'rotary' || config.layout === 'turbine' || config.layout === 'turbojet') return [];
   const count = config.layout === 'w' ? 4 : ['v', 'boxer'].includes(config.layout) ? 2 : 1;
   const banks = Array.from({ length: count }, (_, index) => ({ index, angle: 0, cylinders: [] }));
   banks.forEach((bank, index) => {
@@ -55,6 +55,7 @@ export class EngineAssembly3D {
     this.palette = this.createMaterials();
     this.banks = engineBanks3D(this.config);
     this.length = this.config.layout === 'rotary' ? 1.08 : this.config.layout === 'radial' ? 0.72
+      : (this.config.layout === 'turbine' || this.config.layout === 'turbojet') ? 1.40
       : Math.max(0.66, Math.max(...this.banks.map(bank => bank.cylinders.length)) * 0.27 + 0.20);
     this.front = this.length / 2 + 0.08;
     this.bankAnchors = [];
@@ -63,6 +64,8 @@ export class EngineAssembly3D {
     this.caseWidth = ['v', 'w'].includes(this.config.layout) ? 0.78 : this.config.layout === 'boxer' ? 0.66 : 0.5;
     if (this.config.layout === 'radial') this.buildRadial();
     else if (this.config.layout === 'rotary') this.buildRotary();
+    else if (this.config.layout === 'turbine') this.buildTurbine();
+    else if (this.config.layout === 'turbojet') this.buildTurbojet();
     else this.buildPistonBanks();
     this.buildIntake(engine);
     this.buildExhaust(engine);
@@ -321,6 +324,149 @@ export class EngineAssembly3D {
     }
     this.box(block, [0.60, 0.14, this.length * 0.82], [0, -0.32, 0], this.palette.dark, true, 'rotary oil sump');
     this.cylinder(block, 0.27, 0.07, [0, 0.17, this.front - 0.045], this.palette.cast, 'z', 0.27, 'eccentric shaft front cover');
+  }
+
+  buildTurbine() {
+    const block = this.part('block');
+    const { cast, machined, dark, hot, steel, brass } = this.palette;
+
+    // 1. Aerodynamic titanium nacelle outer casing
+    this.cylinder(block, 0.35, 1.22, [0, 0, 0], cast, 'z', 0.33, 'turbine nacelle casing');
+    for (const z of [-0.45, -0.15, 0.15, 0.45]) {
+      this.ring(block, 0.356, 0.018, [0, 0, z], machined);
+    }
+
+    // 2. Turboshaft reduction gearbox / accessory casing
+    this.box(block, [0.42, 0.24, 0.58], [0, -0.32, 0.05], dark, true, 'turboshaft reduction gearbox');
+
+    // 3. Annular combustor casing & fuel nozzles
+    this.ring(block, 0.366, 0.024, [0, 0, -0.05], hot);
+    for (let n = 0; n < 8; n++) {
+      const a = n * TAU / 8;
+      this.cylinder(block, 0.022, 0.065, [Math.cos(a) * 0.36, Math.sin(a) * 0.36, -0.05], brass, 'z');
+    }
+
+    // 4. Rotating Turbine Rotor Spool (Compressor stages + Turbine wheels + Drive shaft)
+    const rotor = new THREE.Group();
+    rotor.name = 'turbine rotor spool';
+    block.add(rotor);
+
+    // Central spool drive shaft
+    this.cylinder(rotor, 0.048, 1.34, [0, 0, 0], steel, 'z');
+
+    // Intake aerodynamic nose cone (spinner)
+    this.cylinder(rotor, 0.14, 0.18, [0, 0, this.front - 0.03], machined, 'z', 0.02, 'turbine intake spinner');
+
+    // Axial compressor bladed disks (4 stages)
+    for (let s = 0; s < 4; s++) {
+      const z = 0.42 - s * 0.15;
+      const r = 0.30 - s * 0.02;
+      this.cylinder(rotor, r, 0.035, [0, 0, z], machined, 'z');
+      for (let b = 0; b < 8; b++) {
+        const a = b * TAU / 8;
+        const blade = this.box(rotor, [0.016, r * 0.45, 0.032], [Math.sin(a) * r * 0.72, Math.cos(a) * r * 0.72, z], steel, false);
+        blade.rotation.z = -a;
+      }
+    }
+
+    // High pressure and power turbine stages (hot alloy bladed wheels)
+    for (let t = 0; t < 2; t++) {
+      const z = -0.22 - t * 0.16;
+      const r = 0.28 + t * 0.02;
+      this.cylinder(rotor, r, 0.040, [0, 0, z], hot, 'z');
+      for (let b = 0; b < 8; b++) {
+        const a = b * TAU / 8;
+        const blade = this.box(rotor, [0.018, r * 0.42, 0.036], [Math.sin(a) * r * 0.72, Math.cos(a) * r * 0.72, z], this.palette.tuned, false);
+        blade.rotation.z = -a;
+      }
+    }
+
+    // Spin the rotor spool with crankshaft rotation
+    this.spin(rotor, 'crank');
+
+    // 5. Connect intake, exhaust, and bank mounting anchors
+    this.intakeAnchors.push(new THREE.Vector3(-0.35, 0.38, 0.25));
+    this.headerAnchors.push(new THREE.Vector3(0.35, -0.05, -0.25));
+    this.bankAnchors.push(new THREE.Vector3(0, 0.38, 0));
+  }
+
+  buildTurbojet() {
+    const block = this.part('block');
+    const { cast, machined, dark, hot, steel, brass, tuned } = this.palette;
+
+    // 1. Supersonic military turbojet titanium nacelle outer casing
+    this.cylinder(block, 0.36, 1.36, [0, 0, 0], cast, 'z', 0.33, 'turbojet nacelle casing');
+    for (const z of [-0.55, -0.35, -0.05, 0.25, 0.55]) {
+      this.ring(block, 0.366, 0.018, [0, 0, z], machined);
+    }
+
+    // 2. Annular Combustor casing & fuel manifolds
+    this.ring(block, 0.375, 0.024, [0, 0, 0.02], hot);
+    for (let n = 0; n < 10; n++) {
+      const a = n * TAU / 10;
+      this.cylinder(block, 0.020, 0.060, [Math.cos(a) * 0.37, Math.sin(a) * 0.37, 0.02], brass, 'z');
+    }
+
+    // 3. Afterburner reheat duct & circular flameholder rings
+    this.cylinder(block, 0.35, 0.42, [0, 0, -0.42], hot, 'z', 0.34, 'afterburner duct');
+    for (const r of [0.18, 0.28]) {
+      this.ring(block, r, 0.015, [0, 0, -0.38], tuned);
+    }
+    for (let n = 0; n < 8; n++) {
+      const a = n * TAU / 8;
+      this.cylinder(block, 0.012, 0.24, [Math.cos(a) * 0.23, Math.sin(a) * 0.23, -0.38], brass, 'z');
+    }
+
+    // 4. Convergent-divergent variable exhaust nozzle petals
+    for (let p = 0; p < 12; p++) {
+      const a = p * TAU / 12;
+      const petal = this.box(block, [0.075, 0.012, 0.16], [Math.cos(a) * 0.34, Math.sin(a) * 0.34, -0.66], dark, false);
+      petal.rotation.z = a;
+      petal.rotation.x = 0.15;
+    }
+
+    // 5. Rotating Spool (Axial compressor stages + Turbine disks + Central shaft)
+    const rotor = new THREE.Group();
+    rotor.name = 'turbojet rotor spool';
+    block.add(rotor);
+
+    // Central spool drive shaft
+    this.cylinder(rotor, 0.052, 1.38, [0, 0, 0], steel, 'z');
+
+    // Supersonic intake nose cone (bullet spike)
+    this.cylinder(rotor, 0.13, 0.22, [0, 0, this.front - 0.01], machined, 'z', 0.01, 'turbojet intake spike');
+
+    // 8-stage axial compressor rotor disks
+    for (let s = 0; s < 8; s++) {
+      const z = 0.50 - s * 0.065;
+      const r = 0.31 - s * 0.014;
+      this.cylinder(rotor, r, 0.022, [0, 0, z], machined, 'z');
+      for (let b = 0; b < 8; b++) {
+        const a = b * TAU / 8;
+        const blade = this.box(rotor, [0.012, r * 0.44, 0.022], [Math.sin(a) * r * 0.72, Math.cos(a) * r * 0.72, z], steel, false);
+        blade.rotation.z = -a;
+      }
+    }
+
+    // 2-stage high temperature turbine wheels
+    for (let t = 0; t < 2; t++) {
+      const z = -0.12 - t * 0.10;
+      const r = 0.28 + t * 0.015;
+      this.cylinder(rotor, r, 0.035, [0, 0, z], hot, 'z');
+      for (let b = 0; b < 8; b++) {
+        const a = b * TAU / 8;
+        const blade = this.box(rotor, [0.016, r * 0.42, 0.030], [Math.sin(a) * r * 0.72, Math.cos(a) * r * 0.72, z], tuned, false);
+        blade.rotation.z = -a;
+      }
+    }
+
+    // Spin the rotor spool with engine crankshaft
+    this.spin(rotor, 'crank');
+
+    // 6. Connect intake, exhaust, and mounting anchors
+    this.intakeAnchors.push(new THREE.Vector3(-0.36, 0.38, 0.30));
+    this.headerAnchors.push(new THREE.Vector3(0.36, -0.05, -0.40));
+    this.bankAnchors.push(new THREE.Vector3(0, 0.38, 0));
   }
 
   buildIntake() {
