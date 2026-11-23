@@ -179,6 +179,8 @@ R15／R3 的初級與終傳比、後輪有效滾動半徑、完整扭矩曲線�
 
 RevLab 以 Web Audio 實時計算點火脈衝，並把排氣音色設為可獨立選擇的預設。本站各車音色使用獨立參數和相同共鳴器結構。升檔的完全分離約 55 ms，燃燒在接近新檔對應的引擎轉速時快速恢復。時序與混音皆為 C／D 級近似。[RevLab 音訊說明](https://build-your-engine.vercel.app/) · [HealTech 卸載原理](https://www.healtech-electronics.com/app/iqse/faq_en/)
 
+排氣加厚參考汽缸脈衝、集管與消音器可形成不同共鳴的聲學模型。`exhaustBody` 設定兩個寬頻共鳴的中心頻率、阻尼與強度。多缸的排氣支管給予小幅固定差異，由現有點火脈衝驅動。所有新係數是 D 級原創合成，無對應原廠排氣管量測或實錄。 [排氣管與消音器聲學模型](https://doi.org/10.1186/s13636-024-00372-4) · [Yamaha 引擎聲合成技報](https://global.yamaha-motor.com/jp/design_technology/technical/pdf/chapters/YMC-TR32_TechPaper_04.pdf)
+
 ## 4. 開發者引用習慣
 
 每新增或修改一筆真實規格，請保存來源 URL、核對日、年式/地區/型號、原始值、單位、證據等級（A/B/C/D），以及對應的設定檔/測試；找不到資料就填 `unknown` 而不是猜。

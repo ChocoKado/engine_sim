@@ -95,6 +95,26 @@ function upperBandShare(signal) {
   return Math.sqrt(energy / signal.length) / rms(signal);
 }
 
+function bandRms(signal, lowerHz, upperHz) {
+  const highPassCoefficient = 1 - Math.exp(-2 * Math.PI * lowerHz / rate);
+  const lowPassCoefficient = 1 - Math.exp(-2 * Math.PI * upperHz / rate);
+  const filterSettlingSamples = Math.round(rate * 0.02);
+  let baseline = 0;
+  let secondBaseline = 0;
+  let lowPass = 0;
+  let secondLowPass = 0;
+  let energy = 0;
+  for (let index = 0; index < signal.length; index += 1) {
+    const sample = signal[index];
+    baseline += highPassCoefficient * (sample - baseline);
+    secondBaseline += highPassCoefficient * (sample - baseline - secondBaseline);
+    lowPass += lowPassCoefficient * (sample - baseline - secondBaseline - lowPass);
+    secondLowPass += lowPassCoefficient * (lowPass - secondLowPass);
+    if (index >= filterSettlingSamples) energy += secondLowPass ** 2;
+  }
+  return Math.sqrt(energy / (signal.length - filterSettlingSamples));
+}
+
 function assertBounded(signal) {
   assert.ok(signal.every((sample) => Number.isFinite(sample) && Math.abs(sample) < 0.38));
 }
@@ -121,6 +141,32 @@ for (const vehicle of vehicles) {
     assert.ok(gaps.every((gap, position) => Math.abs(gap - required[position % required.length]) <= 1), gaps.join(","));
     assertBounded(signal);
     assert.ok(signal.some((sample) => Math.abs(sample) > 0.005));
+  });
+
+  test(`${vehicle.name}: collector adds low mids and retains upper-band output near peak RPM`, () => {
+    function render(rpm, options) {
+      const audio = captureAudio(vehicle, options);
+      const signal = audio.blocks(150, { rpm, throttle: 0.82, combustion: 0.82, load: 0.76 }).slice(-8192);
+      return { signal, pulses: audio.pulses };
+    }
+
+    const disabled = { exhaustBody: undefined };
+    const mid = render(5500);
+    const midBase = render(5500, disabled);
+    const highRpm = Math.min(vehicle.physics.referenceRpm * 0.9, vehicle.physics.peakPowerRpm);
+    const high = render(highRpm);
+    const highBase = render(highRpm, disabled);
+    const lowerBandGain = bandRms(mid.signal, 150, 720) / bandRms(midBase.signal, 150, 720);
+    const middleUpperBandGain = bandRms(mid.signal, 1400, 4500) / bandRms(midBase.signal, 1400, 4500);
+    const topUpperBandGain = bandRms(high.signal, 1400, 4500) / bandRms(highBase.signal, 1400, 4500);
+
+    assert.ok(lowerBandGain > 1.08, `low-mid RMS ratio: ${lowerBandGain}`);
+    assert.ok(lowerBandGain / middleUpperBandGain > 1.06, `relative low-mid RMS ratio: ${lowerBandGain / middleUpperBandGain}`);
+    assert.ok(topUpperBandGain > 0.97, `high-RPM upper-band RMS ratio: ${topUpperBandGain}`);
+    assert.deepEqual(mid.pulses, midBase.pulses);
+    assert.deepEqual(high.pulses, highBase.pulses);
+    assertBounded(mid.signal);
+    assertBounded(high.signal);
   });
 }
 

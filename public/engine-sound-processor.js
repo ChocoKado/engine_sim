@@ -57,6 +57,57 @@ class DampedResonator {
   }
 }
 
+class ExhaustBodyMode {
+  constructor(frequencyHz, decayMs) {
+    const angle = REVOLUTION_RAD * frequencyHz / sampleRate;
+    // Use the approximate four-time-constant decay to keep the mode broad.
+    const q = clamp(Math.PI * frequencyHz * decayMs / 4000, 0.85, 2.15);
+    const damping = Math.sin(angle) / (2 * q);
+    this.inputGain = damping / (1 + damping);
+    this.feedback = 2 * Math.cos(angle) / (1 + damping);
+    this.previousFeedback = (1 - damping) / (1 + damping);
+    this.history = 0;
+    this.previousHistory = 0;
+  }
+
+  render(pressure) {
+    const direct = pressure * this.inputGain;
+    const next = direct + this.history;
+    this.history = this.feedback * next + this.previousHistory;
+    this.previousHistory = -direct - this.previousFeedback * next;
+    return next;
+  }
+}
+
+class ExhaustCollectorBody {
+  constructor({ frequencyHz, decayMs, gain, runnerImbalance }, cylinderCount) {
+    const frequency = clamp(frequencyHz, 105, 360);
+    const decay = Number.isFinite(decayMs) ? clamp(decayMs, 4, 24) : 11;
+    this.collector = new ExhaustBodyMode(frequency, decay);
+    this.muffler = new ExhaustBodyMode(frequency * 1.78, decay * 0.64);
+    this.lowPassRate = frequencyFactor(1250);
+    this.lowPass = 0;
+    this.bodyPressure = 0;
+    this.gain = clamp(gain, 0, 1);
+    this.runnerImbalance = Number.isFinite(runnerImbalance) ? clamp(runnerImbalance, 0, 0.25) : 0;
+    this.runnerBalance = Array.from({ length: cylinderCount }, (_, index) => cylinderCount > 1 ? 2 * index / (cylinderCount - 1) - 1 : 0);
+  }
+
+  render(exhaust, pressure, nextFiringIndex, rpm) {
+    let input = exhaust;
+    // The runner weights color already scheduled pulses without moving them or changing engine speed.
+    if (pressure && this.runnerImbalance) {
+      const firedIndex = nextFiringIndex === 0 ? this.runnerBalance.length - 1 : nextFiringIndex - 1;
+      const imbalance = this.runnerImbalance * (0.5 + 0.5 * clamp(rpm / 8500, 0, 1));
+      input += 12 * pressure * this.runnerBalance[firedIndex] * imbalance;
+    }
+    const resonantPressure = 0.65 * this.collector.render(input) + 0.59 * this.muffler.render(input);
+    this.lowPass += this.lowPassRate * (resonantPressure - this.lowPass);
+    this.bodyPressure += this.lowPassRate * (this.lowPass - this.bodyPressure);
+    return this.gain * this.bodyPressure;
+  }
+}
+
 class SuperchargerWhine {
   constructor({ driveRatio, audioGain }) {
     this.driveRatio = driveRatio;
@@ -94,7 +145,7 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
 
     const {
       firingAnglesRad, exhaustFrequencyHz, pulseDecayMs,
-      exhaustOpeningRad = 0, exhaustReflectionMs, brightnessStartRpm = 8000, brightnessMaxRpm, supercharger,
+      exhaustOpeningRad = 0, exhaustReflectionMs, exhaustBody, brightnessStartRpm = 8000, brightnessMaxRpm, supercharger,
     } = processorOptions;
     const exhaustOffset = Number.isFinite(exhaustOpeningRad) ? exhaustOpeningRad : 0;
     this.exhaustPulseAnglesRad = firingAnglesRad.map((angle) => wrapAngle(angle + exhaustOffset)).sort((a, b) => a - b);
@@ -102,6 +153,8 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
     this.exhaustOvertone = new DampedResonator(exhaustFrequencyHz * 2.55, pulseDecayMs * 0.42);
     this.exhaustEdge = new DampedResonator(exhaustFrequencyHz * 12.5, 1.85);
     this.tripleCollector = firingAnglesRad.length === 3 ? new DampedResonator(exhaustFrequencyHz * 0.78, pulseDecayMs * 1.2) : null;
+    this.collectorBody = Number.isFinite(exhaustBody?.frequencyHz) && Number.isFinite(exhaustBody.gain) && exhaustBody.gain > 0
+      ? new ExhaustCollectorBody(exhaustBody, firingAnglesRad.length) : null;
     // A quarter-wave pipe's round-trip time is half a period of its fundamental.
     const reflectionMs = Number.isFinite(exhaustReflectionMs) ? exhaustReflectionMs : 500 / exhaustFrequencyHz;
     this.exhaustDelay = new Float32Array(Math.ceil(sampleRate * clamp(reflectionMs, 0.8, 8) / 1000));
@@ -324,7 +377,19 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
       const mix = 0.96 * exhaust - 0.12 * this.reflectedPressure + whine;
       this.dcMean += this.dcSmoothing * (mix - this.dcMean);
       this.filteredOutput += this.outputSmoothing * (mix - this.dcMean - this.filteredOutput);
-      output[index] = MAX_OUTPUT * this.gate * this.filteredOutput / (1 + Math.abs(this.filteredOutput));
+      let normalized = this.filteredOutput / (1 + Math.abs(this.filteredOutput));
+      if (this.collectorBody) {
+        const collectorPressure = this.collectorBody.render(exhaust, pressure, this.nextFiringIndex, rpm);
+        const extension = collectorPressure * 0.50 * (1 - 0.76 * brightness - 0.12 * cutTone);
+        // Give the body its own soft knee so low frequencies don't compress the exhaust edge or whine.
+        const direction = extension < 0 ? -1 : 1;
+        const headroom = 1 - direction * normalized;
+        const knee = 0.65 * headroom;
+        const overflow = Math.abs(extension) - knee;
+        const remaining = headroom - knee;
+        normalized += overflow > 0 ? direction * (knee + remaining * overflow / (remaining + overflow)) : extension;
+      }
+      output[index] = MAX_OUTPUT * this.gate * normalized;
     }
 
     for (let index = 1; index < channels.length; index += 1) channels[index].set(output);

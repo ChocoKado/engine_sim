@@ -27,6 +27,12 @@ export interface Vehicle {
     readonly firingAnglesRad: readonly number[];
     readonly exhaustFrequencyHz: number;
     readonly pulseDecayMs: number;
+    readonly exhaustBody: {
+      readonly frequencyHz: number;
+      readonly decayMs: number;
+      readonly gain: number;
+      readonly runnerImbalance: number;
+    };
     readonly exhaustReflectionMs?: number;
     readonly brightnessStartRpm?: number;
     readonly brightnessMaxRpm?: number;
@@ -82,6 +88,7 @@ export const vehicles = [
       firingAnglesRad: [0],
       exhaustFrequencyHz: 132,
       pulseDecayMs: 11,
+      exhaustBody: { frequencyHz: 156, decayMs: 12.8, gain: 0.74, runnerImbalance: 0 },
     },
     physics: {
       curbMassKg: 141,
@@ -128,6 +135,7 @@ export const vehicles = [
       firingAnglesRad: [0, Math.PI],
       exhaustFrequencyHz: 174,
       pulseDecayMs: 8,
+      exhaustBody: { frequencyHz: 205, decayMs: 11.5, gain: 0.74, runnerImbalance: 0.10 },
     },
     physics: {
       curbMassKg: 170,
@@ -175,6 +183,7 @@ export const vehicles = [
       firingAnglesRad: [0, Math.PI, 2 * Math.PI, 3 * Math.PI],
       exhaustFrequencyHz: 218,
       pulseDecayMs: 6,
+      exhaustBody: { frequencyHz: 275, decayMs: 9.5, gain: 0.73, runnerImbalance: 0.19 },
       exhaustReflectionMs: 2.5,
       brightnessStartRpm: 8500,
       brightnessMaxRpm: 15500,
@@ -225,6 +234,7 @@ export const vehicles = [
       firingAnglesRad: [0, 1.5 * Math.PI],
       exhaustFrequencyHz: 112,
       pulseDecayMs: 12.5,
+      exhaustBody: { frequencyHz: 148, decayMs: 14, gain: 0.86, runnerImbalance: 0.08 },
       exhaustReflectionMs: 4.5,
       brightnessStartRpm: 5500,
       brightnessMaxRpm: 10000,
@@ -274,6 +284,7 @@ export const vehicles = [
       firingAnglesRad: [0, 4 * Math.PI / 3, 8 * Math.PI / 3],
       exhaustFrequencyHz: 188,
       pulseDecayMs: 9,
+      exhaustBody: { frequencyHz: 216, decayMs: 12.2, gain: 0.90, runnerImbalance: 0.15 },
       exhaustReflectionMs: 3.6,
       brightnessStartRpm: 6500,
       brightnessMaxRpm: 10500,
@@ -324,6 +335,7 @@ export const vehicles = [
       firingAnglesRad: [0, 1.5 * Math.PI, 2.5 * Math.PI, 3 * Math.PI],
       exhaustFrequencyHz: 151,
       pulseDecayMs: 9.5,
+      exhaustBody: { frequencyHz: 169, decayMs: 13, gain: 0.92, runnerImbalance: 0.12 },
       exhaustReflectionMs: 3.9,
       brightnessStartRpm: 7500,
       brightnessMaxRpm: 13500,
