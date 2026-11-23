@@ -15,6 +15,8 @@ interface RidingControlsProps {
   onToggleEngine: () => void;
   onReset: () => void;
   audioStatus: AudioStatus;
+  volume: number;
+  onVolumeChange: (value: number) => void;
   onToggleAudio: () => void;
   onShift: (direction: -1 | 1) => void;
   onPedalChange: (pedal: Pedal, pressed: boolean) => void;
@@ -220,7 +222,8 @@ const audioLabels: Record<AudioStatus, string> = {
 };
 
 export function RidingControls({
-  engineOn, engineFailed, shiftMode, onToggleEngine, onReset, audioStatus, onToggleAudio, onShift, onPedalChange, resetKey,
+  engineOn, engineFailed, shiftMode, onToggleEngine, onReset, audioStatus, onToggleAudio,
+  volume, onVolumeChange, onShift, onPedalChange, resetKey,
 }: RidingControlsProps) {
   return (
     <section className="panel controls-panel" aria-labelledby="controls-title">
@@ -255,6 +258,20 @@ export function RidingControls({
           <PedalButton pedal="brake" label="煞車" onPedalChange={onPedalChange} />
           <PedalButton pedal="throttle" label="油門" onPedalChange={onPedalChange} />
         </div>
+      </div>
+      <div className="volume-controls">
+        <label className="volume-label" htmlFor="engine-volume">音量</label>
+        <input
+          className="volume-slider"
+          id="engine-volume"
+          type="range"
+          min={0}
+          max={100}
+          value={volume}
+          aria-valuetext={`${volume}%`}
+          onChange={(event) => onVolumeChange(event.currentTarget.valueAsNumber)}
+        />
+        <span className="volume-value" aria-hidden="true">{volume}%</span>
       </div>
     </section>
   );

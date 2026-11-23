@@ -1,6 +1,6 @@
 # engine_sim
 
-手機騎乘控制台，提供台灣 2026 年式 Yamaha YZF-R15 與 YZF-R3。兩款車使用固定步長物理核心，支援多指油門、煞車、撥片換檔、虛擬 AT、合成聲浪和互動 3D 剖面。首次播放聲音需點按「啟用聲音」。
+手機騎乘控制台，提供台灣 2026 年式 Yamaha YZF-R15 與 YZF-R3。兩款車使用固定步長物理核心，支援多指油門、煞車、撥片換檔、虛擬 AT、合成聲浪和互動 3D 剖面。點按「啟用聲音」後可調整音量，瀏覽器會記住音量設定。
 
 [Vercel 正式站](https://enginesim-ten.vercel.app/) · [M7 HTTPS Preview](https://engine-bb88cxk6b-choco-7242.vercel.app/)
 

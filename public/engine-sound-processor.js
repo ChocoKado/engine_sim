@@ -1,6 +1,7 @@
 const ENGINE_CYCLE_RAD = 4 * Math.PI;
 const MAX_TELEMETRY_AGE_SECONDS = 0.18;
-const MAX_OUTPUT = 0.12;
+const MAX_OUTPUT = 0.30;
+const RADIANS_PER_SECOND_TO_RPM = 60 / (2 * Math.PI);
 
 function clamp(value, minimum, maximum) {
   return Math.min(maximum, Math.max(minimum, value));
@@ -46,11 +47,16 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
     this.firingAnglesRad = firingAnglesRad;
     this.exhaust = new DampedResonator(exhaustFrequencyHz, pulseDecayMs);
     this.exhaustOvertone = new DampedResonator(exhaustFrequencyHz * 2.55, pulseDecayMs * 0.46);
+    this.exhaustEdge = new DampedResonator(exhaustFrequencyHz * 12.5, 2.2);
     this.mechanical = new DampedResonator(mechanicalFrequencyHz, 3.5);
     this.intakeSmoothing = frequencyFactor(intakeFrequencyHz * 2);
     this.intakeBaselineSmoothing = frequencyFactor(intakeFrequencyHz * 0.45);
-    this.outputSmoothing = frequencyFactor(3600);
-    this.controlSmoothing = smoothingFactor(0.025);
+    this.outputSmoothing = frequencyFactor(4400);
+    this.intakeAttack = smoothingFactor(0.045);
+    this.intakeRelease = smoothingFactor(0.105);
+    this.loadSmoothing = smoothingFactor(0.06);
+    this.chargeAttack = smoothingFactor(0.03);
+    this.chargeRelease = smoothingFactor(0.06);
     this.velocitySmoothing = smoothingFactor(0.009);
     this.gateAttack = smoothingFactor(0.032);
     this.gateRelease = smoothingFactor(0.055);
@@ -113,8 +119,9 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
     return true;
   }
 
-  firingPressure() {
-    return this.combustion * (0.64 + 0.36 * this.load);
+  firingPressure(pumpingLevel) {
+    // Exhaust pumping continues with the crank through throttle lift and fuel cut.
+    return 0.12 + 0.29 * pumpingLevel + this.combustion * (0.41 + 0.12 * this.load);
   }
 
   process(_inputs, outputs) {
@@ -145,26 +152,36 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
 
     for (let index = 0; index < output.length; index += 1) {
       this.angularVelocity += this.velocitySmoothing * (velocityTarget - this.angularVelocity);
-      this.throttle += this.controlSmoothing * (throttle - this.throttle);
-      this.load += this.controlSmoothing * (load - this.load);
-      this.combustion += this.controlSmoothing * (combustion - this.combustion);
+      const intakeSmoothing = throttle >= this.throttle ? this.intakeAttack : this.intakeRelease;
+      const chargeSmoothing = combustion >= this.combustion ? this.chargeAttack : this.chargeRelease;
+      this.throttle += intakeSmoothing * (throttle - this.throttle);
+      this.load += this.loadSmoothing * (load - this.load);
+      this.combustion += chargeSmoothing * (combustion - this.combustion);
       const gateSmoothing = gateTarget >= this.gate ? this.gateAttack : this.gateRelease;
       this.gate += gateSmoothing * (gateTarget - this.gate);
 
+      const rpm = this.angularVelocity * RADIANS_PER_SECOND_TO_RPM;
+      const pumpingLevel = clamp((rpm - 1200) / 6500, 0, 1);
+      const speedLevel = clamp(rpm / 8500, 0, 1);
+      const upperRange = clamp((rpm - 8000) / 5000, 0, 1);
+      const brightness = upperRange * upperRange * (3 - 2 * upperRange);
       const fired = this.advanceCrank(this.angularVelocity / sampleRate);
-      const pressure = fired ? this.firingPressure() : 0;
-      const exhaust = this.exhaust.render(pressure) + this.exhaustOvertone.render(pressure) * (0.26 + 0.18 * this.throttle);
+      const pressure = fired ? this.firingPressure(pumpingLevel) : 0;
+      const body = this.exhaust.render(pressure);
+      const overtone = this.exhaustOvertone.render(pressure) * (0.29 + 0.12 * this.load + 0.39 * brightness);
+      // The short upper resonance follows the same events as the exhaust body.
+      const edge = this.exhaustEdge.render(pressure * (0.045 + 0.84 * brightness));
 
       this.noiseSeed = (Math.imul(this.noiseSeed, 1664525) + 1013904223) >>> 0;
       const noise = this.noiseSeed / 2147483648 - 1;
       this.intakeLowPass += this.intakeSmoothing * (noise - this.intakeLowPass);
       this.intakeBaseline += this.intakeBaselineSmoothing * (this.intakeLowPass - this.intakeBaseline);
-      const speedLevel = clamp(this.angularVelocity / 850, 0, 1);
-      const intake = (this.intakeLowPass - this.intakeBaseline) * (0.027 + 0.30 * this.throttle) * speedLevel;
+      const airflow = (0.044 + 0.15 * this.throttle + 0.055 * this.load) * speedLevel;
+      const intake = (this.intakeLowPass - this.intakeBaseline) * airflow;
 
       const shaft = Math.sin(this.angle * 2) * (0.022 + 0.025 * speedLevel);
       const mechanical = this.mechanical.render(fired ? 0.12 + 0.08 * speedLevel : 0) + shaft;
-      const mix = exhaust * 0.87 + intake + mechanical * 0.30;
+      const mix = (body + overtone + edge) * 0.87 + intake + mechanical * 0.30;
       this.filteredOutput += this.outputSmoothing * (mix - this.filteredOutput);
       output[index] = MAX_OUTPUT * this.gate * this.filteredOutput / (1 + Math.abs(this.filteredOutput));
     }

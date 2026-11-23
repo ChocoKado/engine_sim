@@ -1,13 +1,14 @@
 :root {
   color-scheme: dark;
-  --background: #0d1014;
-  --panel: #151a21;
-  --surface: #1c242d;
-  --line: #303b47;
-  --text: #f3f6fa;
-  --muted: #a5b2c0;
-  --mint: #77f1d0;
-  --orange: #ffb28e;
+  --background: #101111;
+  --panel: #1a1b19;
+  --surface: #262725;
+  --line: #3b3d37;
+  --text: #f5f3e9;
+  --muted: #b5b7ae;
+  --accent: #f9cb52;
+  --accent-dark: #3c3018;
+  --danger: #ff8e76;
   --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
 }
 
@@ -16,23 +17,23 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(ellipse at 48% 0%, #18232e 0, var(--background) 42rem);
+  background: radial-gradient(ellipse at 35% 0%, #282820 0, var(--background) 38rem);
   color: var(--text);
   font: 1rem/1.45 system-ui, sans-serif;
 }
 
 h1, h2, p { margin: 0; }
-h1 { font-size: clamp(1.6rem, 1.15rem + 2vw, 2.65rem); letter-spacing: .015em; line-height: 1.2; }
-h2 { font-size: 1rem; font-weight: 650; }
+h1 { font-size: clamp(1.6rem, 1.2rem + 2.35vw, 3rem); font-weight: 850; letter-spacing: -.035em; line-height: 1.16; }
+h2 { font-size: 1rem; font-weight: 720; }
 button { font: inherit; }
 
 :focus-visible {
-  outline: 2px solid var(--mint);
+  outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
 
 .console-shell {
-  max-width: 70rem;
+  max-width: 67rem;
   padding-block: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-bottom));
   padding-inline: max(1rem, env(safe-area-inset-left)) max(1rem, env(safe-area-inset-right));
   margin-inline: auto;
@@ -51,24 +52,25 @@ button { font: inherit; }
 .wordmark {
   display: flex;
   align-items: center;
-  gap: .55rem;
-  font: 700 1.05rem/1 var(--mono);
+  font: 800 1.05rem/1 var(--mono);
+  letter-spacing: -.04em;
 }
 
 .wordmark::before {
   content: "";
-  width: .63rem;
-  height: .85rem;
-  background: var(--mint);
-  transform: skew(-18deg);
+  inline-size: 1.15rem;
+  block-size: .7rem;
+  margin-inline-end: .5rem;
+  background: repeating-linear-gradient(90deg, var(--accent) 0 .17rem, transparent .17rem .33rem);
+  transform: skewX(-22deg);
 }
 
 .preview-status {
-  border: 1px solid #546375;
-  border-radius: .32rem;
+  border: 1px solid #59594e;
+  border-radius: .3rem;
   padding: .15rem .55rem;
-  color: #d5dfe9;
-  font-size: .875rem;
+  color: var(--muted);
+  font-size: .8125rem;
 }
 
 .vehicle-section { margin-block: .55rem 1rem; }
@@ -92,7 +94,7 @@ button { font: inherit; }
   display: inline-flex;
   align-items: center;
   min-height: 2.75rem;
-  color: var(--mint);
+  color: var(--accent);
   font-size: .875rem;
   text-underline-offset: .2em;
 }
@@ -112,18 +114,20 @@ button { font: inherit; }
   position: relative;
   display: grid;
   align-content: center;
-  gap: .25rem;
+  gap: .26rem;
   min-height: 4.25rem;
-  padding: .65rem .85rem;
+  padding: .65rem .85rem .65rem 1rem;
   border: 1px solid var(--line);
-  border-radius: .6rem;
-  background: var(--panel);
+  border-inline-start: .22rem solid #55574f;
+  border-radius: .45rem;
+  background: linear-gradient(120deg, #262720, var(--panel) 65%);
   cursor: pointer;
 }
 
 .vehicle-card strong {
   padding-inline-end: 1.2rem;
-  font: 700 clamp(1rem, .86rem + .7vw, 1.34rem)/1.2 var(--mono);
+  font: 800 clamp(1.1rem, .95rem + .95vw, 1.65rem)/1.08 var(--mono);
+  letter-spacing: -.06em;
 }
 
 .vehicle-spec { color: var(--muted); font-size: .8125rem; }
@@ -135,23 +139,29 @@ button { font: inherit; }
   right: .75rem;
   width: 1rem;
   height: 1rem;
-  border: 1px solid #8795a7;
+  border: 1px solid #84867a;
   border-radius: 50%;
 }
 
-.vehicle-option input:checked + .vehicle-card { border-color: var(--mint); background: #172724; }
-.vehicle-option input:checked + .vehicle-card .radio-indicator {
-  border-color: var(--mint);
-  background: radial-gradient(circle, var(--mint) .21rem, transparent .24rem);
+.vehicle-option input:checked + .vehicle-card {
+  border-color: #77613a;
+  border-inline-start-color: var(--accent);
+  background: linear-gradient(115deg, var(--accent-dark), #22211b 75%);
+  color: var(--accent);
 }
-.vehicle-option input:focus-visible + .vehicle-card { outline: 2px solid var(--mint); outline-offset: 3px; }
+.vehicle-option input:checked + .vehicle-card .radio-indicator {
+  border-color: var(--accent);
+  background: radial-gradient(circle, var(--accent) .21rem, transparent .24rem);
+}
+.vehicle-option input:focus-visible + .vehicle-card { outline: 2px solid var(--accent); outline-offset: 3px; }
 
 .panel {
   min-width: 0;
   padding: .85rem;
   border: 1px solid var(--line);
   border-radius: .75rem;
-  background: var(--panel);
+  background: linear-gradient(155deg, #22231e, var(--panel) 54%);
+  box-shadow: 0 .75rem 1.5rem #0003;
 }
 
 .dashboard-heading {
@@ -164,61 +174,84 @@ button { font: inherit; }
 .shift-mode { display: flex; gap: .35rem; }
 
 .readouts {
+  --glass: #111210;
   display: grid;
-  grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr) minmax(0, .85fr);
-  align-items: stretch;
-  gap: .35rem;
-  margin-block: .75rem;
+  grid-template-columns: minmax(0, 1fr) minmax(4.75rem, .34fr);
+  gap: .65rem;
+  margin-block: .65rem;
+  padding: .7rem .75rem;
+  border: 1px solid #45473d;
+  border-radius: .5rem;
+  background: linear-gradient(145deg, #1a1c15 0, var(--glass) 62%);
+  box-shadow: inset 0 1px 4px #0008;
 }
 
-.readouts > div {
+.rpm-readout { grid-column: 1 / -1; min-width: 0; }
+
+.rpm-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .6rem;
+  margin-block-end: .45rem;
+}
+
+.rpm-heading .readout-value { color: var(--accent); font-size: clamp(1.45rem, 1.1rem + 1.3vw, 2.15rem); }
+.rpm-heading .readout-label span { margin-inline-start: .25rem; font-family: var(--mono); }
+.rpm-readout[data-redline="true"] .readout-value { color: var(--danger); }
+
+.rpm-track {
   position: relative;
-  display: grid;
-  place-content: end center;
-  justify-items: center;
-  gap: .18rem;
-  min-height: 5.25rem;
-  padding: .5rem .15rem;
+  height: clamp(.9rem, 2.05vw, 1.4rem);
+  background: linear-gradient(90deg, #373b30 var(--redline-position), #5b2d26 var(--redline-position));
+  -webkit-mask-image: repeating-linear-gradient(100deg, #000 0 .57rem, transparent .57rem .7rem);
+  mask-image: repeating-linear-gradient(100deg, #000 0 .57rem, transparent .57rem .7rem);
 }
 
-.speed-readout, .gear-readout { border-inline-start: 1px solid var(--line); }
-
-.rpm-arc {
-  position: absolute;
-  inset: 0 0 auto;
-  width: min(100%, 13rem);
-  height: 100%;
-  overflow: hidden;
-  margin-inline: auto;
-  pointer-events: none;
-}
-
-.rpm-arc::before {
+.rpm-track::before {
   content: "";
   position: absolute;
-  inset: 0 0 auto;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: repeating-conic-gradient(from -90deg, #586779 0deg 1.2deg, transparent 1.2deg 7.5deg);
-  mask-image: radial-gradient(circle, transparent 62%, #000 63%, #000 67%, transparent 68%);
-  clip-path: inset(0 0 50%);
-  opacity: .7;
+  inset: 0;
+  background: linear-gradient(90deg, #b98b39, var(--accent) var(--redline-position), var(--danger) var(--redline-position));
+  clip-path: inset(0 calc(100% - var(--rpm-position)) 0 0);
 }
 
-.readout-value {
-  position: relative;
-  font: 650 clamp(1.8rem, 1.25rem + 3.2vw, 3.75rem)/.95 var(--mono);
-  font-variant-numeric: tabular-nums;
+.rpm-scale, .rpm-scale-unit {
+  color: var(--muted);
+  font: 650 .6875rem/1.1 var(--mono);
 }
 
-.gear-readout .readout-value { color: var(--mint); }
-.readout-label { position: relative; color: var(--muted); font-size: .875rem; text-align: center; }
-.readout-label span { white-space: nowrap; }
+.rpm-scale { display: flex; justify-content: space-between; margin-top: .33rem; }
+.rpm-scale span[data-redline="true"] { color: var(--danger); }
+.rpm-scale-unit { margin-top: .15rem; text-align: center; }
+
+.speed-readout, .gear-readout { min-width: 0; }
+.speed-readout { display: flex; flex-wrap: wrap; align-items: baseline; gap: .05rem .48rem; padding: .15rem .15rem .25rem; }
+.speed-readout .readout-label { flex-basis: 100%; }
+.speed-readout .readout-value { font-size: clamp(2.55rem, 2rem + 2.85vw, 5.35rem); }
+.speed-unit { color: var(--muted); font: 650 .8rem/1 var(--mono); }
+
+.gear-readout {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: .27rem;
+  border: 1px solid #7a6230;
+  border-radius: .38rem;
+  padding: .4rem .25rem;
+  background: linear-gradient(150deg, var(--accent-dark), #242019);
+}
+
+.gear-readout[data-neutral="true"] { border-color: #515344; background: #262922; }
+.gear-readout .readout-value { color: var(--accent); font-size: clamp(2rem, 1.8rem + 2.2vw, 4.2rem); }
+.gear-readout[data-neutral="true"] .readout-value { color: #c1dda0; }
+.readout-value { font: 800 2rem/.9 var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -.06em; }
+.readout-label { color: var(--muted); font-size: .8125rem; }
 
 .gear-sequence {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: .3rem;
+  gap: .34rem;
   padding: 0;
   margin: 0;
   list-style-type: none;
@@ -229,18 +262,19 @@ button { font: inherit; }
   place-items: center;
   min-height: 1.65rem;
   border: 1px solid var(--line);
-  border-radius: .26rem;
+  border-radius: .24rem;
+  background: #181916;
   color: var(--muted);
   font: 650 .875rem/1 var(--mono);
 }
 
-.gear-sequence [aria-current] { border-color: var(--mint); background: var(--mint); color: #10251f; }
-.dashboard-note, #pedal-instruction { color: var(--muted); font-size: .875rem; }
+.gear-sequence [aria-current] { border-color: var(--accent); background: var(--accent); color: #242016; }
+.dashboard-note, #pedal-instruction { color: var(--muted); font-size: .8125rem; }
 .dashboard-note { margin-top: .55rem; }
 #pedal-instruction { margin-top: .3rem; }
 .shift-status, .over-rev-status { margin-top: .45rem; font-size: .875rem; }
-.shift-status { color: var(--mint); }
-.over-rev-status { display: flex; flex-wrap: wrap; column-gap: .45rem; color: var(--orange); }
+.shift-status { color: var(--accent); }
+.over-rev-status { display: flex; flex-wrap: wrap; column-gap: .45rem; color: var(--danger); }
 
 .dashboard-actions, .engine-view-actions { display: flex; align-items: center; gap: .35rem; }
 .dashboard-heading { flex-wrap: wrap; }
@@ -253,13 +287,13 @@ button { font: inherit; }
   border: 1px solid var(--line);
   border-radius: .5rem;
   margin-block: .6rem;
-  background: #111922;
+  background: #161914;
 }
 
 .engine-canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 .engine-scene-fallback { display: grid; place-items: center; text-align: center; color: var(--muted); }
 .engine-view-tools { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .35rem; }
-.engine-rpm { font: 650 .9rem/1 var(--mono); color: var(--mint); }
+.engine-rpm { font: 650 .9rem/1 var(--mono); color: var(--accent); }
 
 .control-heading {
   display: flex;
@@ -276,8 +310,8 @@ button { font: inherit; }
 .mode-button, .engine-toggle, .audio-toggle, .shift-button, .pedal-button {
   min-width: 0;
   min-height: 2.75rem;
-  border: 1px solid #4a596b;
-  border-radius: .5rem;
+  border: 1px solid #53554b;
+  border-radius: .42rem;
   color: var(--text);
   background: var(--surface);
   cursor: pointer;
@@ -295,19 +329,20 @@ button { font: inherit; }
   font-weight: 650;
 }
 
-.mode-button[aria-pressed="true"] { border-color: var(--mint); background: #172724; color: var(--mint); }
+.mode-button[aria-pressed="true"] { border-color: #937740; background: var(--accent-dark); color: var(--accent); }
 
 .engine-toggle {
   flex: none;
   min-width: 2.75rem;
   padding: .35rem .65rem;
-  border-color: var(--mint);
-  color: var(--mint);
-  font-weight: 650;
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #252016;
+  font-weight: 750;
 }
 
-.engine-toggle.engine-running { border-color: var(--orange); color: var(--orange); }
-.engine-toggle:active { background: #324454; }
+.engine-toggle.engine-running { border-color: #81554a; background: #3a2b26; color: var(--danger); }
+.engine-toggle:active { filter: brightness(1.13); }
 .audio-toggle { min-width: 2.75rem; padding-inline: .5rem; white-space: nowrap; font-size: .875rem; touch-action: manipulation; }
 .audio-toggle:disabled { color: var(--muted); cursor: wait; }
 
@@ -317,37 +352,61 @@ button { font: inherit; }
   justify-content: center;
   gap: .55rem;
   padding: .4rem;
+  background: linear-gradient(#30322b, #242520);
+  box-shadow: inset 0 1px #fff1, 0 .15rem #111;
 }
 
-.shift-button:active { background: #324454; border-color: #a3b9cd; }
+.shift-button:active { border-color: var(--accent); background: var(--accent-dark); color: var(--accent); }
 .shift-button:disabled { opacity: .58; cursor: default; }
-.shift-symbol { font: 650 1.45rem/1 var(--mono); }
+.shift-symbol { font: 800 1.45rem/1 var(--mono); }
 .shift-label { font-size: .875rem; }
 
 .pedal-button {
-  --pedal-color: var(--mint);
-  --pedal-surface: #19332d;
+  --pedal-color: var(--accent);
+  --pedal-edge: #987739;
+  --pedal-surface: #45361c;
   display: grid;
   gap: .12rem;
   place-content: center;
-  min-height: 4rem;
+  min-height: 4.35rem;
   padding: .4rem;
-  border-color: var(--pedal-color);
-  background: var(--pedal-surface);
+  border-color: var(--pedal-edge);
+  border-bottom-width: .25rem;
+  background: linear-gradient(155deg, var(--pedal-surface), #23221c);
+  box-shadow: inset 0 1px #fff1;
   color: var(--pedal-color);
 }
 
-.brake-button { --pedal-color: var(--orange); --pedal-surface: #342720; }
-.pedal-button[aria-pressed="true"] { background: var(--pedal-color); color: #101513; }
-.pedal-label { font-size: 1.1rem; font-weight: 700; }
-.pedal-status { font-size: .875rem; }
+.brake-button {
+  --pedal-color: var(--danger);
+  --pedal-edge: #93584b;
+  --pedal-surface: #462d27;
+}
+
+.pedal-button[aria-pressed="true"] { border-color: var(--pedal-color); background: var(--pedal-color); color: #241e19; }
+.pedal-label { font-size: 1.15rem; font-weight: 800; }
+.pedal-status { font-size: .8125rem; }
+
+.volume-controls {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 3.5ch;
+  align-items: center;
+  gap: .6rem;
+  margin-top: .55rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: .8125rem;
+}
+
+.volume-slider { width: 100%; min-height: 2.75rem; margin: 0; accent-color: var(--accent); }
+.volume-value { text-align: end; font-family: var(--mono); }
 
 @media (min-width: 40rem) and (orientation: landscape), (min-width: 54rem) {
-  .console-layout { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); align-items: stretch; }
-  .panel { padding: clamp(.85rem, 2.2vw, 1.65rem); }
-  .readouts > div { min-height: clamp(5.25rem, 12vw, 8.5rem); }
+  .console-layout { grid-template-columns: minmax(0, 1.36fr) minmax(0, 1fr); align-items: stretch; }
+  .panel { padding: clamp(.85rem, 2vw, 1.45rem); }
+  .readouts { padding: .85rem 1rem; }
   .shift-button { min-height: 3.25rem; }
-  .pedal-button { min-height: 5rem; }
+  .pedal-button { min-height: 5.6rem; }
 }
 
 @media (orientation: landscape) and (max-height: 32rem), (orientation: portrait) and (max-height: 42rem) {
@@ -355,16 +414,20 @@ button { font: inherit; }
   .vehicle-section { margin-block: 0 .6rem; }
   .vehicle-card { min-height: 3.5rem; padding-block: .4rem; }
   .panel { padding: .6rem; }
-  .readouts { margin-block: .35rem; }
-  .readouts > div { min-height: 3.75rem; }
-  .rpm-arc { width: min(100%, 8.5rem); }
+  .readouts { gap: .4rem; margin-block: .35rem; padding: .5rem .6rem; }
+  .rpm-heading { margin-block-end: .35rem; }
+  .speed-readout .readout-value { font-size: clamp(2.1rem, 1.7rem + 2.65vw, 4rem); }
+  .gear-readout .readout-value { font-size: clamp(1.8rem, 1.55rem + 1.5vw, 3rem); }
   .shift-button { min-height: 2.75rem; }
-  .pedal-button { min-height: 3.25rem; }
+  .pedal-button { min-height: 3.45rem; }
   .control-grid { gap: .55rem; }
   .control-heading { margin-bottom: .55rem; }
+  .volume-controls { margin-top: .4rem; }
 }
 
 @media (min-width: 40rem) and (orientation: landscape) and (max-height: 32rem) {
+  .console-shell { padding-block: max(.65rem, env(safe-area-inset-top)) max(.65rem, env(safe-area-inset-bottom)); }
+
   .site-header {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
@@ -378,5 +441,22 @@ button { font: inherit; }
   .wordmark { grid-area: 1 / 1; }
   .site-header h1 { grid-area: 1 / 2; font-size: 1.35rem; }
   .preview-status { grid-area: 1 / 3; justify-self: end; }
+  .vehicle-section {
+    display: grid;
+    grid-template-columns: minmax(8.3rem, .36fr) minmax(0, 1fr);
+    align-items: center;
+    gap: .7rem;
+    margin-block-start: .45rem;
+  }
+  .section-heading { column-gap: .4rem; }
+  .section-heading h2 { font-size: .875rem; }
+  .section-heading small { display: block; margin-inline-start: 0; }
+  .readouts { grid-template-columns: minmax(0, 1.8fr) minmax(0, .68fr) minmax(2.6rem, .5fr); align-items: stretch; }
+  .rpm-readout { grid-column: auto; align-self: center; }
+  .rpm-heading { gap: .25rem; }
+  .rpm-heading .readout-value { font-size: 1.35rem; }
+  .speed-readout { align-content: center; }
+  .speed-readout .readout-value { font-size: 1.85rem; }
+  .gear-readout { padding-inline: .15rem; }
   .engine-scene { height: clamp(8rem, 36vh, 12rem); }
 }

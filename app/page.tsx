@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { CSSProperties } from "react";
 import { EngineView } from "../components/EngineView";
 import { RidingControls, ShiftModeControls } from "../components/RidingControls";
 import { vehicles } from "../data/vehicles";
@@ -10,10 +11,35 @@ import { useSimulation } from "../hooks/useSimulation";
 import { rpmFromRadiansPerSecond } from "../lib/simulation";
 
 const gearSequence = [1, 0, 2, 3, 4, 5, 6];
+const tachometerMaxRpm = 15_000;
+const tachometerTicks = [0, 3, 6, 9, 12, 15];
+
+function Tachometer({ rpm, referenceRpm }: { rpm: number; referenceRpm: number }) {
+  const scale = {
+    "--rpm-position": `${Math.min(rpm / tachometerMaxRpm, 1) * 100}%`,
+    "--redline-position": `${referenceRpm / tachometerMaxRpm * 100}%`,
+  } as CSSProperties;
+
+  return (
+    <div className="rpm-readout" style={scale} data-redline={rpm >= referenceRpm}>
+      <div className="rpm-heading">
+        <span className="readout-label">轉速 <span>RPM</span></span>
+        <span className="readout-value">{Math.round(rpm)}</span>
+      </div>
+      <div className="rpm-arc rpm-track" aria-hidden="true" />
+      <div className="rpm-scale" aria-hidden="true">
+        {tachometerTicks.map((tick) => (
+          <span key={tick} data-redline={tick * 1_000 >= referenceRpm}>{tick}</span>
+        ))}
+      </div>
+      <p className="rpm-scale-unit" aria-hidden="true">×1000 RPM</p>
+    </div>
+  );
+}
 
 function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
   const [showEngine, setShowEngine] = useState(false);
-  const { audioStatus, sendAudioState, toggleAudio } = useEngineAudio(vehicle);
+  const { audioStatus, sendAudioState, toggleAudio, volume, changeVolume } = useEngineAudio(vehicle);
   const { snapshot, readState, pedalReset, setPedal, shift, setShiftMode, toggleEngine, resetSimulation } = useSimulation(vehicle, sendAudioState);
   const { engineAngularVelocity, vehicleSpeed, gear, engineOn, shiftMode, mechanicalOverRev, peakOverRevRpm, overRevSeconds, tireSlipRatio, engineFailed } = snapshot;
 
@@ -32,18 +58,15 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
         {showEngine ? <EngineView vehicle={vehicle} snapshot={snapshot} readState={readState} /> : (
           <>
             <div className="readouts">
-              <div className="rpm-readout">
-                <div className="rpm-arc" aria-hidden="true" />
-                <span className="readout-value">{Math.round(rpmFromRadiansPerSecond(engineAngularVelocity))}</span>
-                <span className="readout-label">轉速 <span>RPM</span></span>
-              </div>
+              <Tachometer rpm={rpmFromRadiansPerSecond(engineAngularVelocity)} referenceRpm={vehicle.physics.referenceRpm} />
               <div className="speed-readout">
+                <span className="readout-label">車速</span>
                 <span className="readout-value">{Math.round(vehicleSpeed * 3.6)}</span>
-                <span className="readout-label">車速 <span>km/h</span></span>
+                <span className="speed-unit">km/h</span>
               </div>
-              <div className="gear-readout">
-                <output className="readout-value" aria-label="目前檔位">{gear || "N"}</output>
+              <div className="gear-readout" data-neutral={gear === 0}>
                 <span className="readout-label">檔位</span>
+                <output className="readout-value" aria-label="目前檔位">{gear || "N"}</output>
               </div>
             </div>
             <ol className="gear-sequence" aria-label="六速檔位排列">
@@ -84,6 +107,8 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
         onReset={resetSimulation}
         audioStatus={audioStatus}
         onToggleAudio={toggleAudio}
+        volume={volume}
+        onVolumeChange={changeVolume}
         onShift={shift}
         onPedalChange={setPedal}
         resetKey={pedalReset}

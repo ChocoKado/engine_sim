@@ -81,3 +81,9 @@
 - **PASS（本機與 GitHub）**：乾淨安裝、型別檢查、22 項測試與正式建置。發布版 `1526542` 的 [GitHub Actions](https://github.com/ChocoKado/engine_sim/actions/runs/45147584570) 通過。
 - **PASS（Vercel）**：[正式站](https://enginesim-ten.vercel.app/) 與 `m7-preview` 的 [HTTPS Preview](https://engine-bb88cxk6b-choco-7242.vercel.app/) 皆 Ready，確認兩款車控制台可開啟。正式站 Chrome 自動化驗證 MT／AT、多指、煞車、聲音限幅／靜音恢復與 WebGL。冷載入 JavaScript 約 144 KiB，開啟 3D 額外約 141 KiB，聲音模組在使用者啟用時才載入。
 - **PENDING（真機）**：iOS Safari 與 Android Chrome 上的安全區域、觸控、音訊中斷與 3D 效能。M8 尚未開始。[手機驗收清單](MOBILE_QA.md)
+
+## 2026-11-23｜M7 聲浪與控制台修訂
+
+- 提高 R15／R3 的程序合成輸出，保留收油與斷油時的泵氣和機械聲，加柔油門過渡。8,000 至 13,000 RPM 逐步提高同一燃燒脈衝的高頻排氣共鳴。合成仍採共享物理狀態與各自的點火節奏。[合成參考](SOURCES.md#M7-聲浪修訂參考)
+- 控制台改用即時分段轉速條、各車紅區、加大的速度／檔位與踏板回饋，另增加可記憶的 0–100% 音量控制。保留點按啟聲、淡入淡出與數位軟限幅。
+- **PASS（自動化）**：型別檢查、正式建置與 26 項測試。48 kHz 測試中兩車怠速 RMS 約為原本 2.9 倍，同轉速收油約為帶油的 49–51%。Chrome 驗證萬轉音訊輸出、滑桿與音量記憶、44 px 操作區與手機直橫屏。真機聽感與實錄校準仍待驗。

@@ -5,6 +5,9 @@ import { getOverallRatio } from "../lib/transmission";
 
 export type AudioStatus = "muted" | "starting" | "enabled" | "paused" | "unavailable";
 
+const DEFAULT_VOLUME = 80;
+const VOLUME_STORAGE_KEY = "engine_sim.audioVolume";
+
 interface AudioGraph {
   context: AudioContext;
   gain: GainNode;
@@ -20,9 +23,38 @@ function fade({ context, gain }: AudioGraph, target: number) {
 
 export function useEngineAudio(vehicle: Vehicle) {
   const [audioStatus, setAudioStatus] = useState<AudioStatus>("muted");
+  const [volume, setVolume] = useState(DEFAULT_VOLUME);
   const graph = useRef<AudioGraph | null>(null);
   const requested = useRef(false);
+  const volumeRef = useRef(DEFAULT_VOLUME);
   const latestState = useRef<SimulationState | null>(null);
+
+  const applyVolume = useCallback((nextVolume: number) => {
+    if (!Number.isFinite(nextVolume)) return;
+    const level = Math.min(100, Math.max(0, Math.round(nextVolume)));
+    volumeRef.current = level;
+    setVolume(level);
+    const audio = graph.current;
+    if (requested.current && audio?.node && audio.context.state === "running") fade(audio, level / 100);
+  }, []);
+
+  useEffect(() => {
+    try {
+      const savedVolume = localStorage.getItem(VOLUME_STORAGE_KEY);
+      if (savedVolume !== null) applyVolume(Number(savedVolume));
+    } catch {
+      // The control still works in a browser that disallows storage.
+    }
+  }, [applyVolume]);
+
+  function changeVolume(nextVolume: number) {
+    applyVolume(nextVolume);
+    try {
+      localStorage.setItem(VOLUME_STORAGE_KEY, String(volumeRef.current));
+    } catch {
+      // Keep the current session's gain even when it cannot be saved.
+    }
+  }
 
   const sendAudioState = useCallback((state: SimulationState) => {
     latestState.current = state;
@@ -128,7 +160,7 @@ export function useEngineAudio(vehicle: Vehicle) {
         setAudioStatus("unavailable");
       };
       if (latestState.current) sendAudioState(latestState.current);
-      fade(activated, 0.65);
+      fade(activated, volumeRef.current / 100);
       setAudioStatus("enabled");
     } catch {
       if (graph.current !== audio || !requested.current) return;
@@ -141,5 +173,5 @@ export function useEngineAudio(vehicle: Vehicle) {
     }
   }
 
-  return { audioStatus, sendAudioState, toggleAudio };
+  return { audioStatus, volume, changeVolume, sendAudioState, toggleAudio };
 }

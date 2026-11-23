@@ -12,3 +12,13 @@
 8. 手機優先：真機 iOS Safari、Android Chrome 為驗收目標，支援多點觸控、放手即回彈、音訊首次點擊啟動，音量須安全。
 9. 先查現有專案再修改。優先局部更動、少用子代理、少重複讀檔、只跑當前必要測試；最後**不超過 12 行**摘要及更新 `docs/PROGRESS.md`。
 10. 開發期間維護測試、來源資料、工作紀錄與 `README`；無 GitHub/Vercel 權限不得宣稱已推送／已部署。無授權素材不可使用。
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
