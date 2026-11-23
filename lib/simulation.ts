@@ -117,16 +117,21 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
   const ratio = getOverallRatio(vehicle, gear);
 
   const friction = physics.frictionNm + physics.frictionNmPerRadPerSecond * engineSpeed;
-  const pumping = (1 - throttle) * physics.pumpingNmPerRadPerSecond * engineSpeed;
+  const closedThrottle = 1 - throttle;
+  const pumping = closedThrottle * physics.pumpingNmPerRadPerSecond * engineSpeed;
+  // The unloaded coast-down is calibrated separately from in-gear engine braking.
+  const neutralOverrun = gear === 0 ? unitInterval((engineSpeed - idleSpeed) / (2 * idleSpeed)) : 0;
+  const unloadedDrag = 4 * pumping * closedThrottle * neutralOverrun;
+  const engineLoss = friction + pumping + unloadedDrag;
   const highRpmTaper = 1 - unitInterval((rpm - physics.peakPowerRpm) / (physics.fuelCutRpm - physics.peakPowerRpm));
   const availableCombustion = (fullThrottleTorqueNm(rpm, physics) + friction) * highRpmTaper;
-  const idleCombustion = Math.min(0.65 * availableCombustion, Math.max(0, friction + pumping + 0.42 * (idleSpeed - engineSpeed)));
+  const idleCombustion = Math.min(0.65 * availableCombustion, Math.max(0, engineLoss + 0.42 * (idleSpeed - engineSpeed)));
   const matchingCharge = unitInterval((revMatchRpm - rpm) / 1400);
   const matchingCombustion = availableCombustion * matchingCharge;
   const combustion = engineOn
     ? Math.max(throttle * availableCombustion * combustionScale, idleCombustion * combustionScale, matchingCombustion)
     : 0;
-  const engineTorque = combustion - friction - pumping;
+  const engineTorque = combustion - engineLoss;
 
   const matchedEngineSpeed = wheelSpeed * ratio;
   const slip = engineSpeed - matchedEngineSpeed;

@@ -40,6 +40,22 @@ for (const vehicle of vehicles) {
     assert.equal(revving.wheelAngularVelocity, 0);
   });
 
+  test(`${vehicle.name}: rolling off in neutral drops revs quickly and allows a second blip`, () => {
+    const initial = { ...createSimulationState(vehicle), engineAngularVelocity: 10_000 * Math.PI / 30 };
+    const released = simulate(vehicle, running, 192, initial);
+    const releaseRpm = rpmFromRadiansPerSecond(released.engineAngularVelocity);
+    assert.ok(releaseRpm <= 4000 && releaseRpm >= vehicle.physics.idleRpm);
+    assert.equal(released.drivetrainTorqueNm, 0);
+    assert.equal(released.wheelAngularVelocity, 0);
+
+    const settled = simulate(vehicle, running, 360, released);
+    assert.ok(Math.abs(rpmFromRadiansPerSecond(settled.engineAngularVelocity) - vehicle.physics.idleRpm) < 1);
+
+    const blip = simulate(vehicle, { ...running, throttle: 1 }, 186, released);
+    assert.ok(rpmFromRadiansPerSecond(blip.engineAngularVelocity) >= 10_000);
+    assert.equal(blip.vehicleSpeed, 0);
+  });
+
   test(`${vehicle.name}: neutral revs independently of wheel speed and brakes`, () => {
     const idle = simulate(vehicle, running, 240);
     assert.ok(Math.abs(rpmFromRadiansPerSecond(idle.engineAngularVelocity) - vehicle.physics.idleRpm) < 1);
