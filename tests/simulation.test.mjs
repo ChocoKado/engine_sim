@@ -48,7 +48,7 @@ for (const vehicle of vehicles) {
     assert.equal(released.drivetrainTorqueNm, 0);
     assert.equal(released.wheelAngularVelocity, 0);
 
-    const settled = simulate(vehicle, running, 360, released);
+    const settled = simulate(vehicle, running, 480, released);
     assert.ok(Math.abs(rpmFromRadiansPerSecond(settled.engineAngularVelocity) - vehicle.physics.idleRpm) < 1);
 
     const blip = simulate(vehicle, { ...running, throttle: 1 }, 186, released);

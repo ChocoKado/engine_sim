@@ -97,13 +97,14 @@ const firingIntervals = {
   "yamaha-r9": [640, 640, 640],
   "yamaha-r1": [720, 480, 240, 480],
 };
+const flatplaneFourIntervals = [480, 480, 480, 480];
 
 for (const vehicle of vehicles) {
   test(`${vehicle.name}: pressure starts at exhaust opening and keeps the firing intervals`, () => {
     const audio = captureAudio(vehicle);
     const signal = audio.blocks(120, {});
     const gaps = audio.pulses.slice(1).map((pulse, position) => pulse - audio.pulses[position]);
-    const required = firingIntervals[vehicle.id];
+    const required = vehicle.brand === "Kawasaki" ? flatplaneFourIntervals : firingIntervals[vehicle.id];
     const expectedFirstPulse = Math.ceil(exhaustOpeningRad / (100 * Math.PI) * rate) - 1;
     assert.ok(Math.abs(audio.pulses[0] - expectedFirstPulse) <= 1);
     assert.ok(gaps.length > 5);

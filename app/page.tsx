@@ -12,6 +12,7 @@ import { rpmFromRadiansPerSecond } from "../lib/simulation";
 
 const gearSequence = [1, 0, 2, 3, 4, 5, 6];
 const rpmPerTick = 3_000;
+const vehicleBrands = ["Yamaha", "Kawasaki"] as const;
 
 function Tachometer({ rpm, referenceRpm }: { rpm: number; referenceRpm: number }) {
   const maxRpm = Math.max(15_000, (Math.floor(referenceRpm / rpmPerTick) + 1) * rpmPerTick);
@@ -122,7 +123,10 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
 }
 
 export default function Home() {
-  const [activeVehicle, setActiveVehicle] = useState<Vehicle>(vehicles[0]);
+  const [brand, setBrand] = useState<Vehicle["brand"]>(vehicles[0].brand);
+  const [selectedVehicles, setSelectedVehicles] = useState<Partial<Record<Vehicle["brand"], Vehicle>>>({});
+  const brandVehicles = vehicles.filter((vehicle) => vehicle.brand === brand);
+  const activeVehicle = selectedVehicles[brand] ?? brandVehicles[0];
 
   return (
     <main className="console-shell">
@@ -136,18 +140,38 @@ export default function Home() {
 
       <section className="vehicle-section" aria-labelledby="vehicle-title">
         <div className="section-heading">
-          <h2 id="vehicle-title">選擇車型 <small>{activeVehicle.version}</small></h2>
+          <div className="vehicle-heading">
+            <h2 id="vehicle-title">選擇車型</h2>
+            <small>{activeVehicle.version}</small>
+          </div>
+          <div className="vehicle-brands" role="group" aria-label="車款品牌">
+            {vehicleBrands.map((option) => (
+              <button
+                key={option}
+                className="brand-button"
+                type="button"
+                aria-pressed={brand === option}
+                onClick={() => setBrand(option)}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
           <a href={activeVehicle.source}>原廠資料</a>
         </div>
-        <div className="vehicle-options" role="radiogroup" aria-labelledby="vehicle-title">
-          {vehicles.map((vehicle) => (
+        <div
+          className={brandVehicles.length > 6 ? "vehicle-options vehicle-options-scroll" : "vehicle-options"}
+          role="radiogroup"
+          aria-labelledby="vehicle-title"
+        >
+          {brandVehicles.map((vehicle) => (
             <label className="vehicle-option" key={vehicle.id}>
               <input
                 type="radio"
                 name="vehicle"
                 value={vehicle.id}
                 checked={activeVehicle.id === vehicle.id}
-                onChange={() => setActiveVehicle(vehicle)}
+                onChange={() => setSelectedVehicles((previous) => ({ ...previous, [brand]: vehicle }))}
               />
               <span className="vehicle-card">
                 <strong>{vehicle.name}</strong>

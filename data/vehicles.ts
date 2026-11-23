@@ -1,5 +1,8 @@
+import { kawasakiVehicles } from "./kawasaki.ts";
+
 export interface Vehicle {
   readonly id: string;
+  readonly brand: "Yamaha" | "Kawasaki";
   readonly name: string;
   readonly version: string;
   readonly displacementCc: number;
@@ -56,6 +59,7 @@ export interface Vehicle {
 export const vehicles = [
   {
     id: "yamaha-r15",
+    brand: "Yamaha",
     name: "YZF-R15",
     version: "2026 台灣版",
     displacementCc: 155,
@@ -104,6 +108,7 @@ export const vehicles = [
   },
   {
     id: "yamaha-r3",
+    brand: "Yamaha",
     name: "YZF-R3",
     version: "2026 台灣版",
     displacementCc: 321,
@@ -151,6 +156,7 @@ export const vehicles = [
   },
   {
     id: "yamaha-r6",
+    brand: "Yamaha",
     name: "R6 RACE",
     version: "2026 歐規賽道版",
     displacementCc: 599,
@@ -203,6 +209,7 @@ export const vehicles = [
   },
   {
     id: "yamaha-r7",
+    brand: "Yamaha",
     name: "YZF-R7",
     version: "2026 台灣版",
     displacementCc: 689,
@@ -253,6 +260,7 @@ export const vehicles = [
   },
   {
     id: "yamaha-r9",
+    brand: "Yamaha",
     name: "YZF-R9",
     version: "2026 歐規全功率版",
     displacementCc: 890,
@@ -303,6 +311,7 @@ export const vehicles = [
   },
   {
     id: "yamaha-r1",
+    brand: "Yamaha",
     name: "YZF-R1",
     version: "2020 日規道路版",
     displacementCc: 997,
@@ -353,4 +362,5 @@ export const vehicles = [
       clutchDampingNmPerRadPerSecond: 1.4,
     },
   },
+  ...kawasakiVehicles,
 ] as const satisfies readonly Vehicle[];

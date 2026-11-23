@@ -1,6 +1,6 @@
 # engine_sim — 官方來源與待蒐集資料
 
-**R15 與 R3 最近查核日期為 2026-11-23（M6）。** 其餘來源是待核查的公開索引。引用資料時按指定的 `modelYear / market / trim` 核對，圖片、音檔與 3D 資產須另外確認授權。
+R15 與 R3 於 2026-11-23 進行 M6 查核，後續車型列於各階段。引用時按 `modelYear / market / trim` 核對，圖片、音檔與 3D 資產須另外確認授權。
 
 ## 1. 官方來源索引
 
@@ -39,6 +39,12 @@
 | S31 | 2026 台規 R7 車主手冊 | [D42-28199-T0](https://www.yamaha-motor.com.tw/assets/images/motor/YZF-R7-2026/D42-28199-T0.pdf) | 六檔齒比、儀表紅區 |
 | S32 | 2026 歐規 R9 型錄、台規手冊 | [型錄](https://cdn2.yamaha-motor.eu/prod/product-assets/2026/YZF900R9/Factsheets/2026-YZF900R9_en.pdf) · [BKN-28199-T1](https://www.yamaha-motor.com.tw/assets/images/motor/YZF-R9-2025/BKN-28199-T1.pdf) | 歐規全功率峰值、台規六檔傳動與儀表紅區參考 |
 | S33 | 2020 日規 R1 ABS 與 Yamaha 十字曲軸技報 | [規格](https://global.yamaha-motor.com/jp/news/2020/0528/yzf-r1.html) · [原廠技報圖 5](https://global.yamaha-motor.com/jp/design_technology/technical/product/pdf/browse/45ss01.pdf) | 日規車身、引擎與傳動資料，十字曲軸點火順序 |
+| S34 | 2025 日規 ZX-25R SE | [原廠 FAQ 附件「主要諸元」](https://faq.kawasaki-motors.com/faq/show/4203?category_id=2&site_domain=default) | 48 PS／15,500 RPM、22 Nm／12,500 RPM、184 kg、齒比與缸徑行程 |
+| S35 | 2026 美規 ZX-4R ABS | [規格](https://www.kawasaki.com/en-us/products/ProductSpecSheetPDF/2026-ninja-zx-4r-abs) · [變速箱](https://www.kawasaki.com/en-us/owner-center/parts/363318/2026/ZX400PTFNL) · [後齒盤](https://www.kawasaki.com/en-us/OwnerCenter/DownloadDiagramPdf/363348?modelcode=ZX400PTFNL&modelyear=2026) · [全球型號初級比](https://global.kawasaki.com/news_230202-1e.pdf) | 56 hp／11,500 RPM、26.5 lb-ft／11,000 RPM、414.5 lb，美規一檔 41/13 與終傳 48/14。初級引用 2023 全球資料（C 級） |
+| S36 | 2012 歐規 ZX‑6R 599 | [原廠維修手冊（存檔）](https://www.aservicemanualpdf.com/Samplepages/SM-2009-2012%20KAWASAKI%20ZX600R%20NINJA%20ZX-6R%20Service%20Repair%20Manual.pdf) · [原廠零件圖](https://www.kawasaki.com/en-us/ownercenter/downloaddiagrampdf/8096?modelcode=zx600rcf&modelyear=2012) | 128 PS／14,000 RPM、66.7 Nm／11,800 RPM，ZX600R 六檔與 1→2→4→3 |
+| S37 | 2026 美規 ZX-6R 636 ABS | [規格](https://www.kawasaki.com/en-us/products/ProductSpecSheetPDF/2026-ninja-zx-6r) · [變速箱零件圖](https://www.kawasaki.com/en-us/OwnerCenter/DownloadDiagramPdf/367182?modelcode=ZX636KTFAN&modelyear=2026) · [跨市場減速比參考](https://content2.kawasaki.com/ContentStorage/KMI/PressReleases/24/90c8d926-ddcc-4ba6-9ef4-c02bd214e873.pdf) | 127 hp／13,000 RPM、52.1 lb-ft／10,800 RPM、美規六檔。初級與終傳引用 2024 印尼原廠資料（C 級） |
+| S38 | 2026 歐規 ZX-10R | [規格與齒比](https://www.kawasaki.eu/en/Motorcycles/Supersport_Sport/Ninja_ZX-10R_2026.html/ZX1003ATFAN/ZX1003ATFAN) | 196 PS／13,000 RPM、110 Nm／11,400 RPM、209 kg、全部減速比 |
+| S39 | 2025 美規 ZX-14R ABS | [規格](https://www.kawasaki.com/en-us/products/ProductSpecSheetPDF/2025-ninja-zx-14r-abs) · [變速箱零件圖](https://www.kawasaki.com/en-us/owner-center/parts/348647/2025/ZX1400JSFNL) · [齒盤](https://www.kawasaki.com/en-us/ownercenter/downloaddiagrampdf/348677?modelcode=ZX1400JSFNN&modelyear=2025) · [原廠維修手冊（存檔）](https://manuzoid.com/manuals/BD6Bj-Kawasaki%20Ninja%20ZX-14R%20ABS%20Service%20manual) | 197 hp／10,000 RPM、116.5 lb-ft／7,500 RPM、593.1 lb。初級比引用同平台手冊（C 級） |
 
 ### M0 核對的台灣規格（A 級）
 
@@ -134,6 +140,11 @@ R15／R3 的初級與終傳比、後輪有效滾動半徑、完整扭矩曲線�
 2026-11-24 調整峰值扭力前的低至中轉扭力曲線，R6 RACE 與 R1 分別使用自己的低轉形狀參數。曲線形狀與拉轉時間為 C 級模擬，原廠公布的峰值扭力與馬力仍作為錨點（S30、S33）。[Yamaha R6 技術資料](https://cdn2.yamaha-motor.eu/prod/product-assets/2020/YZF600R6/Factsheets/2020-YZF600R6_en.pdf) · [Yamaha R1 日規規格](https://global.yamaha-motor.com/jp/news/2020/0528/yzf-r1.html)
 
 空檔收油回轉使用 C 級近似，以既有泵氣損失為基礎加上空檔、油門關閉且高於怠速時的阻力。油門全開時附加阻力消失，接近怠速時逐步減弱。原廠空檔回轉時間為 `unknown`，掛檔另維持傳動反拖與既有引擎煞車模型。
+
+## M9 Kawasaki 自然進氣車款（2026-11-24）
+
+- S34–S39 記錄年式、市場、峰值與傳動比。美規 ZX-4R 使用 56 hp 與美規一檔齒數。ZX-6R 分別採 2012 歐規 599 與 2026 美規 636。ZX-10R 採完整歐規數據，ZX-14R 採有原廠資料的 2025 美規 ABS。
+- 四行程平面曲軸採 180° 等距脈衝。ZX600R 手冊可核對各缸順序，其他車款的缸號安排為 B／D 級示意。各車的斷油、等效慣量、曲線、車體阻力與聲學設定為 C／D 級近似，聲浪待同車實錄校準。
 
 ## 4. 開發者引用習慣
 

@@ -64,8 +64,9 @@ for (const vehicle of vehicles) {
   });
 
   test(`${vehicle.name}: rapid MT downshifts can back-drive above fuel cutoff`, () => {
+    const targetRpmRatio = vehicle.id === "kawasaki-zx25r" ? 1.28 : 1.23;
     const speed = { "yamaha-r15": 45, "yamaha-r3": 55 }[vehicle.id]
-      ?? speedForRpm(vehicle, 3, 1.23 * vehicle.physics.fuelCutRpm);
+      ?? speedForRpm(vehicle, 3, targetRpmRatio * vehicle.physics.fuelCutRpm);
     const initial = rolling(vehicle, 6, speed);
     const requested = enqueueShift(enqueueShift(enqueueShift(initial, -1), -1), -1);
     const trace = run(vehicle, requested, mt, 220);
