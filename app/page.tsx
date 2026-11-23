@@ -42,7 +42,7 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
   const [showEngine, setShowEngine] = useState(false);
   const { audioStatus, sendAudioState, toggleAudio, volume, changeVolume } = useEngineAudio(vehicle);
   const { snapshot, readState, pedalReset, setPedal, shift, setShiftMode, toggleEngine, resetSimulation } = useSimulation(vehicle, sendAudioState);
-  const { engineAngularVelocity, vehicleSpeed, gear, engineOn, shiftMode, mechanicalOverRev, peakOverRevRpm, overRevSeconds, tireSlipRatio, engineFailed } = snapshot;
+  const { engineAngularVelocity, vehicleSpeed, gear, engineOn, shiftMode, mechanicalOverRev, peakOverRevRpm, overRevSeconds, engineFailed } = snapshot;
 
   return (
     <div className="console-layout">
@@ -77,7 +77,7 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
                 </li>
               ))}
             </ol>
-            <p className="dashboard-note">傳動與輪胎為近似。聲浪為合成示意。</p>
+            <p className="dashboard-note">傳動採近似模型，後輪假定純滾動，計入滾阻與風阻。聲浪為合成示意。</p>
           </>
         )}
         {snapshot.shift && (
@@ -99,9 +99,6 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
               : <strong>上次機械超轉</strong>}
             <span>峰值 {Math.round(peakOverRevRpm)} RPM・{overRevSeconds.toFixed(2)} 秒</span>
           </p>
-        )}
-        {Math.abs(tireSlipRatio) >= 0.06 && (
-          <p className="over-rev-status">後輪滑移約 {Math.round(Math.abs(tireSlipRatio) * 100)}%</p>
         )}
         {engineFailed && <p className="over-rev-status" role="alert">引擎示意故障。按「重設」可重新操作。</p>}
       </section>

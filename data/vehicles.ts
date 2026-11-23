@@ -31,6 +31,7 @@ export interface Vehicle {
     readonly gearRatios: readonly number[];
     readonly primaryRatio: number;
     readonly finalDriveRatio: number;
+    readonly lowRpmTorqueRatio?: number;
     readonly peakTorqueNm: number;
     readonly peakTorqueRpm: number;
     readonly peakPowerPs: number;
@@ -41,7 +42,6 @@ export interface Vehicle {
     readonly engineInertiaKgM2: number;
     readonly wheelInertiaKgM2: number;
     readonly rollingRadiusM: number;
-    readonly rearGripCoefficient: number;
     readonly dragAreaM2: number;
     readonly frictionNm: number;
     readonly frictionNmPerRadPerSecond: number;
@@ -93,7 +93,6 @@ export const vehicles = [
       engineInertiaKgM2: 0.017,
       wheelInertiaKgM2: 1.15,
       rollingRadiusM: 0.305,
-      rearGripCoefficient: 0.9,
       dragAreaM2: 0.36,
       frictionNm: 0.8,
       frictionNmPerRadPerSecond: 0.0018,
@@ -141,7 +140,6 @@ export const vehicles = [
       engineInertiaKgM2: 0.031,
       wheelInertiaKgM2: 1.35,
       rollingRadiusM: 0.305,
-      rearGripCoefficient: 0.9,
       dragAreaM2: 0.39,
       frictionNm: 1.25,
       frictionNmPerRadPerSecond: 0.0026,
@@ -183,6 +181,7 @@ export const vehicles = [
       gearRatios: [31 / 12, 32 / 16, 30 / 18, 26 / 18, 27 / 21, 23 / 20],
       primaryRatio: 85 / 41,
       finalDriveRatio: 45 / 16,
+      lowRpmTorqueRatio: 0.26,
       peakTorqueNm: 61.7,
       peakTorqueRpm: 10500,
       peakPowerPs: 118.4,
@@ -193,7 +192,6 @@ export const vehicles = [
       engineInertiaKgM2: 0.037,
       wheelInertiaKgM2: 1.65,
       rollingRadiusM: 0.310,
-      rearGripCoefficient: 0.95,
       dragAreaM2: 0.34,
       frictionNm: 2.0,
       frictionNmPerRadPerSecond: 0.0034,
@@ -244,7 +242,6 @@ export const vehicles = [
       engineInertiaKgM2: 0.055,
       wheelInertiaKgM2: 1.55,
       rollingRadiusM: 0.310,
-      rearGripCoefficient: 0.95,
       dragAreaM2: 0.39,
       frictionNm: 2.1,
       frictionNmPerRadPerSecond: 0.0035,
@@ -295,7 +292,6 @@ export const vehicles = [
       engineInertiaKgM2: 0.064,
       wheelInertiaKgM2: 1.65,
       rollingRadiusM: 0.310,
-      rearGripCoefficient: 0.95,
       dragAreaM2: 0.36,
       frictionNm: 2.4,
       frictionNmPerRadPerSecond: 0.0036,
@@ -337,6 +333,7 @@ export const vehicles = [
       gearRatios: [2.600, 2.176, 1.842, 1.578, 1.380, 1.250],
       primaryRatio: 67 / 41,
       finalDriveRatio: 41 / 16,
+      lowRpmTorqueRatio: 0.39,
       peakTorqueNm: 113,
       peakTorqueRpm: 11500,
       peakPowerPs: 200,
@@ -347,7 +344,6 @@ export const vehicles = [
       engineInertiaKgM2: 0.061,
       wheelInertiaKgM2: 1.75,
       rollingRadiusM: 0.316,
-      rearGripCoefficient: 0.95,
       dragAreaM2: 0.34,
       frictionNm: 2.7,
       frictionNmPerRadPerSecond: 0.0043,

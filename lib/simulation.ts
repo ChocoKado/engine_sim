@@ -11,8 +11,6 @@ const RIDER_MASS_KG = 75;
 const ROLLING_RESISTANCE = 0.015;
 const AIR_DENSITY_KG_M3 = 1.225;
 const MAX_BRAKE_DECELERATION_MPS2 = 0.72 * GRAVITY_MPS2;
-const REAR_BRAKE_SHARE = 0.34;
-const STATIC_REAR_WEIGHT_SHARE = 0.53;
 const WATTS_PER_METRIC_HP = 735.49875;
 
 export interface SimulationInput {
@@ -33,7 +31,6 @@ export interface SimulationState extends SimulationInput, TransmissionState {
   readonly shiftCut: number;
   readonly drivetrainTorqueNm: number;
   readonly clutchSlipRadPerSecond: number;
-  readonly tireSlipRatio: number;
   readonly mechanicalOverRev: boolean;
   readonly overRevSeconds: number;
   readonly peakOverRevRpm: number;
@@ -62,7 +59,6 @@ export function createSimulationState(vehicle: Vehicle): SimulationState {
     shiftCut: 0,
     drivetrainTorqueNm: 0,
     clutchSlipRadPerSecond: 0,
-    tireSlipRatio: 0,
     mechanicalOverRev: false,
     overRevSeconds: 0,
     peakOverRevRpm: 0,
@@ -85,8 +81,9 @@ function unitInterval(value: number): number {
 
 function fullThrottleTorqueNm(rpm: number, physics: Vehicle["physics"]): number {
   if (rpm <= physics.peakTorqueRpm) {
+    const lowRpmRatio = physics.lowRpmTorqueRatio ?? 0.44;
     const progress = rpm / physics.peakTorqueRpm;
-    return physics.peakTorqueNm * (0.38 + 0.62 * progress ** 0.78);
+    return physics.peakTorqueNm * (lowRpmRatio + (1 - lowRpmRatio) * progress ** 1.4);
   }
 
   const torqueAtPeakPower = physics.peakPowerPs * WATTS_PER_METRIC_HP
@@ -95,42 +92,16 @@ function fullThrottleTorqueNm(rpm: number, physics: Vehicle["physics"]): number 
   return physics.peakTorqueNm + (torqueAtPeakPower - physics.peakTorqueNm) * progress;
 }
 
-function integrateRoad(wheelSpeed: number, roadSpeed: number, driveTorque: number, brake: number, vehicle: Vehicle) {
-  const { rollingRadiusM: radius, wheelInertiaKgM2: wheelInertia, curbMassKg, dragAreaM2, rearGripCoefficient } = vehicle.physics;
-  const mass = curbMassKg + RIDER_MASS_KG;
-  const dt = FIXED_STEP_SECONDS;
-  const brakingForce = mass * brake * MAX_BRAKE_DECELERATION_MPS2;
-  const rollingForce = mass * GRAVITY_MPS2 * ROLLING_RESISTANCE;
-  const dragForce = 0.5 * AIR_DENSITY_KG_M3 * dragAreaM2 * roadSpeed ** 2;
-
-  const freeRoadSpeed = roadSpeed - dt * (brakingForce * (1 - REAR_BRAKE_SHARE) + rollingForce + dragForce) / mass;
-  const freeWheelSpeed = wheelSpeed + dt * (driveTorque - brakingForce * REAR_BRAKE_SHARE * radius) / wheelInertia;
-
-  // The tire can enforce pure rolling only when the required contact force is within the grip estimate.
-  const slipSpeed = freeWheelSpeed * radius - freeRoadSpeed;
-  const forceForPureRolling = slipSpeed / (dt * (radius ** 2 / wheelInertia + 1 / mass));
-  const gripLimit = rearGripCoefficient * mass * GRAVITY_MPS2 * STATIC_REAR_WEIGHT_SHARE;
-  const tireForce = Math.min(gripLimit, Math.max(-gripLimit, forceForPureRolling));
-  const vehicleSpeed = Math.max(0, freeRoadSpeed + dt * tireForce / mass);
-  const wheelAngularVelocity = Math.max(0, freeWheelSpeed - dt * tireForce * radius / wheelInertia);
-  const wheelSurfaceSpeed = wheelAngularVelocity * radius;
-
-  return {
-    vehicleSpeed,
-    wheelAngularVelocity,
-    tireSlipRatio: (wheelSurfaceSpeed - vehicleSpeed) / Math.max(0.5, vehicleSpeed, wheelSurfaceSpeed),
-  };
-}
-
 export function stepSimulation(state: SimulationState, input: SimulationInput, vehicle: Vehicle): SimulationState {
   const { physics } = vehicle;
+  const radius = physics.rollingRadiusM;
   const throttle = unitInterval(input.throttle);
   const brake = unitInterval(input.brake);
   const dt = FIXED_STEP_SECONDS;
   const engineOn = input.engineOn && !state.engineFailed;
   const engineSpeed = state.engineAngularVelocity;
   const wheelSpeed = state.wheelAngularVelocity;
-  const roadSpeed = state.vehicleSpeed;
+  const roadSpeed = wheelSpeed * radius;
   const rpm = rpmFromRadiansPerSecond(engineSpeed);
   const idleSpeed = radiansPerSecondFromRpm(physics.idleRpm);
   const { transmission, clutchScale, combustionScale, revMatchRpm } = advanceTransmission(state, {
@@ -163,17 +134,21 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
   const rollingEngagement = unitInterval((matchedEngineSpeed - idleSpeed * 0.8) / (0.5 * idleSpeed));
   const fullCapacity = slip < 0 ? physics.slipperCapacityNm : physics.clutchCapacityNm;
   const capacity = fullCapacity * Math.max(launchEngagement, rollingEngagement) * clutchScale;
+  // Pure rolling reflects the vehicle and rider mass at the wheel.
+  const mass = physics.curbMassKg + RIDER_MASS_KG;
+  const effectiveWheelInertia = physics.wheelInertiaKgM2 + mass * radius ** 2;
   // A finite-capacity friction coupling can push or back-drive the engine without snapping RPM to wheel speed.
-  const roadMassInertia = (physics.curbMassKg + RIDER_MASS_KG) * physics.rollingRadiusM ** 2;
-  const effectiveWheelInertia = physics.wheelInertiaKgM2 + roadMassInertia * (1 - unitInterval(Math.abs(state.tireSlipRatio) / 0.1));
   const torqueToSynchronize = Math.abs(slip) / (dt * (1 / physics.engineInertiaKgM2 + ratio ** 2 / effectiveWheelInertia));
   const clutchTorque = engineOn && gear !== 0
     ? Math.sign(slip) * Math.min(Math.abs(slip) * physics.clutchDampingNmPerRadPerSecond, capacity, torqueToSynchronize)
     : 0;
   const drivetrainTorque = clutchTorque * ratio;
 
+  const brakingAndRollingForce = mass * (brake * MAX_BRAKE_DECELERATION_MPS2 + GRAVITY_MPS2 * ROLLING_RESISTANCE);
+  const dragForce = 0.5 * AIR_DENSITY_KG_M3 * physics.dragAreaM2 * roadSpeed ** 2;
+  const wheelTorque = drivetrainTorque - (brakingAndRollingForce + dragForce) * radius;
+  const nextWheelSpeed = Math.max(0, wheelSpeed + dt * wheelTorque / effectiveWheelInertia);
   const nextEngineSpeed = Math.max(0, engineSpeed + dt * (engineTorque - clutchTorque) / physics.engineInertiaKgM2);
-  const road = integrateRoad(wheelSpeed, roadSpeed, drivetrainTorque, brake, vehicle);
   const nextRpm = rpmFromRadiansPerSecond(nextEngineSpeed);
   const mechanicalOverRev = nextRpm > physics.referenceRpm && (clutchTorque < 0 || state.mechanicalOverRev);
   const newOverRev = mechanicalOverRev && !state.mechanicalOverRev;
@@ -193,13 +168,14 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
     throttle,
     brake,
     engineAngularVelocity: nextEngineSpeed,
-    ...road,
+    wheelAngularVelocity: nextWheelSpeed,
+    vehicleSpeed: nextWheelSpeed * radius,
     crankAngleRad: (state.crankAngleRad + dt * (engineSpeed + nextEngineSpeed) / 2) % RAD_PER_ENGINE_CYCLE,
     engineTorqueNm: engineTorque,
     combustionTorqueNm: combustion,
     shiftCut,
     drivetrainTorqueNm: drivetrainTorque,
-    clutchSlipRadPerSecond: gear === 0 || !engineOn ? 0 : nextEngineSpeed - road.wheelAngularVelocity * ratio,
+    clutchSlipRadPerSecond: gear === 0 || !engineOn ? 0 : nextEngineSpeed - nextWheelSpeed * ratio,
     mechanicalOverRev,
     overRevSeconds: mechanicalOverRev ? (newOverRev ? dt : state.overRevSeconds + dt) : state.overRevSeconds,
     peakOverRevRpm: mechanicalOverRev ? Math.max(newOverRev ? 0 : state.peakOverRevRpm, nextRpm) : state.peakOverRevRpm,

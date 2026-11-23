@@ -35,7 +35,7 @@ function rollingInSecond(vehicle) {
 for (const vehicle of vehicles) {
   test(`${vehicle.name}: neutral throttle reaches 10,000 RPM without moving the wheel`, () => {
     const idle = simulate(vehicle, running, 240);
-    const revving = simulate(vehicle, { ...running, throttle: 1 }, 174, idle);
+    const revving = simulate(vehicle, { ...running, throttle: 1 }, 186, idle);
     assert.ok(rpmFromRadiansPerSecond(revving.engineAngularVelocity) >= 10_000);
     assert.equal(revving.wheelAngularVelocity, 0);
   });
@@ -67,9 +67,7 @@ for (const vehicle of vehicles) {
     assert.ok(launch.vehicleSpeed > 1);
     assert.ok(launch.drivetrainTorqueNm > 0);
     assert.ok(launch.clutchSlipRadPerSecond > 0);
-    const wheelSurfaceSpeed = launch.wheelAngularVelocity * vehicle.physics.rollingRadiusM;
-    assert.ok(wheelSurfaceSpeed + 1e-9 >= launch.vehicleSpeed);
-    assert.ok(launch.tireSlipRatio >= -1e-9 && launch.tireSlipRatio < 1);
+    assert.equal(launch.vehicleSpeed, launch.wheelAngularVelocity * vehicle.physics.rollingRadiusM);
     assert.ok(launch.crankAngleRad >= 0 && launch.crankAngleRad < 4 * Math.PI);
   });
 
@@ -85,6 +83,28 @@ for (const vehicle of vehicles) {
     const stopped = simulate(vehicle, { ...running, brake: 1 }, 480, initial);
     assert.equal(stopped.vehicleSpeed, 0);
     assert.equal(stopped.wheelAngularVelocity, 0);
+  });
+}
+
+for (const vehicle of vehicles.filter(({ id }) => id === "yamaha-r6" || id === "yamaha-r1")) {
+  test(`${vehicle.name}: equal RPM bands get faster as the engine climbs, even under load`, () => {
+    const idle = simulate(vehicle, running, 240);
+    const input = { ...running, throttle: 1 };
+    const rpmBands = [3000, 5000, 9000, 11000];
+    const passageTimes = [0, 1].map((gear) => {
+      let state = { ...idle, gear };
+      const times = [];
+      for (let tick = 1; tick <= 720 && times.length < rpmBands.length; tick += 1) {
+        state = stepSimulation(state, input, vehicle);
+        if (rpmFromRadiansPerSecond(state.engineAngularVelocity) >= rpmBands[times.length]) times.push(tick);
+      }
+      assert.equal(times.length, rpmBands.length);
+      const lowBand = times[1] - times[0];
+      const highBand = times[3] - times[2];
+      assert.ok(highBand <= lowBand * 0.75, `gear ${gear}: high ${highBand} ticks, low ${lowBand} ticks`);
+      return times.at(-1);
+    });
+    assert.ok(passageTimes[1] > passageTimes[0]);
   });
 }
 
@@ -114,18 +134,15 @@ test("per-bike parameters give distinct profiles, and ignition off transfers no 
   assert.ok(off.engineAngularVelocity < results[0].engineAngularVelocity);
 });
 
-test("limited rear grip permits wheel spin, while neutral braking cannot reverse either speed", () => {
-  const vehicle = {
-    ...vehicles[0],
-    physics: { ...vehicles[0].physics, rearGripCoefficient: 0.18 },
-  };
-  const firstGear = { ...createSimulationState(vehicle), gear: 1 };
-  const launch = simulate(vehicle, { ...running, throttle: 1 }, 200, firstGear);
-  const wheelSurfaceSpeed = launch.wheelAngularVelocity * vehicle.physics.rollingRadiusM;
-  assert.ok(launch.tireSlipRatio > 0.25 && launch.tireSlipRatio <= 1);
-  assert.ok(wheelSurfaceSpeed > launch.vehicleSpeed && launch.vehicleSpeed > 0);
-
-  const stopped = simulate(vehicle, { ...running, brake: 1 }, 240, { ...launch, gear: 0 });
-  assert.equal(stopped.vehicleSpeed, 0);
-  assert.equal(stopped.wheelAngularVelocity, 0);
+test("pure rolling keeps the R1 wheel tied to road speed through a launch and a full stop", () => {
+  const vehicle = vehicles.find(({ id }) => id === "yamaha-r1");
+  let state = { ...createSimulationState(vehicle), gear: 1 };
+  for (let tick = 0; tick < 660; tick += 1) {
+    const input = tick < 180 ? { ...running, throttle: 1 } : { ...running, brake: 1 };
+    state = stepSimulation(state, input, vehicle);
+    assert.equal(state.vehicleSpeed, state.wheelAngularVelocity * vehicle.physics.rollingRadiusM);
+    assert.ok(state.vehicleSpeed >= 0);
+    if (tick === 179) assert.ok(state.vehicleSpeed > 5);
+  }
+  assert.equal(state.vehicleSpeed, 0);
 });
