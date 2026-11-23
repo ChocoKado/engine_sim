@@ -11,7 +11,7 @@
 | M4 | 實作完成，自動化通過 | AudioWorklet 合成聲浪與手勢啟音 |
 | M5 | 實作完成，自動化通過 | 共用曲軸相位的 3D 剖面 |
 | M6 | 實作完成，缺證據項已列 | 車型核對、輪胎滑移和可重設故障 |
-| M7 | 本機流程通過，託管待確認 | GitHub Actions、Vercel 預覽指引及真機待驗 |
+| M7 | 已發布，真機待驗 | GitHub CI、Vercel 正式站與 HTTPS Preview |
 | M8–M12 | 規劃 | 擴充車款、改裝及其他引擎 |
 
 ## 每次 Codex 更新格式
@@ -78,5 +78,6 @@
 ## 2026-11-23｜M7 發布流程
 
 - `.github/workflows/ci.yml` 固定 GitHub 官方 Action 版本，以 Node.js 24 執行 `npm ci`、型別檢查、單元測試與正式建置。[README](../README.md) 記錄 Vercel 的 GitHub 匯入與 PR 預覽步驟。
-- **PASS（本機）**：乾淨安裝、型別檢查、22 項測試、正式建置。M8 尚未開始。
-- **PENDING（託管／真機）**：GitHub Actions 遠端執行、Vercel HTTPS Preview、iOS Safari 與 Android Chrome 真機。[手機驗收清單](MOBILE_QA.md)
+- **PASS（本機與 GitHub）**：乾淨安裝、型別檢查、22 項測試與正式建置。發布版 `1526542` 的 [GitHub Actions](https://github.com/ChocoKado/engine_sim/actions/runs/45147584570) 通過。
+- **PASS（Vercel）**：[正式站](https://enginesim-ten.vercel.app/) 與 `m7-preview` 的 [HTTPS Preview](https://engine-bb88cxk6b-choco-7242.vercel.app/) 皆 Ready，確認兩款車控制台可開啟。正式站 Chrome 自動化驗證 MT／AT、多指、煞車、聲音限幅／靜音恢復與 WebGL。冷載入 JavaScript 約 144 KiB，開啟 3D 額外約 141 KiB，聲音模組在使用者啟用時才載入。
+- **PENDING（真機）**：iOS Safari 與 Android Chrome 上的安全區域、觸控、音訊中斷與 3D 效能。M8 尚未開始。[手機驗收清單](MOBILE_QA.md)

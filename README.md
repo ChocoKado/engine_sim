@@ -2,6 +2,8 @@
 
 手機騎乘控制台，提供台灣 2026 年式 Yamaha YZF-R15 與 YZF-R3。兩款車使用固定步長物理核心，支援多指油門、煞車、撥片換檔、虛擬 AT、合成聲浪和互動 3D 剖面。首次播放聲音需點按「啟用聲音」。
 
+[Vercel 正式站](https://enginesim-ten.vercel.app/) · [M7 HTTPS Preview](https://engine-bb88cxk6b-choco-7242.vercel.app/)
+
 模型採用已核對的原廠六檔齒比與動力錨點。台規初級與終傳比、完整動力曲線、實際斷油點和 VVA 切換條件仍待核對。輪胎滑移與故障參數是近似值，3D 外觀與合成聲浪為示意。 [來源與資料等級](docs/SOURCES.md)
 
 ## 本機啟動
