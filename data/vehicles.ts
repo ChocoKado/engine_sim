@@ -26,8 +26,6 @@ export interface Vehicle {
   readonly audio: {
     readonly firingAnglesRad: readonly number[];
     readonly exhaustFrequencyHz: number;
-    readonly intakeFrequencyHz: number;
-    readonly mechanicalFrequencyHz: number;
     readonly pulseDecayMs: number;
     readonly exhaustReflectionMs?: number;
     readonly brightnessStartRpm?: number;
@@ -46,6 +44,7 @@ export interface Vehicle {
     readonly idleRpm: number;
     readonly referenceRpm: number;
     readonly fuelCutRpm: number;
+    readonly speedLimitKmh?: number;
     readonly engineInertiaKgM2: number;
     readonly wheelInertiaKgM2: number;
     readonly rollingRadiusM: number;
@@ -82,8 +81,6 @@ export const vehicles = [
     audio: {
       firingAnglesRad: [0],
       exhaustFrequencyHz: 132,
-      intakeFrequencyHz: 440,
-      mechanicalFrequencyHz: 960,
       pulseDecayMs: 11,
     },
     physics: {
@@ -130,8 +127,6 @@ export const vehicles = [
     audio: {
       firingAnglesRad: [0, Math.PI],
       exhaustFrequencyHz: 174,
-      intakeFrequencyHz: 520,
-      mechanicalFrequencyHz: 1180,
       pulseDecayMs: 8,
     },
     physics: {
@@ -179,8 +174,6 @@ export const vehicles = [
     audio: {
       firingAnglesRad: [0, Math.PI, 2 * Math.PI, 3 * Math.PI],
       exhaustFrequencyHz: 218,
-      intakeFrequencyHz: 760,
-      mechanicalFrequencyHz: 1550,
       pulseDecayMs: 6,
       exhaustReflectionMs: 2.5,
       brightnessStartRpm: 8500,
@@ -231,8 +224,6 @@ export const vehicles = [
     audio: {
       firingAnglesRad: [0, 1.5 * Math.PI],
       exhaustFrequencyHz: 112,
-      intakeFrequencyHz: 450,
-      mechanicalFrequencyHz: 900,
       pulseDecayMs: 12.5,
       exhaustReflectionMs: 4.5,
       brightnessStartRpm: 5500,
@@ -282,8 +273,6 @@ export const vehicles = [
     audio: {
       firingAnglesRad: [0, 4 * Math.PI / 3, 8 * Math.PI / 3],
       exhaustFrequencyHz: 188,
-      intakeFrequencyHz: 675,
-      mechanicalFrequencyHz: 1350,
       pulseDecayMs: 9,
       exhaustReflectionMs: 3.6,
       brightnessStartRpm: 6500,
@@ -304,7 +293,7 @@ export const vehicles = [
       engineInertiaKgM2: 0.064,
       wheelInertiaKgM2: 1.65,
       rollingRadiusM: 0.310,
-      dragAreaM2: 0.36,
+      dragAreaM2: 0.41,
       frictionNm: 2.4,
       frictionNmPerRadPerSecond: 0.0036,
       pumpingNmPerRadPerSecond: 0.006,
@@ -334,8 +323,6 @@ export const vehicles = [
     audio: {
       firingAnglesRad: [0, 1.5 * Math.PI, 2.5 * Math.PI, 3 * Math.PI],
       exhaustFrequencyHz: 151,
-      intakeFrequencyHz: 600,
-      mechanicalFrequencyHz: 1250,
       pulseDecayMs: 9.5,
       exhaustReflectionMs: 3.9,
       brightnessStartRpm: 7500,
@@ -357,7 +344,7 @@ export const vehicles = [
       engineInertiaKgM2: 0.061,
       wheelInertiaKgM2: 1.75,
       rollingRadiusM: 0.316,
-      dragAreaM2: 0.34,
+      dragAreaM2: 0.40,
       frictionNm: 2.7,
       frictionNmPerRadPerSecond: 0.0043,
       pumpingNmPerRadPerSecond: 0.0066,

@@ -9,6 +9,7 @@ import {
   rpmFromRadiansPerSecond,
   stepSimulation,
 } from "../lib/simulation.ts";
+import { getOverallRatio } from "../lib/transmission.ts";
 
 const running = { ...INITIAL_SIMULATION_INPUT, engineOn: true };
 
@@ -78,11 +79,12 @@ for (const vehicle of vehicles) {
     const input = { ...running, throttle: 1 };
     const firstGear = { ...idle, gear: 1 };
     const firstTick = stepSimulation(firstGear, input, vehicle);
+    const engaging = simulate(vehicle, input, 30, firstTick);
     const launch = simulate(vehicle, input, 120, firstGear);
     assert.ok(firstTick.vehicleSpeed < 0.1);
     assert.ok(launch.vehicleSpeed > 1);
     assert.ok(launch.drivetrainTorqueNm > 0);
-    assert.ok(launch.clutchSlipRadPerSecond > 0);
+    assert.ok(engaging.clutchSlipRadPerSecond > 0);
     assert.equal(launch.vehicleSpeed, launch.wheelAngularVelocity * vehicle.physics.rollingRadiusM);
     assert.ok(launch.crankAngleRad >= 0 && launch.crankAngleRad < 4 * Math.PI);
   });
@@ -188,4 +190,27 @@ test("H2 and H2R drive separate impeller phases at 9.18 times crank speed", () =
   const runningEngine = simulate(naturallyAspirated, { ...running, throttle: 1 }, 120);
   assert.equal(runningEngine.superchargerAngularVelocity, 0);
   assert.equal(runningEngine.superchargerAngleRad, 0);
+});
+
+test("all models reach a stable, fully coupled road speed under sustained throttle", () => {
+  const input = { ...running, throttle: 1, shiftMode: "AT" };
+  const speedRanges = {
+    "yamaha-r15": [130, 144], "yamaha-r3": [169, 183], "yamaha-r6": [255, 273],
+    "yamaha-r7": [205, 226], "yamaha-r9": [242, 257], "yamaha-r1": [290, 308],
+    "kawasaki-zx25r": [174, 185], "kawasaki-zx4r": [195, 215], "kawasaki-zx6r599": [247, 268],
+    "kawasaki-zx6r636": [226, 242], "kawasaki-zx10r": [290, 304], "kawasaki-zx14r": [290, 307],
+    "kawasaki-h2": [297, 299], "kawasaki-h2r": [345, 370],
+  };
+
+  for (const vehicle of vehicles) {
+    const fast = simulate(vehicle, input, 120 * 75);
+    const [minimum, maximum] = speedRanges[vehicle.id];
+    const kmh = fast.vehicleSpeed * 3.6;
+    const rpm = rpmFromRadiansPerSecond(fast.engineAngularVelocity);
+    assert.ok(kmh >= minimum && kmh <= maximum, `${vehicle.name}: ${kmh.toFixed(1)} km/h`);
+    assert.ok(rpm <= vehicle.physics.fuelCutRpm, `${vehicle.name}: ${rpm.toFixed(1)} RPM`);
+    const coupledEngineSpeed = fast.wheelAngularVelocity * getOverallRatio(vehicle, fast.gear);
+    assert.ok(Math.abs(fast.engineAngularVelocity - coupledEngineSpeed) < 1e-8, `${vehicle.name}: clutch slip at speed`);
+    assert.ok(Math.abs(simulate(vehicle, input, 120, fast).vehicleSpeed - fast.vehicleSpeed) < 0.04, vehicle.name);
+  }
 });

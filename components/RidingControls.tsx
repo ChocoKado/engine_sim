@@ -183,7 +183,6 @@ function PedalButton({ pedal, label, onPedalChange }: Pick<RidingControlsProps, 
       onPointerUp={releasePointer}
       onPointerCancel={releasePointer}
       onLostPointerCapture={releasePointer}
-      onContextMenu={(event) => event.preventDefault()}
       onKeyDown={handleKey}
       onKeyUp={handleKey}
       onBlur={() => {
@@ -226,7 +225,11 @@ export function RidingControls({
   volume, onVolumeChange, onShift, onPedalChange, resetKey,
 }: RidingControlsProps) {
   return (
-    <section className="panel controls-panel" aria-labelledby="controls-title">
+    <section
+      className="panel controls-panel"
+      aria-labelledby="controls-title"
+      onContextMenu={(event) => event.preventDefault()}
+    >
       <div className="control-heading">
         <div>
           <h2 id="controls-title">騎乘控制</h2>

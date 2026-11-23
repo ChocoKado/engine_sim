@@ -6,7 +6,7 @@ import { getOverallRatio } from "../lib/transmission";
 
 export type AudioStatus = "muted" | "starting" | "enabled" | "paused" | "unavailable";
 
-const DEFAULT_VOLUME = 80;
+const DEFAULT_VOLUME = 88;
 const VOLUME_STORAGE_KEY = "engine_sim.audioVolume";
 
 interface AudioGraph {
@@ -14,6 +14,7 @@ interface AudioGraph {
   gain: GainNode;
   ready: Promise<AudioWorkletNode>;
   node?: AudioWorkletNode;
+  clockOffsetSeconds?: number;
 }
 
 function fade({ context, gain }: AudioGraph, target: number) {
@@ -28,7 +29,7 @@ export function useEngineAudio(vehicle: Vehicle) {
   const graph = useRef<AudioGraph | null>(null);
   const requested = useRef(false);
   const volumeRef = useRef(DEFAULT_VOLUME);
-  const latestState = useRef<SimulationState | null>(null);
+  const latestState = useRef<{ state: SimulationState; timestampMs: number } | null>(null);
 
   const applyVolume = useCallback((nextVolume: number) => {
     if (!Number.isFinite(nextVolume)) return;
@@ -57,11 +58,16 @@ export function useEngineAudio(vehicle: Vehicle) {
     }
   }
 
-  const sendAudioState = useCallback((state: SimulationState) => {
-    latestState.current = state;
+  const sendAudioState = useCallback((state: SimulationState, timestampMs = performance.now()) => {
+    latestState.current = { state, timestampMs };
     const audio = graph.current;
     if (!requested.current || !audio?.node || audio.context.state !== "running") return;
 
+    const observedOffset = audio.context.currentTime - performance.now() / 1000;
+    const previousOffset = audio.clockOffsetSeconds ?? observedOffset;
+    // The audio clock is quantized to render blocks. Keep that jitter out of the physics timestamps.
+    const clockError = Math.min(0.004, Math.max(-0.004, observedOffset - previousOffset));
+    audio.clockOffsetSeconds = previousOffset + clockError * 0.015;
     const ratio = getOverallRatio(vehicle, state.gear);
     const { peakTorqueNm } = vehicle.physics;
     audio.node.port.postMessage({
@@ -74,7 +80,7 @@ export function useEngineAudio(vehicle: Vehicle) {
       shiftCut: state.shiftCut,
       load: ratio ? Math.min(1, Math.abs(state.drivetrainTorqueNm) / (ratio * peakTorqueNm)) : 0,
       engineOn: state.engineOn,
-      contextTime: audio.context.currentTime,
+      contextTime: timestampMs / 1000 + audio.clockOffsetSeconds,
     });
   }, [vehicle]);
 
@@ -159,6 +165,8 @@ export function useEngineAudio(vehicle: Vehicle) {
 
       const activated = audio;
       activated.node = node;
+      activated.clockOffsetSeconds = undefined;
+      node.port.postMessage({ type: "reset-clock" });
       node.onprocessorerror = () => {
         if (graph.current !== activated) return;
         requested.current = false;
@@ -166,7 +174,8 @@ export function useEngineAudio(vehicle: Vehicle) {
         void activated.context.close().catch(() => {});
         setAudioStatus("unavailable");
       };
-      if (latestState.current) sendAudioState(latestState.current);
+      const latest = latestState.current;
+      if (latest && performance.now() - latest.timestampMs < 80) sendAudioState(latest.state, latest.timestampMs);
       fade(activated, volumeRef.current / 100);
       setAudioStatus("enabled");
     } catch {

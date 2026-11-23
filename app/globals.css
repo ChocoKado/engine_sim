@@ -279,9 +279,10 @@ button { font: inherit; }
 .dashboard-note, #pedal-instruction { color: var(--muted); font-size: .8125rem; }
 .dashboard-note { margin-top: .55rem; }
 #pedal-instruction { margin-top: .3rem; }
-.shift-status, .over-rev-status { margin-top: .45rem; font-size: .875rem; }
+.dashboard-feedback { margin-top: .45rem; min-block-size: 2.9em; font-size: .875rem; }
 .shift-status { color: var(--accent); }
-.over-rev-status { display: flex; flex-wrap: wrap; column-gap: .45rem; color: var(--danger); }
+.shift-result { color: var(--muted); font-size: .8125rem; }
+.engine-fault-status { color: var(--danger); }
 
 .dashboard-actions, .engine-view-actions { display: flex; align-items: center; gap: .35rem; }
 .dashboard-heading { flex-wrap: wrap; }
@@ -301,6 +302,12 @@ button { font: inherit; }
 .engine-scene-fallback { display: grid; place-items: center; text-align: center; color: var(--muted); }
 .engine-view-tools { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .35rem; }
 .engine-rpm { font: 650 .9rem/1 var(--mono); color: var(--accent); }
+
+.controls-panel {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
 
 .control-heading {
   display: flex;

@@ -43,7 +43,7 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
   const [showEngine, setShowEngine] = useState(false);
   const { audioStatus, sendAudioState, toggleAudio, volume, changeVolume } = useEngineAudio(vehicle);
   const { snapshot, readState, pedalReset, setPedal, shift, setShiftMode, toggleEngine, resetSimulation } = useSimulation(vehicle, sendAudioState);
-  const { engineAngularVelocity, vehicleSpeed, gear, engineOn, shiftMode, mechanicalOverRev, peakOverRevRpm, overRevSeconds, engineFailed } = snapshot;
+  const { engineAngularVelocity, vehicleSpeed, gear, engineOn, shiftMode, shift: pendingShift, lastShift, engineFailed } = snapshot;
 
   return (
     <div className="console-layout">
@@ -81,27 +81,21 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
             <p className="dashboard-note">傳動採近似模型，後輪假定純滾動，計入滾阻與風阻。聲浪為合成示意。</p>
           </>
         )}
-        {snapshot.shift && (
-          <p className="shift-status">
-            換檔中 <strong>{snapshot.shift.targetGear || "N"}</strong>
-            {snapshot.shift.targetGear > 0 && `・預估接合 ${Math.round(snapshot.shift.targetRpm)} RPM`}
-          </p>
-        )}
-        {!snapshot.shift && snapshot.lastShift && (
-          <p className="dashboard-note shift-result">
-            上次換檔 {snapshot.lastShift.fromGear}→{snapshot.lastShift.targetGear}・
-            {Math.round(snapshot.lastShift.startRpm)} → {Math.round(snapshot.lastShift.endRpm)} RPM
-          </p>
-        )}
-        {(mechanicalOverRev || peakOverRevRpm > 0) && (
-          <p className="over-rev-status">
-            {mechanicalOverRev
-              ? <strong role="alert">機械反拖超出模擬紅區</strong>
-              : <strong>上次機械超轉</strong>}
-            <span>峰值 {Math.round(peakOverRevRpm)} RPM・{overRevSeconds.toFixed(2)} 秒</span>
-          </p>
-        )}
-        {engineFailed && <p className="over-rev-status" role="alert">引擎示意故障。按「重設」可重新操作。</p>}
+        <div className="dashboard-feedback">
+          {engineFailed && <p className="engine-fault-status" role="alert">引擎示意故障。按「重設」可重新操作。</p>}
+          {!engineFailed && pendingShift && (
+            <p className="shift-status">
+              換檔中 <strong>{pendingShift.targetGear || "N"}</strong>
+              {pendingShift.targetGear > 0 && `・預估接合 ${Math.round(pendingShift.targetRpm)} RPM`}
+            </p>
+          )}
+          {!engineFailed && !pendingShift && lastShift && (
+            <p className="shift-result">
+              上次換檔 {lastShift.fromGear}→{lastShift.targetGear}・
+              {Math.round(lastShift.startRpm)} → {Math.round(lastShift.endRpm)} RPM
+            </p>
+          )}
+        </div>
       </section>
 
       <RidingControls

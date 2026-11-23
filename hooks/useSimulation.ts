@@ -10,7 +10,7 @@ import { enqueueShift } from "../lib/transmission";
 
 const READOUT_INTERVAL_MS = 50;
 
-export function useSimulation(vehicle: Vehicle, onFrame: (state: SimulationState) => void) {
+export function useSimulation(vehicle: Vehicle, onFrame: (state: SimulationState, timestampMs: number) => void) {
   const [snapshot, setSnapshot] = useState(() => createSimulationState(vehicle));
   const state = useRef(snapshot);
   const input = useRef<SimulationInput>(INITIAL_SIMULATION_INPUT);
@@ -32,13 +32,13 @@ export function useSimulation(vehicle: Vehicle, onFrame: (state: SimulationState
         const next = advanceSimulation(previousState, input.current, vehicle, elapsedSeconds, remainderSeconds);
         state.current = next.state;
         remainderSeconds = next.remainderSeconds;
-        if (next.state !== previousState) onFrame(next.state);
+        if (next.state !== previousState) onFrame(next.state, timestamp - remainderSeconds * 1000);
 
         const commandApplied = next.state.gear !== previousState.gear ||
           next.state.engineOn !== previousState.engineOn ||
           next.state.shiftMode !== previousState.shiftMode ||
           next.state.shift?.phase !== previousState.shift?.phase ||
-          next.state.mechanicalOverRev !== previousState.mechanicalOverRev;
+          next.state.engineFailed !== previousState.engineFailed;
         if (next.state !== previousState && (commandApplied || timestamp - lastPublished >= READOUT_INTERVAL_MS)) {
           setSnapshot(next.state);
           lastPublished = timestamp;

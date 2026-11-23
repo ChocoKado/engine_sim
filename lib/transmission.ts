@@ -46,9 +46,9 @@ interface TransmissionStep {
   readonly revMatchRpm: number;
 }
 
-const UNLOAD_SECONDS = 0.035;
-const RATIO_CHANGE_SECONDS = 0.105;
-const SHIFT_END_SECONDS = 0.30;
+const UNLOAD_SECONDS = 0.025;
+const RATIO_CHANGE_SECONDS = 0.085;
+const SHIFT_END_SECONDS = 0.20;
 const AUTO_COOLDOWN_SECONDS = 0.48;
 const NEUTRAL_MAX_SPEED_MPS = 2;
 const MAX_QUEUED_SHIFTS = 4;
@@ -176,10 +176,10 @@ export function advanceTransmission(
   const recoupling = (elapsedSeconds - RATIO_CHANGE_SECONDS) / (SHIFT_END_SECONDS - RATIO_CHANGE_SECONDS);
   const positiveUpshift = targetGear > shift.fromGear && shift.fromGear > 0;
   const clutchScale = phase === "unload" ? 1 - smoothProgress(elapsedSeconds / UNLOAD_SECONDS)
-    : smoothProgress(recoupling / (positiveUpshift ? 0.8 : 1));
+    : smoothProgress(recoupling / (positiveUpshift ? 0.42 : 1));
   // On an upshift, bring the clutch back before the combustion torque so it can pull the engine toward the new ratio.
   const recovery = positiveUpshift && phase === "recouple"
-    ? smoothProgress((recoupling - 0.5) / 0.5)
+    ? smoothProgress((recoupling - 0.55) / 0.45)
     : clutchScale;
   const combustionScale = MIN_COMBUSTION_SCALE + (1 - MIN_COMBUSTION_SCALE) * recovery;
   const revMatchRpm = input.shiftMode === "AT" && phase !== "unload" && targetGear > 0 && targetGear < shift.fromGear

@@ -42,7 +42,7 @@ R15 與 R3 於 2026-11-23 進行 M6 查核，後續車型列於各階段。引�
 | S34 | 2025 日規 ZX-25R SE | [原廠 FAQ 附件「主要諸元」](https://faq.kawasaki-motors.com/faq/show/4203?category_id=2&site_domain=default) | 48 PS／15,500 RPM、22 Nm／12,500 RPM、184 kg、齒比與缸徑行程 |
 | S35 | 2026 美規 ZX-4R ABS | [規格](https://www.kawasaki.com/en-us/products/ProductSpecSheetPDF/2026-ninja-zx-4r-abs) · [變速箱](https://www.kawasaki.com/en-us/owner-center/parts/363318/2026/ZX400PTFNL) · [後齒盤](https://www.kawasaki.com/en-us/OwnerCenter/DownloadDiagramPdf/363348?modelcode=ZX400PTFNL&modelyear=2026) · [全球型號初級比](https://global.kawasaki.com/news_230202-1e.pdf) | 56 hp／11,500 RPM、26.5 lb-ft／11,000 RPM、414.5 lb，美規一檔 41/13 與終傳 48/14。初級引用 2023 全球資料（C 級） |
 | S36 | 2012 歐規 ZX‑6R 599 | [原廠維修手冊（存檔）](https://www.aservicemanualpdf.com/Samplepages/SM-2009-2012%20KAWASAKI%20ZX600R%20NINJA%20ZX-6R%20Service%20Repair%20Manual.pdf) · [原廠零件圖](https://www.kawasaki.com/en-us/ownercenter/downloaddiagrampdf/8096?modelcode=zx600rcf&modelyear=2012) | 128 PS／14,000 RPM、66.7 Nm／11,800 RPM，ZX600R 六檔與 1→2→4→3 |
-| S37 | 2026 美規 ZX-6R 636 ABS | [規格](https://www.kawasaki.com/en-us/products/ProductSpecSheetPDF/2026-ninja-zx-6r) · [變速箱零件圖](https://www.kawasaki.com/en-us/OwnerCenter/DownloadDiagramPdf/367182?modelcode=ZX636KTFAN&modelyear=2026) · [跨市場減速比參考](https://content2.kawasaki.com/ContentStorage/KMI/PressReleases/24/90c8d926-ddcc-4ba6-9ef4-c02bd214e873.pdf) | 127 hp／13,000 RPM、52.1 lb-ft／10,800 RPM、美規六檔。初級與終傳引用 2024 印尼原廠資料（C 級） |
+| S37 | 2026 美規 ZX-6R 636 ABS | [規格](https://www.kawasaki.com/en-us/products/ProductSpecSheetPDF/2026-ninja-zx-6r) · [ABS 變速箱](https://www.kawasaki.com/en-us/ownercenter/downloaddiagrampdf/367266?modelcode=ZX636JTFAN&modelyear=2026) · [ABS 後齒盤](https://www.kawasaki.com/en-us/ownercenter/downloaddiagrampdf/367295?modelcode=ZX636JTFAN&modelyear=2026) · [同代英規](https://www.kawasaki.co.uk/en/Motorcycles/Supersport_Sport/Ninja_zx-6r_2026.html/ZX636JTFAN/ZX636JTFAN/MetallicMatteGrapheneSteelGrayMetallicSparkBlackLimeGreen) | 127 hp／13,000 RPM、52.1 lb-ft／10,800 RPM、美規六檔與 43 齒後齒盤，初級仍跨市場參考（C 級） |
 | S38 | 2026 歐規 ZX-10R | [規格與齒比](https://www.kawasaki.eu/en/Motorcycles/Supersport_Sport/Ninja_ZX-10R_2026.html/ZX1003ATFAN/ZX1003ATFAN) | 196 PS／13,000 RPM、110 Nm／11,400 RPM、209 kg、全部減速比 |
 | S39 | 2025 美規 ZX-14R ABS | [規格](https://www.kawasaki.com/en-us/products/ProductSpecSheetPDF/2025-ninja-zx-14r-abs) · [變速箱零件圖](https://www.kawasaki.com/en-us/owner-center/parts/348647/2025/ZX1400JSFNL) · [齒盤](https://www.kawasaki.com/en-us/ownercenter/downloaddiagrampdf/348677?modelcode=ZX1400JSFNN&modelyear=2025) · [原廠維修手冊（存檔）](https://manuzoid.com/manuals/BD6Bj-Kawasaki%20Ninja%20ZX-14R%20ABS%20Service%20manual) | 197 hp／10,000 RPM、116.5 lb-ft／7,500 RPM、593.1 lb。初級比引用同平台手冊（C 級） |
 | S40 | 2019 歐規 Ninja H2 道路版 | [原廠規格](https://www.kawasaki.cz/cs/products/Supersport___Sport/2019/Ninja_H2/specifications?Uid=0842WFwLDlkOXFtdUFFZXF0KWQpeUQ5QDg5QUFpaCV1QWV4) | 170 kW／11,500 RPM、141.7 Nm／11,000 RPM、238 kg、終傳 44/18 |
@@ -135,8 +135,8 @@ R15／R3 的初級與終傳比、後輪有效滾動半徑、完整扭矩曲線�
 |---|---|---|
 | 2026 歐規 R6 RACE | 599 cc、185 kg、67 × 42.5 mm、61.7 Nm／10,500 RPM、118.4 PS／14,500 RPM（S30） | 等距 180° 為平面曲軸示意（B 級推定），各缸點火順序 `unknown`。初級 `85/41`、終傳 `45/16`、紅區 `16,500 RPM` 與六檔引用歷年原廠資料（C 級）。[一般 R6 車主手冊](https://www.yamaha-motor.com.ar/modelo/descargar-manual-de-servicio/yzf-r6) · [GYTR 六檔 STD 對照](https://www.yamaha-motor.eu/content/dam/yme/ch/hostettler-ag/pdfs-brochures/2023/2023_YAM_GYTR_ACC_SUPERSPORT.pdf) |
 | 2026 台規 R7 | 689 cc、189 kg、80 × 68.6 mm、6.9 kgf·m／6,500 RPM、73.4 PS／8,750 RPM、六檔、紅區 10,500 RPM（S25、S31） | CP2 曲軸 270°，推導間隔 270°／450°（S08，B 級）。初級 `77/40` 與終傳 `42/16` 引用日本規格（C 級）。[Yamaha 日本型錄](https://www.yamaha-motor.co.jp/mc/lineup/pdf/Catalog_yzf-r7_2023.pdf) |
-| 2026 歐規 R9 全功率版 | 890 cc、195 kg、78 × 62.1 mm、93 Nm／7,000 RPM、119 PS／10,000 RPM（S32） | CP3 採 240° 等距點火（B 級），各缸點火順序 `unknown`。台規六檔、10,500 RPM 儀表紅區、MT-09 家族初級 `79/47` 與海外 R9 零件終傳 `43/16` 暫用（C 級）。[Yamaha CP3 技報](https://global.yamaha-motor.com/jp/design_technology/technical/pdf/chapters/YMC-TR56_Product_03.pdf) · [MT-09 初級](https://global.yamaha-motor.com/jp/news/2021/0622/mt-09.html) · [R9 同件號離合器](https://shop.yamahacity.com.au/part/yamaha/B7N1615000) · [R9 原廠齒盤零件圖](https://www.tenkateracingproducts.com/yzf-r9-oem-rear-wheel-parts) |
-| 2020 日規 R1 ABS | 997 cc、201 kg、79 × 50.9 mm、113 Nm／11,500 RPM、200 PS／13,500 RPM、六檔、初級 `67/41`、終傳 `41/16`（S33） | 十字曲軸 `1→3→2→4`，間隔 270°／180°／90°／180°（S33）。14,000 RPM 紅區引用後續日規手冊（C 級）。[2026 日規原廠手冊](https://www2.yamaha-motor.co.jp/Manual/pdf/mc/2026D45L.pdf) |
+| 2026 歐規 R9 全功率版 | 890 cc、195 kg、78 × 62.1 mm、93 Nm／7,000 RPM、119 PS／10,000 RPM（S32） | CP3 採 240° 等距點火（B 級），各缸點火順序 `unknown`。同年歐規手冊確認 10,500 RPM 紅區。台規六檔、MT-09 家族初級 `79/47` 與海外 R9 零件終傳 `43/16` 暫用（C 級）。[2026 歐規車主手冊](https://www.notice-facile.com/en/manual/3032192/yamaha%2Br9-2026) · [MT-09 初級](https://global.yamaha-motor.com/jp/news/2021/0622/mt-09.html) · [R9 同件號離合器](https://shop.yamahacity.com.au/part/yamaha/B7N1615000) · [R9 原廠齒盤零件圖](https://www.tenkateracingproducts.com/yzf-r9-oem-rear-wheel-parts) |
+| 2020 日規 R1 ABS | 997 cc、201 kg、79 × 50.9 mm、113 Nm／11,500 RPM、200 PS／13,500 RPM、六檔、初級 `67/41`、終傳 `41/16`（S33） | 十字曲軸 `1→3→2→4`，間隔 270°／180°／90°／180°（S33）。同年日規手冊確認紅區 14,000 RPM。[2020 日規原廠手冊](https://www2.yamaha-motor.co.jp/jp/manual/pdf/mc/2020B3LA.pdf) |
 
 四款模型的斷油點、慣量、離合係數與完整動力曲線都採近似。音色依點火間隔、轉速、負載及原創管路反射分開設定，3D 尺寸與聲浪為 D 級。錄音式模擬器可用轉速／負載匹配的實車錄音，這也是實錄可校準的方向。本站未使用外部錄音。[Crankcase Audio REV](https://www.crankcaseaudio.com/) · [BeamNG 調音文件](https://documentation.beamng.com/modding/vehicle/sections/sounds/engine_audio/)
 
@@ -153,6 +153,29 @@ R15／R3 的初級與終傳比、後輪有效滾動半徑、完整扭矩曲線�
 
 - 兩款採非 RAM Air 的原廠峰值，使用各自的終傳比與車重。2019 歐規道路 H2 提供相容的馬力與扭力錨點，2026 歐規 H2R 按封閉賽道版資料。供氣與機械損失已反映在曲線近似，未額外乘算增壓馬力（S40、S41）。
 - 14,000 引擎 RPM 對應 128,520 葉輪 RPM。音層以葉輪軸頻為合成基礎，隨轉速與負載混入高頻及氣流，並以短暫諧波描述高轉急收油。軸頻可計算，音色、收油幅度和 3D 是 D 級示意。[Kawasaki 對 Ninja H2 收油聲的說明](https://www.kawasaki.com/en-us/side-x-side/teryx/teryx-2-5-passenger-supercharged/teryx-h2)
+
+## 車速、轉速與齒比複核
+
+下表為 14 款既定年式與市場的同一場景，平路、無風、75 kg 騎士、虛擬 AT 從靜止全油門至穩態。極速與斷油以模擬值列示。齒比和峰值來源見 S01–S42 的相關車型。紅區、斷油、六檔齒比所容許的速度以及在風阻下能達到的速度是不同資料。
+
+| 車款 | 紅區／斷油設定 RPM | 平路模擬 km/h／引擎 RPM | 參考與缺項 |
+|---|---:|---:|---|
+| R15 | 11,500／11,900 | 137／10,459 | 台規紅區 S23，精確尾速、斷油 `unknown` |
+| R3 | 12,000／12,750 | 176／11,452 | 台規紅區 S24。[跨市場實測約 181](https://motostatz.com/yamaha-yzf-r3-acceleration/) |
+| R6 RACE | 16,500／17,100 | 265／15,228 | [日規 RaceBase 紅區](https://www2.yamaha-motor.co.jp/Manual/pdf/mc/2024D511.pdf) · [原廠賽車套件齒比表](https://www.yamaha-racing.com/content/dam/yme-racing/shared/gytr/kit-manuals/pdf/KIT_MANUAL_2024_YZF-R6.pdf) · [道路版實測約 260](https://motostatz.com/yamaha-yzf-r6-acceleration/) |
+| R7 | 10,500／10,900 | 216／9,004 | 台規紅區 S31。[早期版本測試約 224](https://motostatz.com/yamaha-yzf-r7-top-speed-acceleration/) |
+| R9 | 10,500／11,000 | 251／10,046 | 同年歐規手冊紅區。[同世代德國測試列 248](https://www.motorradundreisen.de/motorraeder/test-telegramm-yamaha-r9-cp3-renner-road-race/8846/) |
+| R1 | 14,000／14,500 | 300／13,197 | 同年日規紅區，約 299 數據僅作跨市場風阻參考。[R1 測試者](https://motostatz.com/how-to-hit-200-mph-on-a-yamaha-yzf-r1/) |
+| ZX-25R | 17,000／17,500 | 182／17,294 | [2020 日規原始 GPS 約 176](https://young-machine.com/2020/10/23/135876/)，2025 精確尾速與斷油 `unknown` |
+| ZX-4R | 15,000／15,800 | 205／12,795 | 2026 美規動力及傳動 S35。[2023 美規 4RR 原始測功機參考](https://www.cycleworld.com/bikes/kawasaki-ninja-zx-4rr-dyno-test-2023/) |
+| ZX-6R 599 | 16,000／16,500 | 258／14,673 | 同代 2009 美規原始測試約 254、報導 16,600 限轉。[尾速](https://magazine.cycleworld.com/article/2014/8/1/best-used-bikes-kawasakizx-6r) · [限轉](https://magazine.cycleworld.com/article/2009/2/1/2009-kawasaki-zx-6r) |
+| ZX-6R 636 | 14,000／14,500 | 237／14,331 | [2026 澳洲試駕紅區](https://twowheeladdicts.com.au/2026-kawasaki-ninja-zx-6r-track-test/) · [2024 年後美規測功機限轉參考](https://mrpmotorsports.com/ecu-flash-2024-kawasaki-zx6r-fm0203/)。2026 德國型錄 234 為歐規參考 |
+| ZX-10R | 14,000／14,500 | 298／13,263 | [Kawasaki 德國 2026 型錄列 298](https://www.kawasaki.de/content/dam/europe/countries/de/pdf-dokumente/260416_KW_LG_26-2_Ansicht-Komplett.pdf)，調整風阻近似 |
+| ZX-14R | 11,000／11,400 | 300／10,347 | [2012 同世代美規雷達測得 185 mph](https://www.cycleworld.com/2012/06/27/kawasaki-zx-14r-long-term-test-update/)。2025 ECU 與極速 `unknown` |
+| H2 | 13,000／13,500 | 299／12,849 | 2019 齒比／動力 S40。[試駕規格列 299 限速](https://amcn.com.au/editorial/road-test-kawasaki-ninja-h2/)，作為 C 級車速調節參考 |
+| H2R | 14,500／15,000 | 361／14,698 | 2026 S41、德國型錄只列超過 300。2016 特殊場地紀錄不可視為現款原廠極速 |
+
+收油與換檔使用同一曲軸相位和時間軸。Brul 的公開資料以逐缸合成與排氣脈衝響應作為音色參考。本站本次校正時間軸與燃燒／排氣混音，車款實錄及量測排氣響應待校準。[Brul 音訊說明](https://brul.app/engines/v8)
 
 ## 4. 開發者引用習慣
 

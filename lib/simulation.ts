@@ -12,6 +12,8 @@ const ROLLING_RESISTANCE = 0.015;
 const AIR_DENSITY_KG_M3 = 1.225;
 const MAX_BRAKE_DECELERATION_MPS2 = 0.72 * GRAVITY_MPS2;
 const WATTS_PER_METRIC_HP = 735.49875;
+const FUEL_CUT_WINDOW_RPM = 220;
+const SPEED_LIMIT_WINDOW_KMH = 0.5;
 
 export interface SimulationInput {
   readonly engineOn: boolean;
@@ -92,6 +94,12 @@ function fullThrottleTorqueNm(rpm: number, physics: Vehicle["physics"]): number 
 
   const torqueAtPeakPower = physics.peakPowerPs * WATTS_PER_METRIC_HP
     / radiansPerSecondFromRpm(physics.peakPowerRpm);
+  if (rpm > physics.peakPowerRpm) {
+    const overPeak = unitInterval((rpm - physics.peakPowerRpm) / (physics.fuelCutRpm - physics.peakPowerRpm));
+    // Power falls gradually past its rated peak. The rev limiter acts on fuel separately.
+    return torqueAtPeakPower * (physics.peakPowerRpm / rpm) * (1 - 0.12 * overPeak ** 2);
+  }
+
   const progress = unitInterval((rpm - physics.peakTorqueRpm) / (physics.peakPowerRpm - physics.peakTorqueRpm));
   return physics.peakTorqueNm + (torqueAtPeakPower - physics.peakTorqueNm) * progress;
 }
@@ -127,8 +135,10 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
   const neutralOverrun = gear === 0 ? unitInterval((engineSpeed - idleSpeed) / (2 * idleSpeed)) : 0;
   const unloadedDrag = 4 * pumping * closedThrottle * neutralOverrun;
   const engineLoss = friction + pumping + unloadedDrag;
-  const highRpmTaper = 1 - unitInterval((rpm - physics.peakPowerRpm) / (physics.fuelCutRpm - physics.peakPowerRpm));
-  const availableCombustion = (fullThrottleTorqueNm(rpm, physics) + friction) * highRpmTaper;
+  const revFuel = unitInterval((physics.fuelCutRpm - rpm) / FUEL_CUT_WINDOW_RPM);
+  const roadFuel = physics.speedLimitKmh === undefined ? 1
+    : unitInterval((physics.speedLimitKmh - roadSpeed * 3.6) / SPEED_LIMIT_WINDOW_KMH);
+  const availableCombustion = (fullThrottleTorqueNm(rpm, physics) + friction) * Math.min(revFuel, roadFuel);
   const idleCombustion = Math.min(0.65 * availableCombustion, Math.max(0, engineLoss + 0.42 * (idleSpeed - engineSpeed)));
   const matchingCharge = unitInterval((revMatchRpm - rpm) / 1400);
   const matchingCombustion = availableCombustion * matchingCharge;
@@ -141,23 +151,28 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
   const slip = engineSpeed - matchedEngineSpeed;
   const launchEngagement = throttle * unitInterval((engineSpeed - idleSpeed * 1.05) / (0.5 * idleSpeed));
   const rollingEngagement = unitInterval((matchedEngineSpeed - idleSpeed * 0.8) / (0.5 * idleSpeed));
-  const fullCapacity = slip < 0 ? physics.slipperCapacityNm : physics.clutchCapacityNm;
-  const capacity = fullCapacity * Math.max(launchEngagement, rollingEngagement) * clutchScale;
   // Pure rolling reflects the vehicle and rider mass at the wheel.
   const mass = physics.curbMassKg + RIDER_MASS_KG;
   const effectiveWheelInertia = physics.wheelInertiaKgM2 + mass * radius ** 2;
-  // A finite-capacity friction coupling can push or back-drive the engine without snapping RPM to wheel speed.
-  const torqueToSynchronize = Math.abs(slip) / (dt * (1 / physics.engineInertiaKgM2 + ratio ** 2 / effectiveWheelInertia));
-  const clutchTorque = engineOn && gear !== 0
-    ? Math.sign(slip) * Math.min(Math.abs(slip) * physics.clutchDampingNmPerRadPerSecond, capacity, torqueToSynchronize)
-    : 0;
-  const drivetrainTorque = clutchTorque * ratio;
-
   const brakingAndRollingForce = mass * (brake * MAX_BRAKE_DECELERATION_MPS2 + GRAVITY_MPS2 * ROLLING_RESISTANCE);
   const dragForce = 0.5 * AIR_DENSITY_KG_M3 * physics.dragAreaM2 * roadSpeed ** 2;
-  const wheelTorque = drivetrainTorque - (brakingAndRollingForce + dragForce) * radius;
-  const nextWheelSpeed = Math.max(0, wheelSpeed + dt * wheelTorque / effectiveWheelInertia);
-  const nextEngineSpeed = Math.max(0, engineSpeed + dt * (engineTorque - clutchTorque) / physics.engineInertiaKgM2);
+  const freelyBrakedWheelSpeed = wheelSpeed - dt * (brakingAndRollingForce + dragForce) * radius / effectiveWheelInertia;
+  const freeEngineSpeed = engineSpeed + dt * engineTorque / physics.engineInertiaKgM2;
+
+  let clutchTorque = 0;
+  if (engineOn && gear !== 0) {
+    // Static friction can hold zero slip while transmitting torque once the clutch is fully engaged.
+    const torqueToSynchronize = (freeEngineSpeed - freelyBrakedWheelSpeed * ratio)
+      / (dt * (1 / physics.engineInertiaKgM2 + ratio ** 2 / effectiveWheelInertia));
+    const fullCapacity = torqueToSynchronize < 0 ? physics.slipperCapacityNm : physics.clutchCapacityNm;
+    const capacity = fullCapacity * Math.max(launchEngagement, rollingEngagement) * clutchScale;
+    const slipTorque = Math.abs(slip) * physics.clutchDampingNmPerRadPerSecond;
+    const couplingLimit = rollingEngagement === 1 && clutchScale === 1 ? capacity : Math.min(capacity, slipTorque);
+    clutchTorque = Math.sign(torqueToSynchronize) * Math.min(Math.abs(torqueToSynchronize), couplingLimit);
+  }
+  const drivetrainTorque = clutchTorque * ratio;
+  const nextWheelSpeed = Math.max(0, freelyBrakedWheelSpeed + dt * drivetrainTorque / effectiveWheelInertia);
+  const nextEngineSpeed = Math.max(0, freeEngineSpeed - dt * clutchTorque / physics.engineInertiaKgM2);
   const crankAdvance = dt * (engineSpeed + nextEngineSpeed) / 2;
   const superchargerRatio = vehicle.supercharger?.driveRatio ?? 0;
   const nextRpm = rpmFromRadiansPerSecond(nextEngineSpeed);

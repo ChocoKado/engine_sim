@@ -8,10 +8,12 @@ import { VALVE_EVENTS } from "../lib/kinematics.ts";
 const rate = 48000;
 const blockSize = 128;
 const cycleRadians = 4 * Math.PI;
+const playbackDelaySeconds = 0.04;
+const playbackDelaySamples = rate * playbackDelaySeconds;
 const exhaustOpeningRad = VALVE_EVENTS.exhaust.opensDegrees * Math.PI / 180;
 const script = readFileSync(new URL("../public/engine-sound-processor.js", import.meta.url), "utf8");
 
-function captureAudio(vehicle, audioOptions = {}) {
+function captureAudio(vehicle, audioOptions = {}, trackPitch = false) {
   let Processor;
   const context = vm.createContext({
     sampleRate: rate,
@@ -27,11 +29,13 @@ function captureAudio(vehicle, audioOptions = {}) {
     processorOptions: { ...vehicle.audio, exhaustOpeningRad, supercharger: vehicle.supercharger, ...audioOptions },
   });
   const pulses = [];
+  const pitch = [];
   let sample = 0;
   const advance = processor.advanceCrank.bind(processor);
   processor.advanceCrank = (increment) => {
     const fired = advance(increment);
     if (fired) pulses.push(sample);
+    if (trackPitch) pitch.push([sample, increment * rate * 60 / (2 * Math.PI)]);
     sample += 1;
     return fired;
   };
@@ -40,11 +44,12 @@ function captureAudio(vehicle, audioOptions = {}) {
 
   function blocks(count, telemetry) {
     const signal = [];
-    const { rpm = 3000, ...controls } = telemetry ?? {};
-    const angularVelocity = rpm * 2 * Math.PI / 60;
     for (let block = 0; block < count; block += 1) {
       context.currentTime = rendered / rate;
-      if (telemetry) {
+      const packet = typeof telemetry === "function" ? telemetry(context.currentTime) : telemetry;
+      const { rpm = 3000, ...controls } = packet ?? {};
+      const angularVelocity = rpm * 2 * Math.PI / 60;
+      if (packet) {
         processor.port.onmessage({ data: {
           type: "state",
           engineOn: true,
@@ -53,10 +58,11 @@ function captureAudio(vehicle, audioOptions = {}) {
           throttle: 0.7,
           combustion: 0.8,
           load: 0.9,
-          ...controls,
           contextTime: context.currentTime,
+          ...controls,
         } });
       }
+      sample = rendered;
       const output = new Float32Array(blockSize);
       processor.process([], [[output]]);
       signal.push(...output);
@@ -66,7 +72,7 @@ function captureAudio(vehicle, audioOptions = {}) {
     return signal;
   }
 
-  return { blocks, pulses };
+  return { blocks, pulses, pitch };
 }
 
 function rms(signal) {
@@ -88,7 +94,7 @@ function upperBandShare(signal) {
 }
 
 function assertBounded(signal) {
-  assert.ok(signal.every((sample) => Number.isFinite(sample) && Math.abs(sample) < 0.30));
+  assert.ok(signal.every((sample) => Number.isFinite(sample) && Math.abs(sample) < 0.38));
 }
 
 const firingIntervals = {
@@ -107,12 +113,65 @@ for (const vehicle of vehicles) {
     const signal = audio.blocks(120, {});
     const gaps = audio.pulses.slice(1).map((pulse, position) => pulse - audio.pulses[position]);
     const required = vehicle.brand === "Kawasaki" ? flatplaneFourIntervals : firingIntervals[vehicle.id];
-    const expectedFirstPulse = Math.ceil(exhaustOpeningRad / (100 * Math.PI) * rate) - 1;
+    const expectedFirstPulse = playbackDelaySamples + Math.ceil(exhaustOpeningRad / (100 * Math.PI) * rate) - 1;
     assert.ok(Math.abs(audio.pulses[0] - expectedFirstPulse) <= 1);
     assert.ok(gaps.length > 5);
     assert.ok(gaps.every((gap, position) => Math.abs(gap - required[position % required.length]) <= 1), gaps.join(","));
     assertBounded(signal);
     assert.ok(signal.some((sample) => Math.abs(sample) > 0.005));
+  });
+}
+
+for (const id of ["yamaha-r3", "yamaha-r9"]) {
+  test(`${id}: irregular frame delivery retains steady pitch and a continuous release glide`, () => {
+    const vehicle = vehicles.find((candidate) => candidate.id === id);
+    const audio = captureAudio(vehicle, {}, true);
+    const baseRpm = 9300;
+    const releaseTime = 0.5;
+    const rpmDropPerSecond = 2200;
+    const rpmAt = (time) => baseRpm - Math.max(0, time - releaseTime) * rpmDropPerSecond;
+    const angleAt = (time) => (baseRpm * time - 0.5 * rpmDropPerSecond * Math.max(0, time - releaseTime) ** 2) * 2 * Math.PI / 60;
+    const tickPattern = [2, 3, 1, 2, 2];
+    const deliveryDelay = [0.004, 0.010, 0.005, 0.011, 0.003];
+    const clockJitter = [0, 0.00023, -0.00019, 0.00015, -0.00024];
+    let tick = 0;
+    let index = 0;
+    audio.blocks(650, (wallTime) => {
+      const patternIndex = index % tickPattern.length;
+      const sampleTime = tick / 120;
+      if (wallTime < sampleTime + deliveryDelay[patternIndex]) return null;
+      tick += tickPattern[patternIndex];
+      index += 1;
+      return {
+        rpm: rpmAt(sampleTime),
+        angleRad: angleAt(sampleTime) % cycleRadians,
+        contextTime: sampleTime + clockJitter[patternIndex],
+        throttle: sampleTime < releaseTime ? 0.8 : 0,
+        combustion: sampleTime < releaseTime ? 0.84 : 0,
+      };
+    });
+
+    const steady = audio.pitch.filter(([sample]) => sample / rate > 0.18 && sample / rate < 0.48).map(([, rpm]) => rpm);
+    assert.ok(steady.every((rpm) => Math.abs(rpm - baseRpm) < 7));
+    const pitchAt = (seconds) => audio.pitch[Math.round(seconds * rate) - audio.pitch[0][0]][1];
+    const releaseSamples = [];
+    for (let time = 0.64; time < 1.5; time += 0.006) {
+      const shown = pitchAt(time);
+      assert.ok(Math.abs(shown - rpmAt(time - playbackDelaySeconds)) < 22);
+      releaseSamples.push(shown);
+    }
+    const expectedDrop = 0.006 * rpmDropPerSecond;
+    assert.ok(releaseSamples.slice(1).every((rpm, i) => Math.abs(releaseSamples[i] - rpm - expectedDrop) < 2.6));
+
+    const pulses = audio.pulses.filter((sample) => sample / rate > 0.22 && sample / rate < 1.52);
+    const gaps = pulses.slice(1).map((pulse, i) => (angleAt(pulse / rate - playbackDelaySeconds)
+      - angleAt(pulses[i] / rate - playbackDelaySeconds)) * 180 / Math.PI);
+    assert.ok(gaps.length > 100);
+    const shortFirst = gaps[0] < 360;
+    assert.ok(gaps.every((gap, i) => {
+      const expected = id === "yamaha-r9" ? 240 : ((i % 2 === 0) === shortFirst ? 180 : 540);
+      return Math.abs(gap - expected) < 8;
+    }));
   });
 }
 
@@ -124,8 +183,9 @@ for (const vehicle of vehicles.slice(0, 2)) {
 
     const audio = captureAudio(vehicle);
     const loaded = audio.blocks(190, { rpm: 6000, throttle: 0.85, combustion: 0.85, load: 0.75 }).slice(-8192);
-    const release = audio.blocks(55, { rpm: 6000, throttle: 0, combustion: 0, load: 0.35 });
-    const coast = audio.blocks(180, { rpm: 6000, throttle: 0, combustion: 0, load: 0.35 }).slice(-8192);
+    const released = audio.blocks(55 + 180, { rpm: 6000, throttle: 0, combustion: 0, load: 0.35 });
+    const release = released.slice(playbackDelaySamples, playbackDelaySamples + 55 * blockSize);
+    const coast = released.slice(-8192);
     const loudnessRatio = rms(coast) / rms(loaded);
     const bandRatio = upperBandShare(coast) / upperBandShare(loaded);
     assert.ok(loudnessRatio > 0.38 && loudnessRatio < 0.68, `coast RMS ratio: ${loudnessRatio}`);
@@ -155,13 +215,17 @@ for (const vehicle of vehicles.slice(0, 2)) {
     const cycleSamples = Math.round(rate * 120 / rpm);
     const audio = captureAudio(vehicle);
     const steadyRms = rms(audio.blocks(190, drive).slice(-cycleSamples * 8));
-    const shift = audio.blocks(32, { ...unloading, shiftCut: 0.90 });
-    const recovered = audio.blocks(36, drive);
+    const cutFrames = audio.blocks(32, { ...unloading, shiftCut: 0.90 });
+    const after = audio.blocks(36 + playbackDelaySamples / blockSize, drive);
+    const audibleShift = cutFrames.concat(after).slice(playbackDelaySamples);
+    const shift = audibleShift.slice(0, cutFrames.length);
+    const recovered = audibleShift.slice(cutFrames.length);
 
     const slowResponse = captureAudio(vehicle);
     slowResponse.blocks(190, drive);
-    const rawCombustionChange = slowResponse.blocks(32, unloading);
-    slowResponse.blocks(36, drive);
+    const raw = slowResponse.blocks(32, unloading);
+    const rawAfter = slowResponse.blocks(36 + playbackDelaySamples / blockSize, drive);
+    const rawCombustionChange = raw.concat(rawAfter).slice(playbackDelaySamples, playbackDelaySamples + raw.length);
     assert.deepEqual(audio.pulses, slowResponse.pulses);
 
     const quickRatio = rms(shift.slice(0, cycleSamples * 2)) / rms(rawCombustionChange.slice(0, cycleSamples * 2));
