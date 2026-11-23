@@ -11,6 +11,7 @@ export interface ShiftState {
   readonly elapsedSeconds: number;
   readonly targetRpm: number;
   readonly startRpm: number;
+  readonly powerRecoveryStartedAtSeconds: number | null;
 }
 
 interface ShiftResult {
@@ -49,6 +50,11 @@ interface TransmissionStep {
 const UNLOAD_SECONDS = 0.025;
 const RATIO_CHANGE_SECONDS = 0.085;
 const SHIFT_END_SECONDS = 0.20;
+const UPSHIFT_RATIO_CHANGE_SECONDS = 0.080;
+const UPSHIFT_CLUTCH_ENGAGEMENT_SECONDS = 0.026;
+const UPSHIFT_MAX_SYNC_SECONDS = 0.27;
+const UPSHIFT_POWER_RECOVERY_SECONDS = 0.024;
+const UPSHIFT_MATCH_TOLERANCE_RPM = 90;
 const AUTO_COOLDOWN_SECONDS = 0.48;
 const NEUTRAL_MAX_SPEED_MPS = 2;
 const MAX_QUEUED_SHIFTS = 4;
@@ -144,7 +150,10 @@ export function advanceTransmission(
       : manualTarget(transmission.gear, transmission.shiftQueue[0], vehicle.gears, input.vehicleSpeed);
     if (transmission.shiftQueue.length) transmission = { ...transmission, shiftQueue: transmission.shiftQueue.slice(1) };
     if (targetGear !== transmission.gear) {
-      shift = { phase: "unload", fromGear: transmission.gear, targetGear, elapsedSeconds: 0, targetRpm: 0, startRpm: input.engineRpm };
+      shift = {
+        phase: "unload", fromGear: transmission.gear, targetGear, elapsedSeconds: 0, targetRpm: 0,
+        startRpm: input.engineRpm, powerRecoveryStartedAtSeconds: null,
+      };
     }
   }
 
@@ -152,8 +161,10 @@ export function advanceTransmission(
 
   const elapsedSeconds = shift.elapsedSeconds + stepSeconds;
   let { targetGear } = shift;
+  const positiveUpshift = targetGear > shift.fromGear && shift.fromGear > 0;
+  const ratioChangeAt = positiveUpshift ? UPSHIFT_RATIO_CHANGE_SECONDS : RATIO_CHANGE_SECONDS;
   let targetRpm = matchedRpm(vehicle, targetGear, input.wheelAngularVelocity);
-  const phase = elapsedSeconds < UNLOAD_SECONDS ? "unload" : elapsedSeconds < RATIO_CHANGE_SECONDS ? "disengage" : "recouple";
+  const phase = elapsedSeconds < UNLOAD_SECONDS ? "unload" : elapsedSeconds < ratioChangeAt ? "disengage" : "recouple";
   let { gear } = transmission;
 
   if (phase === "recouple" && shift.phase !== "recouple") {
@@ -165,7 +176,21 @@ export function advanceTransmission(
     gear = targetGear;
   }
 
-  if (elapsedSeconds >= SHIFT_END_SECONDS) {
+  const recoupleDuration = positiveUpshift ? UPSHIFT_CLUTCH_ENGAGEMENT_SECONDS : SHIFT_END_SECONDS - ratioChangeAt;
+  const clutchScale = phase === "unload" ? 1 - smoothProgress(elapsedSeconds / UNLOAD_SECONDS)
+    : smoothProgress((elapsedSeconds - ratioChangeAt) / recoupleDuration);
+  let { powerRecoveryStartedAtSeconds } = shift;
+  if (positiveUpshift && phase === "recouple" && powerRecoveryStartedAtSeconds === null) {
+    const synchronized = clutchScale === 1 && Math.abs(input.engineRpm - targetRpm) <= UPSHIFT_MATCH_TOLERANCE_RPM;
+    if (synchronized || elapsedSeconds >= UPSHIFT_MAX_SYNC_SECONDS) powerRecoveryStartedAtSeconds = elapsedSeconds;
+  }
+
+  // Cut immediately on an upshift, then restore combustion at the new ratio once RPM has caught up.
+  const upshiftRecovery = powerRecoveryStartedAtSeconds === null ? 0
+    : smoothProgress((elapsedSeconds - powerRecoveryStartedAtSeconds) / UPSHIFT_POWER_RECOVERY_SECONDS);
+  const recovery = positiveUpshift ? upshiftRecovery : clutchScale;
+  const complete = positiveUpshift ? upshiftRecovery === 1 : elapsedSeconds >= SHIFT_END_SECONDS;
+  if (complete) {
     const lastShift = input.engineOn && shift.fromGear > 0 && gear > 0 && gear !== shift.fromGear
       ? { fromGear: shift.fromGear, targetGear: gear, startRpm: shift.startRpm, endRpm: input.engineRpm }
       : transmission.lastShift;
@@ -173,18 +198,10 @@ export function advanceTransmission(
     return { transmission, clutchScale: 1, combustionScale: 1, revMatchRpm: 0 };
   }
 
-  const recoupling = (elapsedSeconds - RATIO_CHANGE_SECONDS) / (SHIFT_END_SECONDS - RATIO_CHANGE_SECONDS);
-  const positiveUpshift = targetGear > shift.fromGear && shift.fromGear > 0;
-  const clutchScale = phase === "unload" ? 1 - smoothProgress(elapsedSeconds / UNLOAD_SECONDS)
-    : smoothProgress(recoupling / (positiveUpshift ? 0.42 : 1));
-  // On an upshift, bring the clutch back before the combustion torque so it can pull the engine toward the new ratio.
-  const recovery = positiveUpshift && phase === "recouple"
-    ? smoothProgress((recoupling - 0.55) / 0.45)
-    : clutchScale;
   const combustionScale = MIN_COMBUSTION_SCALE + (1 - MIN_COMBUSTION_SCALE) * recovery;
   const revMatchRpm = input.shiftMode === "AT" && phase !== "unload" && targetGear > 0 && targetGear < shift.fromGear
     && withinAutomaticRpmLimit(targetRpm, vehicle) ? targetRpm : 0;
 
-  transmission = { ...transmission, gear, shift: { ...shift, phase, targetGear, elapsedSeconds, targetRpm } };
+  transmission = { ...transmission, gear, shift: { ...shift, phase, targetGear, elapsedSeconds, targetRpm, powerRecoveryStartedAtSeconds } };
   return { transmission, clutchScale, combustionScale, revMatchRpm };
 }

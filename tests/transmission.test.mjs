@@ -52,6 +52,7 @@ for (const vehicle of vehicles) {
     const speedAt10000 = speedForRpm(vehicle, 3, 10000);
     const before = run(vehicle, rolling(vehicle, 3, speedAt10000), input, 18).at(-1);
     const trace = run(vehicle, enqueueShift(before, 1), input, 60);
+    assert.ok(trace[0].shiftCut > 0.85);
     const cut = trace.filter((state) => state.shift?.phase === "disengage");
     assert.ok(cut.length >= 7);
     assert.ok(cut.every((state) => Math.abs(state.drivetrainTorqueNm) < 1e-9 && state.shiftCut > 0.8));
@@ -61,6 +62,12 @@ for (const vehicle of vehicles) {
     assert.equal(after.lastShift.startRpm, rpmFromRadiansPerSecond(before.engineAngularVelocity));
     assert.ok(after.lastShift.startRpm - after.lastShift.endRpm > 900);
     assert.ok(after.drivetrainTorqueNm > 0 && after.shiftCut === 0);
+    const completed = trace.findIndex(({ shift }) => shift === null);
+    assert.ok(completed > 0 && completed < 36);
+    const reapplied = trace[completed];
+    const matched = reapplied.wheelAngularVelocity * getOverallRatio(vehicle, reapplied.gear);
+    assert.ok(Math.abs(rpmFromRadiansPerSecond(reapplied.engineAngularVelocity - matched)) < 90);
+    assert.ok(trace[completed + 6].engineAngularVelocity > reapplied.engineAngularVelocity);
   });
 
   test(`${vehicle.name}: rapid MT downshifts can back-drive above fuel cutoff`, () => {
@@ -92,6 +99,18 @@ for (const vehicle of vehicles) {
     assert.ok(launches.every((state) => !state.mechanicalOverRev));
   });
 }
+
+test("the wide ZX-4R first-to-second upshift resumes pulling at the new RPM", () => {
+  const vehicle = vehicles.find(({ id }) => id === "kawasaki-zx4r");
+  const speed = speedForRpm(vehicle, 1, 0.90 * vehicle.physics.referenceRpm);
+  const trace = run(vehicle, enqueueShift(rolling(vehicle, 1, speed), 1), { ...mt, throttle: 1 }, 60);
+  const completed = trace.findIndex(({ shift }) => shift === null);
+  assert.ok(completed > 0 && completed < 36);
+  const shifted = trace[completed];
+  assert.equal(shifted.gear, 2);
+  assert.ok(Math.abs(shifted.clutchSlipRadPerSecond) < 1e-8);
+  assert.ok(trace[completed + 6].engineAngularVelocity > shifted.engineAngularVelocity);
+});
 
 test("turning on AT before engagement rechecks a pending risky downshift", () => {
   const vehicle = vehicles[0];

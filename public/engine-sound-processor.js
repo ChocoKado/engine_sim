@@ -122,8 +122,8 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
     this.loadSmoothing = smoothingFactor(0.06);
     this.chargeAttack = smoothingFactor(0.03);
     this.chargeRelease = smoothingFactor(0.06);
-    this.shiftCutAttack = smoothingFactor(0.011);
-    this.shiftCutRelease = smoothingFactor(0.018);
+    this.shiftCutAttack = smoothingFactor(0.007);
+    this.shiftCutRelease = smoothingFactor(0.014);
     this.velocitySmoothing = smoothingFactor(0.003);
     this.phaseSmoothing = smoothingFactor(0.08);
     this.gateAttack = smoothingFactor(0.032);
@@ -307,7 +307,12 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
       const turbulence = this.pressureLowPass - this.pressureNoiseBaseline;
       const blowdown = (this.pressureTail - this.pressureFront) * (0.09 + 0.08 * brightness + turbulence * (0.49 + 0.45 * brightness));
 
-      const exhaust = (body + deeperBody + overtone + edge) * 0.87 + blowdown;
+      // A firm cut darkens the exhaust briefly while the timed air pulses continue.
+      const cut = clamp((this.shiftCut - 0.18) / 0.72, 0, 1);
+      const cutTone = cut * cut * (3 - 2 * cut);
+      const exhaustBody = (body + deeperBody) * (1 - 0.06 * cutTone);
+      const exhaustHarmonics = (overtone + edge) * (1 - 0.32 * cutTone);
+      const exhaust = (exhaustBody + exhaustHarmonics) * 0.87 + blowdown * (1 - 0.25 * cutTone);
       const delayedPressure = this.exhaustDelay[this.exhaustDelayIndex];
       this.exhaustDelay[this.exhaustDelayIndex] = exhaust;
       this.exhaustDelayIndex += 1;

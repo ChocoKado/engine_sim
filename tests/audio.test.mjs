@@ -4,6 +4,8 @@ import test from "node:test";
 import vm from "node:vm";
 import { vehicles } from "../data/vehicles.ts";
 import { VALVE_EVENTS } from "../lib/kinematics.ts";
+import { createSimulationState, FIXED_STEP_SECONDS, INITIAL_SIMULATION_INPUT, stepSimulation } from "../lib/simulation.ts";
+import { enqueueShift, getOverallRatio } from "../lib/transmission.ts";
 
 const rate = 48000;
 const blockSize = 128;
@@ -249,6 +251,62 @@ test("combustion cut softens exhaust; loss of telemetry fades sound to silence",
   assert.ok(rms(cut) < rms(normal) * 0.65);
   assert.ok(rms(cut) > rms(normal) * 0.3);
   assert.ok(audio.blocks(320).slice(-2048).every((sample) => Math.abs(sample) < 0.0001));
+});
+
+test("a simulated R9 upshift changes exhaust harmonics without interrupting crank pulses", () => {
+  const vehicle = vehicles.find(({ id }) => id === "yamaha-r9");
+  const gear = 3;
+  const input = { ...INITIAL_SIMULATION_INPUT, engineOn: true, throttle: 1 };
+  const ratio = getOverallRatio(vehicle, gear);
+  const engineAngularVelocity = 8300 * 2 * Math.PI / 60;
+  const wheelAngularVelocity = engineAngularVelocity / ratio;
+  let state = { ...createSimulationState(vehicle), engineOn: true, gear, engineAngularVelocity, wheelAngularVelocity,
+    vehicleSpeed: wheelAngularVelocity * vehicle.physics.rollingRadiusM };
+  const trace = [];
+  for (let tick = 0; tick < 130; tick += 1) {
+    if (tick === 46) state = enqueueShift(state, 1);
+    state = stepSimulation(state, input, vehicle);
+    trace.push(state);
+  }
+  assert.equal(state.gear, 4);
+  const cutStart = trace.findIndex(({ shiftCut }) => shiftCut > 0.8);
+  const recovery = trace.findIndex(({ shiftCut }, index) => index > cutStart && shiftCut === 0);
+  assert.ok(cutStart > 0 && recovery > cutStart);
+
+  function render(withShiftCue) {
+    const audio = captureAudio(vehicle);
+    let index = 0;
+    const signal = audio.blocks(400, (wallTime) => {
+      const contextTime = index * FIXED_STEP_SECONDS;
+      if (wallTime < contextTime + 0.004 || index >= trace.length) return null;
+      const frame = trace[index];
+      index += 2;
+      return {
+        angleRad: frame.crankAngleRad,
+        angularVelocity: frame.engineAngularVelocity,
+        contextTime,
+        throttle: frame.throttle,
+        combustion: Math.min(1, frame.combustionTorqueNm / vehicle.physics.peakTorqueNm),
+        load: Math.min(1, Math.abs(frame.drivetrainTorqueNm) / (getOverallRatio(vehicle, frame.gear) * vehicle.physics.peakTorqueNm)),
+        shiftCut: withShiftCue ? frame.shiftCut : 0,
+      };
+    });
+    return { signal, pulses: audio.pulses };
+  }
+
+  const audible = render(true);
+  const control = render(false);
+  const sampleAt = (tick, relativeSeconds) => Math.round((tick * FIXED_STEP_SECONDS + playbackDelaySeconds + relativeSeconds) * rate);
+  const cut = audible.signal.slice(sampleAt(cutStart, 0.018), sampleAt(cutStart, 0.062));
+  const rawCut = control.signal.slice(sampleAt(cutStart, 0.018), sampleAt(cutStart, 0.062));
+  const restored = audible.signal.slice(sampleAt(recovery, 0.055), sampleAt(recovery, 0.105));
+  const rawRestored = control.signal.slice(sampleAt(recovery, 0.055), sampleAt(recovery, 0.105));
+  const tonalRatio = upperBandShare(cut) * rms(cut) / (upperBandShare(rawCut) * rms(rawCut));
+  assert.deepEqual(audible.pulses, control.pulses);
+  assert.ok(tonalRatio < 0.8, `upper-band shift ratio: ${tonalRatio}`);
+  assert.ok(rms(cut) > rms(rawCut) * 0.50);
+  assert.ok(Math.abs(rms(restored) / rms(rawRestored) - 1) < 0.06);
+  assertBounded(cut);
 });
 
 function frequencyAmplitude(signal, frequency) {
