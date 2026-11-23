@@ -1,0 +1,145 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { Vehicle } from "../data/vehicles";
+import type { SimulationState } from "../lib/simulation";
+import { getOverallRatio } from "../lib/transmission";
+
+export type AudioStatus = "muted" | "starting" | "enabled" | "paused" | "unavailable";
+
+interface AudioGraph {
+  context: AudioContext;
+  gain: GainNode;
+  ready: Promise<AudioWorkletNode>;
+  node?: AudioWorkletNode;
+}
+
+function fade({ context, gain }: AudioGraph, target: number) {
+  const now = context.currentTime;
+  gain.gain.cancelScheduledValues(now);
+  gain.gain.setTargetAtTime(target, now, 0.035);
+}
+
+export function useEngineAudio(vehicle: Vehicle) {
+  const [audioStatus, setAudioStatus] = useState<AudioStatus>("muted");
+  const graph = useRef<AudioGraph | null>(null);
+  const requested = useRef(false);
+  const latestState = useRef<SimulationState | null>(null);
+
+  const sendAudioState = useCallback((state: SimulationState) => {
+    latestState.current = state;
+    const audio = graph.current;
+    if (!requested.current || !audio?.node || audio.context.state !== "running") return;
+
+    const ratio = getOverallRatio(vehicle, state.gear);
+    const { peakTorqueNm } = vehicle.physics;
+    audio.node.port.postMessage({
+      type: "state",
+      angleRad: state.crankAngleRad,
+      angularVelocity: state.engineAngularVelocity,
+      throttle: state.throttle,
+      combustion: Math.min(1, state.combustionTorqueNm / peakTorqueNm),
+      load: ratio ? Math.min(1, Math.abs(state.drivetrainTorqueNm) / (ratio * peakTorqueNm)) : 0,
+      engineOn: state.engineOn,
+      contextTime: audio.context.currentTime,
+    });
+  }, [vehicle]);
+
+  useEffect(() => {
+    function handleVisibility() {
+      const audio = graph.current;
+      if (!document.hidden || !audio || !requested.current) return;
+      requested.current = false;
+      fade(audio, 0);
+      setAudioStatus("paused");
+    }
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      requested.current = false;
+      const audio = graph.current;
+      graph.current = null;
+      if (audio) {
+        audio.context.onstatechange = null;
+        void audio.context.close().catch(() => {});
+      }
+    };
+  }, []);
+
+  async function toggleAudio() {
+    let audio = graph.current;
+    if (requested.current) {
+      requested.current = false;
+      if (audio) fade(audio, 0);
+      setAudioStatus("muted");
+      return;
+    }
+
+    requested.current = true;
+    setAudioStatus("starting");
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    try {
+      if (!audio) {
+        const context = new AudioContext({ latencyHint: "interactive" });
+        if (!context.audioWorklet) {
+          void context.close().catch(() => {});
+          throw new Error("AudioWorklet unavailable");
+        }
+
+        const gain = context.createGain();
+        gain.gain.value = 0;
+        gain.connect(context.destination);
+        const ready = context.audioWorklet.addModule("/engine-sound-processor.js").then(() => {
+          const node = new AudioWorkletNode(context, "engine-sound", {
+            numberOfInputs: 0,
+            numberOfOutputs: 1,
+            outputChannelCount: [1],
+            processorOptions: vehicle.audio,
+          });
+          node.connect(gain);
+          return node;
+        });
+
+        const created: AudioGraph = { context, gain, ready };
+        context.onstatechange = () => {
+          if (graph.current !== created || !created.node || !requested.current || context.state === "running") return;
+          requested.current = false;
+          fade(created, 0);
+          setAudioStatus("paused");
+        };
+        audio = created;
+        graph.current = audio;
+      }
+
+      // Call resume on the same user activation, before awaiting the module or any other work.
+      const ready = Promise.all([audio.ready, audio.context.resume()]);
+      const timeoutReached = new Promise<never>((_, reject) => {
+        timeout = setTimeout(() => reject(new Error("Audio activation timed out")), 2500);
+      });
+      const [node] = await Promise.race([ready, timeoutReached]);
+      if (graph.current !== audio || !requested.current) return;
+
+      const activated = audio;
+      activated.node = node;
+      node.onprocessorerror = () => {
+        if (graph.current !== activated) return;
+        requested.current = false;
+        graph.current = null;
+        void activated.context.close().catch(() => {});
+        setAudioStatus("unavailable");
+      };
+      if (latestState.current) sendAudioState(latestState.current);
+      fade(activated, 0.65);
+      setAudioStatus("enabled");
+    } catch {
+      if (graph.current !== audio || !requested.current) return;
+      requested.current = false;
+      graph.current = null;
+      if (audio) void audio.context.close().catch(() => {});
+      setAudioStatus("unavailable");
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  return { audioStatus, sendAudioState, toggleAudio };
+}
