@@ -26,6 +26,8 @@ export interface SimulationState extends SimulationInput, TransmissionState {
   readonly wheelAngularVelocity: number;
   readonly vehicleSpeed: number;
   readonly crankAngleRad: number;
+  readonly superchargerAngularVelocity: number;
+  readonly superchargerAngleRad: number;
   readonly engineTorqueNm: number;
   readonly combustionTorqueNm: number;
   readonly shiftCut: number;
@@ -54,6 +56,8 @@ export function createSimulationState(vehicle: Vehicle): SimulationState {
     wheelAngularVelocity: 0,
     vehicleSpeed: 0,
     crankAngleRad: 0,
+    superchargerAngularVelocity: 0,
+    superchargerAngleRad: 0,
     engineTorqueNm: 0,
     combustionTorqueNm: 0,
     shiftCut: 0,
@@ -154,6 +158,8 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
   const wheelTorque = drivetrainTorque - (brakingAndRollingForce + dragForce) * radius;
   const nextWheelSpeed = Math.max(0, wheelSpeed + dt * wheelTorque / effectiveWheelInertia);
   const nextEngineSpeed = Math.max(0, engineSpeed + dt * (engineTorque - clutchTorque) / physics.engineInertiaKgM2);
+  const crankAdvance = dt * (engineSpeed + nextEngineSpeed) / 2;
+  const superchargerRatio = vehicle.supercharger?.driveRatio ?? 0;
   const nextRpm = rpmFromRadiansPerSecond(nextEngineSpeed);
   const mechanicalOverRev = nextRpm > physics.referenceRpm && (clutchTorque < 0 || state.mechanicalOverRev);
   const newOverRev = mechanicalOverRev && !state.mechanicalOverRev;
@@ -175,7 +181,9 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
     engineAngularVelocity: nextEngineSpeed,
     wheelAngularVelocity: nextWheelSpeed,
     vehicleSpeed: nextWheelSpeed * radius,
-    crankAngleRad: (state.crankAngleRad + dt * (engineSpeed + nextEngineSpeed) / 2) % RAD_PER_ENGINE_CYCLE,
+    crankAngleRad: (state.crankAngleRad + crankAdvance) % RAD_PER_ENGINE_CYCLE,
+    superchargerAngularVelocity: nextEngineSpeed * superchargerRatio,
+    superchargerAngleRad: (state.superchargerAngleRad + crankAdvance * superchargerRatio) % RAD_PER_REVOLUTION,
     engineTorqueNm: engineTorque,
     combustionTorqueNm: combustion,
     shiftCut,

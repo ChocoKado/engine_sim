@@ -1,6 +1,6 @@
 # engine_sim
 
-手機騎乘控制台，提供 Yamaha R15、R3、R6 RACE、R7、R9、R1，以及 Kawasaki ZX-25R、ZX-4R、ZX-6R 599／636、ZX-10R 和 ZX-14R。車型選擇區標示年式與市場。各車共用固定步長物理核心，支援多指油門、煞車、撥片換檔、虛擬 AT、合成聲浪和互動 3D 剖面。儀表會顯示上次進退檔前後的 RPM。點按「啟用聲音」後可調整音量，瀏覽器會記住設定。
+手機騎乘控制台，提供 Yamaha R15、R3、R6 RACE、R7、R9、R1，以及 Kawasaki ZX-25R、ZX-4R、ZX-6R 599／636、ZX-10R、ZX-14R、Ninja H2 和 H2R。車型選擇區標示年式與市場。各車共用固定步長物理核心，支援多指油門、煞車、撥片換檔、虛擬 AT、合成聲浪和互動 3D 剖面。H2／H2R 另有獨立的機械增壓聲與葉輪示意。儀表會顯示上次進退檔前後的 RPM。點按「啟用聲音」後可調整音量，瀏覽器會記住設定。
 
 [Vercel 正式站](https://enginesim-ten.vercel.app/) · [M7 HTTPS Preview](https://engine-bb88cxk6b-choco-7242.vercel.app/)
 

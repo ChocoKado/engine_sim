@@ -19,12 +19,18 @@ export function EngineView({ vehicle, snapshot, readState }: {
   const [cutaway, setCutaway] = useState(true);
   const [paused, setPaused] = useState(false);
   const rpm = Math.round(rpmFromRadiansPerSecond(snapshot.engineAngularVelocity));
+  const impellerRpm = Math.round(rpmFromRadiansPerSecond(snapshot.superchargerAngularVelocity));
 
   return (
     <div className="engine-view">
       <EngineScene vehicle={vehicle} readState={readState} cutaway={cutaway} paused={paused} />
       <div className="engine-view-tools">
-        <span className="engine-rpm">{rpm} RPM</span>
+        <div>
+          <span className="engine-rpm">{rpm} RPM</span>
+          {vehicle.supercharger && (
+            <div>增壓葉輪 <span className="impeller-rpm">{impellerRpm.toLocaleString("zh-TW")} RPM</span></div>
+          )}
+        </div>
         <div className="engine-view-actions">
           <button type="button" className="mode-button cutaway-toggle" aria-pressed={cutaway} onClick={() => setCutaway(!cutaway)}>
             剖面
@@ -34,7 +40,11 @@ export function EngineView({ vehicle, snapshot, readState }: {
           </button>
         </div>
       </div>
-      <p className="dashboard-note">拖曳旋轉，雙指或滾輪縮放。連桿尺寸、外殼與汽門正時為示意。{vehicle.geometry.vva && " VVA 切換點待驗。"}</p>
+      <p className="dashboard-note">
+        拖曳旋轉，雙指或滾輪縮放。連桿尺寸、外殼與汽門正時為示意。
+        {vehicle.geometry.vva && " VVA 切換點待驗。"}
+        {vehicle.supercharger && " 增壓葉輪與殼體為示意。"}
+      </p>
     </div>
   );
 }

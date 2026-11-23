@@ -162,3 +162,30 @@ test("pure rolling keeps the R1 wheel tied to road speed through a launch and a 
   }
   assert.equal(state.vehicleSpeed, 0);
 });
+
+test("H2 and H2R drive separate impeller phases at 9.18 times crank speed", () => {
+  const supercharged = vehicles.filter((vehicle) => vehicle.supercharger);
+  assert.deepEqual(supercharged.map(({ id }) => id), ["kawasaki-h2", "kawasaki-h2r"]);
+  const revolution = 2 * Math.PI;
+  for (const vehicle of supercharged) {
+    let state = {
+      ...createSimulationState(vehicle),
+      engineAngularVelocity: 10000 * revolution / 60,
+      crankAngleRad: 2 * revolution - 0.1,
+      superchargerAngleRad: 0.25,
+    };
+    for (const throttle of [1, 0]) {
+      const next = stepSimulation(state, { ...running, throttle }, vehicle);
+      const advance = FIXED_STEP_SECONDS * (state.engineAngularVelocity + next.engineAngularVelocity) / 2;
+      const angle = (state.superchargerAngleRad + 9.18 * advance) % revolution;
+      assert.equal(next.superchargerAngularVelocity, 9.18 * next.engineAngularVelocity);
+      assert.ok(Math.abs(next.superchargerAngleRad - angle) < 1e-10);
+      state = next;
+    }
+  }
+
+  const naturallyAspirated = vehicles.find(({ id }) => id === "kawasaki-zx10r");
+  const runningEngine = simulate(naturallyAspirated, { ...running, throttle: 1 }, 120);
+  assert.equal(runningEngine.superchargerAngularVelocity, 0);
+  assert.equal(runningEngine.superchargerAngleRad, 0);
+});

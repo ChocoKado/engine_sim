@@ -9,6 +9,10 @@ export interface Vehicle {
   readonly engine: string;
   readonly gears: number;
   readonly source: string;
+  readonly supercharger?: {
+    readonly driveRatio: number;
+    readonly audioGain: number;
+  };
   readonly geometry: {
     readonly boreM: number;
     readonly strokeM: number;

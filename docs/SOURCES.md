@@ -45,6 +45,9 @@ R15 與 R3 於 2026-11-23 進行 M6 查核，後續車型列於各階段。引�
 | S37 | 2026 美規 ZX-6R 636 ABS | [規格](https://www.kawasaki.com/en-us/products/ProductSpecSheetPDF/2026-ninja-zx-6r) · [變速箱零件圖](https://www.kawasaki.com/en-us/OwnerCenter/DownloadDiagramPdf/367182?modelcode=ZX636KTFAN&modelyear=2026) · [跨市場減速比參考](https://content2.kawasaki.com/ContentStorage/KMI/PressReleases/24/90c8d926-ddcc-4ba6-9ef4-c02bd214e873.pdf) | 127 hp／13,000 RPM、52.1 lb-ft／10,800 RPM、美規六檔。初級與終傳引用 2024 印尼原廠資料（C 級） |
 | S38 | 2026 歐規 ZX-10R | [規格與齒比](https://www.kawasaki.eu/en/Motorcycles/Supersport_Sport/Ninja_ZX-10R_2026.html/ZX1003ATFAN/ZX1003ATFAN) | 196 PS／13,000 RPM、110 Nm／11,400 RPM、209 kg、全部減速比 |
 | S39 | 2025 美規 ZX-14R ABS | [規格](https://www.kawasaki.com/en-us/products/ProductSpecSheetPDF/2025-ninja-zx-14r-abs) · [變速箱零件圖](https://www.kawasaki.com/en-us/owner-center/parts/348647/2025/ZX1400JSFNL) · [齒盤](https://www.kawasaki.com/en-us/ownercenter/downloaddiagrampdf/348677?modelcode=ZX1400JSFNN&modelyear=2025) · [原廠維修手冊（存檔）](https://manuzoid.com/manuals/BD6Bj-Kawasaki%20Ninja%20ZX-14R%20ABS%20Service%20manual) | 197 hp／10,000 RPM、116.5 lb-ft／7,500 RPM、593.1 lb。初級比引用同平台手冊（C 級） |
+| S40 | 2019 歐規 Ninja H2 道路版 | [原廠規格](https://www.kawasaki.cz/cs/products/Supersport___Sport/2019/Ninja_H2/specifications?Uid=0842WFwLDlkOXFtdUFFZXF0KWQpeUQ5QDg5QUFpaCV1QWV4) | 170 kW／11,500 RPM、141.7 Nm／11,000 RPM、238 kg、終傳 44/18 |
+| S41 | 2026 歐規 Ninja H2R 封閉賽道版 | [原廠規格](https://www.kawasaki.eu/en/Motorcycles/Hypersport/Ninja_H2R_2026.html/ZX1000YTFNN/ZX1000YTFNN) | 228 kW／14,000 RPM、165 Nm／12,500 RPM、216 kg、終傳 42/18 |
+| S42 | Kawasaki 機械增壓器 | [原廠技報第 20 頁](https://global.kawasaki.com/en/corp/rd/magazine/180/pdf/n180en.pdf) · [H2 發表資料](https://content2.kawasaki.com/ContentStorage/KMC/NewsArticles/Media/7ddece22-802a-489a-b943-777f1d7109e8.pdf) | 曲軸經鏈條與行星齒輪總增速 9.18 倍，歷史 H2 葉輪外徑 69 mm |
 
 ### M0 核對的台灣規格（A 級）
 
@@ -58,8 +61,8 @@ R15 與 R3 於 2026-11-23 進行 M6 查核，後續車型列於各階段。引�
 1. **R3 點火**。S04 明示 2026 美規採 180° 曲軸與偏置汽缸。以四行程 720° 與 180° 曲軸推導出 180°／540° 燃燒間隔，台規的汽缸編號順序、點火提前角與幾何尺寸仍標 `unknown`。S25 確認 2026 台灣一般版配有 A&S，滑差特性仍待量測。
 2. **R15 VVA**。S01 與 S23 支持標準版配有 VVA，切換 RPM、遲滯與揚程曲線仍標 `unknown`。S23 第 5-4 頁的 11,500 r/min 是儀表高轉區起點。ECU 斷油點及機械損壞門檻各自待驗證。
 3. **R6/R1**：不同國家可能僅有賽道版、年份又不同；不能宣稱所有版本都 2026 年道路合法販售。
-4. **ZX-6R 599 與 636**：應是**兩個獨立車型版本與來源紀錄**；599 的確切年份、齒比及曲線需在實作前指定，不可拿現行 636 曲線縮小排量。
-5. **H2/H2R**：S17~S19 確認機械增壓，但**增壓器葉輪速比、齒輪嚙合頻率、旁通特性與實際聲波資料**尚未取得。不得把通用 turbo blow-off clip 當作「原廠 H2 聲音」。
+4. **ZX-6R 599 與 636**：S36、S37 分別記錄 2012 年 599 與 2026 年 636 的規格，兩車用不同扭力錨點與齒比。
+5. **H2/H2R**：S42 確認行星齒輪增速後的總速比為 9.18。齒輪嚙合聲壓、旁通、流量圖譜與各版本錄音仍待驗，模擬使用獨立的機械增壓音層。
 6. **所有音檔**：本包未包含任何可直接商用的實錄。YouTube 影片可作人工比較參考，但沒有授權就不能擷取、重發布或作為網站音效資產。
 
 ## 3. 機械與音訊資料最少需要補什麼？
@@ -145,6 +148,11 @@ R15／R3 的初級與終傳比、後輪有效滾動半徑、完整扭矩曲線�
 
 - S34–S39 記錄年式、市場、峰值與傳動比。美規 ZX-4R 使用 56 hp 與美規一檔齒數。ZX-6R 分別採 2012 歐規 599 與 2026 美規 636。ZX-10R 採完整歐規數據，ZX-14R 採有原廠資料的 2025 美規 ABS。
 - 四行程平面曲軸採 180° 等距脈衝。ZX600R 手冊可核對各缸順序，其他車款的缸號安排為 B／D 級示意。各車的斷油、等效慣量、曲線、車體阻力與聲學設定為 C／D 級近似，聲浪待同車實錄校準。
+
+## M10 Ninja H2／H2R（2026-11-24）
+
+- 兩款採非 RAM Air 的原廠峰值，使用各自的終傳比與車重。2019 歐規道路 H2 提供相容的馬力與扭力錨點，2026 歐規 H2R 按封閉賽道版資料。供氣與機械損失已反映在曲線近似，未額外乘算增壓馬力（S40、S41）。
+- 14,000 引擎 RPM 對應 128,520 葉輪 RPM。音層以葉輪軸頻為合成基礎，隨轉速與負載混入高頻及氣流，並以短暫諧波描述高轉急收油。軸頻可計算，音色、收油幅度和 3D 是 D 級示意。[Kawasaki 對 Ninja H2 收油聲的說明](https://www.kawasaki.com/en-us/side-x-side/teryx/teryx-2-5-passenger-supercharged/teryx-h2)
 
 ## 4. 開發者引用習慣
 

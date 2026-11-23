@@ -18,6 +18,37 @@ interface EngineSceneProps {
 const metresToScene = 10;
 const verticalAxis = new THREE.Vector3(0, 1, 0);
 
+function impellerVanes(radius: number) {
+  const vertices: number[] = [];
+  const triangles: number[] = [];
+  const segments = 6;
+  const vaneCount = 12;
+
+  for (let vane = 0; vane < vaneCount; vane += 1) {
+    const innerRadius = vane % 2 === 0 ? 0.22 : 0.52;
+    const start = vertices.length / 3;
+    for (let segment = 0; segment <= segments; segment += 1) {
+      const travel = segment / segments;
+      const distance = radius * (innerRadius + (0.96 - innerRadius) * travel);
+      const sweep = vane * 2 * Math.PI / vaneCount + 0.45 * (distance / radius) ** 2;
+      const height = radius * (0.28 - 0.13 * travel);
+      for (const offset of [-0.038, 0.038]) {
+        vertices.push(distance * Math.cos(sweep + offset), distance * Math.sin(sweep + offset), height);
+      }
+      if (segment > 0) {
+        const index = start + segment * 2;
+        triangles.push(index - 2, index, index + 1, index - 2, index + 1, index - 1);
+      }
+    }
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+  geometry.setIndex(triangles);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 function buildEngine(vehicle: Vehicle) {
   const group = new THREE.Group();
   const cover = new THREE.Group();
@@ -168,9 +199,41 @@ function buildEngine(vehicle: Vehicle) {
     };
   });
 
+  function addSupercharger() {
+    // Scale reference: Kawasaki 2015 Ninja H2 press kit, p. 4. Housing and vane shape are schematic.
+    const impellerRadius = 0.069 * metresToScene / 2;
+    const caseRadius = impellerRadius * 1.2;
+    const centerY = barrelBottom - bore * 0.18;
+    const centerZ = radius + impellerRadius * 0.28;
+    const housing = new THREE.Group();
+    housing.position.set(0, centerY, centerZ);
+    group.add(housing);
+
+    const backplate = cylinder(housing, caseRadius, impellerRadius * 0.43, frame, 0, 0, -impellerRadius * 0.24);
+    backplate.rotation.x = Math.PI / 2;
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(impellerRadius * 1.08, impellerRadius * 0.12, 6, 30), ribs);
+    rim.position.z = impellerRadius * 0.14;
+    housing.add(rim);
+
+    const impeller = new THREE.Group();
+    housing.add(impeller);
+    impeller.add(new THREE.Mesh(impellerVanes(impellerRadius), intakeMetal));
+    const disk = cylinder(impeller, impellerRadius, impellerRadius * 0.08, rodMetal, 0, 0, 0);
+    disk.rotation.x = Math.PI / 2;
+    const hub = cylinder(impeller, impellerRadius * 0.24, impellerRadius * 0.34, pistonMetal, 0, 0, impellerRadius * 0.17);
+    hub.rotation.x = Math.PI / 2;
+
+    const lid = cylinder(cover, caseRadius, impellerRadius * 0.14, frame,
+      0, centerY, centerZ + impellerRadius * 0.40);
+    lid.rotation.x = Math.PI / 2;
+    return impeller;
+  }
+
+  const impeller = vehicle.supercharger ? addSupercharger() : null;
   const rodDirection = new THREE.Vector3();
-  function applyPose(angle: number, engineRpm: number) {
-    const pose = getEnginePose(vehicle, angle, engineRpm);
+  function applyPose(state: SimulationState) {
+    const pose = getEnginePose(vehicle, state.crankAngleRad, rpmFromRadiansPerSecond(state.engineAngularVelocity));
+    if (impeller) impeller.rotation.z = state.superchargerAngleRad;
     for (const cam of cams) cam.rotation.x = pose.camAngleRad;
     for (const [index, parts] of cylinders.entries()) {
       const cylinder = pose.cylinders[index];
@@ -215,7 +278,8 @@ export default function EngineScene({ vehicle, readState, cutaway, paused }: Eng
     canvas.className = "engine-canvas";
     canvas.tabIndex = 0;
     canvas.setAttribute("role", "img");
-    canvas.setAttribute("aria-label", `${vehicle.name} 引擎內構示意，可旋轉及縮放`);
+    const subject = vehicle.supercharger ? "引擎與機械增壓器內構" : "引擎內構";
+    canvas.setAttribute("aria-label", `${vehicle.name} ${subject}示意，可旋轉及縮放`);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     host.appendChild(canvas);
 
@@ -247,7 +311,7 @@ export default function EngineScene({ vehicle, readState, cutaway, paused }: Eng
     let lost = false;
     let dirty = true;
     let previousState = options.current.readState();
-    engine.applyPose(previousState.crankAngleRad, rpmFromRadiansPerSecond(previousState.engineAngularVelocity));
+    engine.applyPose(previousState);
     engine.cover.visible = !options.current.cutaway;
 
     function onOrbit() { dirty = true; }
@@ -258,8 +322,10 @@ export default function EngineScene({ vehicle, readState, cutaway, paused }: Eng
       const current = options.current;
       if (!current.paused) {
         const state = current.readState();
-        if (state.crankAngleRad !== previousState.crankAngleRad || state.engineAngularVelocity !== previousState.engineAngularVelocity) {
-          engine.applyPose(state.crankAngleRad, rpmFromRadiansPerSecond(state.engineAngularVelocity));
+        if (state.crankAngleRad !== previousState.crankAngleRad
+          || state.engineAngularVelocity !== previousState.engineAngularVelocity
+          || state.superchargerAngleRad !== previousState.superchargerAngleRad) {
+          engine.applyPose(state);
           previousState = state;
           dirty = true;
         }

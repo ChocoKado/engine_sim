@@ -68,6 +68,7 @@ export function useEngineAudio(vehicle: Vehicle) {
       type: "state",
       angleRad: state.crankAngleRad,
       angularVelocity: state.engineAngularVelocity,
+      superchargerAngularVelocity: state.superchargerAngularVelocity,
       throttle: state.throttle,
       combustion: Math.min(1, state.combustionTorqueNm / peakTorqueNm),
       shiftCut: state.shiftCut,
@@ -127,7 +128,11 @@ export function useEngineAudio(vehicle: Vehicle) {
             numberOfInputs: 0,
             numberOfOutputs: 1,
             outputChannelCount: [1],
-            processorOptions: { ...vehicle.audio, exhaustOpeningRad: VALVE_EVENTS.exhaust.opensDegrees * Math.PI / 180 },
+            processorOptions: {
+              ...vehicle.audio,
+              exhaustOpeningRad: VALVE_EVENTS.exhaust.opensDegrees * Math.PI / 180,
+              supercharger: vehicle.supercharger,
+            },
           });
           node.connect(gain);
           return node;

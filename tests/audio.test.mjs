@@ -11,7 +11,7 @@ const cycleRadians = 4 * Math.PI;
 const exhaustOpeningRad = VALVE_EVENTS.exhaust.opensDegrees * Math.PI / 180;
 const script = readFileSync(new URL("../public/engine-sound-processor.js", import.meta.url), "utf8");
 
-function captureAudio(vehicle) {
+function captureAudio(vehicle, audioOptions = {}) {
   let Processor;
   const context = vm.createContext({
     sampleRate: rate,
@@ -23,7 +23,9 @@ function captureAudio(vehicle) {
     },
   });
   vm.runInContext(script, context);
-  const processor = new Processor({ processorOptions: { ...vehicle.audio, exhaustOpeningRad } });
+  const processor = new Processor({
+    processorOptions: { ...vehicle.audio, exhaustOpeningRad, supercharger: vehicle.supercharger, ...audioOptions },
+  });
   const pulses = [];
   let sample = 0;
   const advance = processor.advanceCrank.bind(processor);
@@ -183,4 +185,48 @@ test("combustion cut softens exhaust; loss of telemetry fades sound to silence",
   assert.ok(rms(cut) < rms(normal) * 0.65);
   assert.ok(rms(cut) > rms(normal) * 0.3);
   assert.ok(audio.blocks(320).slice(-2048).every((sample) => Math.abs(sample) < 0.0001));
+});
+
+function frequencyAmplitude(signal, frequency) {
+  const radiansPerSample = frequency * 2 * Math.PI / rate;
+  let cosine = 0;
+  let sine = 0;
+  for (let index = 0; index < signal.length; index += 1) {
+    const phase = radiansPerSample * index;
+    cosine += signal[index] * Math.cos(phase);
+    sine += signal[index] * Math.sin(phase);
+  }
+  return 2 * Math.hypot(cosine, sine) / signal.length;
+}
+
+test("mechanical supercharger follows the supplied shaft speed and still spins under fuel cut", () => {
+  const vehicle = vehicles.find(({ id }) => id === "yamaha-r6");
+  const supercharger = { driveRatio: 9.2, audioGain: 0.23 };
+  const rpm = 6000;
+  const shaftFrequency = 1130;
+  const shaftTelemetry = { rpm, superchargerAngularVelocity: shaftFrequency * 2 * Math.PI };
+  const loaded = { ...shaftTelemetry, throttle: 0.9, combustion: 0.85, load: 0.8 };
+  const coast = { ...shaftTelemetry, throttle: 0, combustion: 0, load: 0.35 };
+  const render = (controls, options) => captureAudio(vehicle, options).blocks(260, controls).slice(-9600);
+  const loadedSignal = render(loaded, { supercharger });
+  const loadedBase = render(loaded, { supercharger: { ...supercharger, audioGain: 0 } });
+  const coastSignal = render(coast, { supercharger });
+  const coastBase = render(coast, { supercharger: { ...supercharger, audioGain: 0 } });
+  const loadedWhine = loadedSignal.map((sample, index) => sample - loadedBase[index]);
+  const coastWhine = coastSignal.map((sample, index) => sample - coastBase[index]);
+  const measured = frequencyAmplitude(loadedWhine, shaftFrequency);
+  const coasting = frequencyAmplitude(coastWhine, shaftFrequency);
+  assert.ok(measured > 0.012);
+  assert.ok(measured > frequencyAmplitude(loadedWhine, rpm * supercharger.driveRatio / 60) * 10);
+  assert.ok(coasting > measured * 0.22 && coasting < measured * 0.8);
+  assertBounded(loadedSignal);
+  assertBounded(coastSignal);
+  assert.deepEqual(loadedBase, render(loaded, {}));
+  assert.deepEqual(loadedBase, render({ ...loaded, superchargerAngularVelocity: 0 }, { supercharger }));
+
+  const { superchargerAngularVelocity, ...legacyState } = loaded;
+  const fallbackFrequency = rpm * supercharger.driveRatio / 60;
+  const fallback = render(legacyState, { supercharger });
+  const fallbackWhine = fallback.map((sample, index) => sample - loadedBase[index]);
+  assert.ok(frequencyAmplitude(fallbackWhine, fallbackFrequency) > 0.012);
 });
