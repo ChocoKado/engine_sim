@@ -5,6 +5,8 @@ const MAX_EXTRAPOLATION_SECONDS = 0.045;
 const MAX_OUTPUT = 0.38;
 const REVOLUTION_RAD = 2 * Math.PI;
 const RADIANS_PER_SECOND_TO_RPM = 60 / REVOLUTION_RAD;
+const BASELINE_VOICING = { body: 1, harmonics: 1, reflection: 1, pulseTail: 1, turbulence: 1 };
+const VOICING_CHANNELS = Object.keys(BASELINE_VOICING);
 
 function clamp(value, minimum, maximum) {
   return Math.min(maximum, Math.max(minimum, value));
@@ -167,7 +169,8 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
     this.pressureNoiseBaselineSmoothing = frequencyFactor(950);
     this.pressureNoiseSmoothing = frequencyFactor(4400);
     this.pressureFrontDecay = 1 - smoothingFactor(0.00028);
-    this.pressureTailDecay = 1 - smoothingFactor(0.0021);
+    this.voicing = { ...BASELINE_VOICING };
+    this.targetVoicing = BASELINE_VOICING;
     this.dcSmoothing = frequencyFactor(22);
     this.outputSmoothing = frequencyFactor(5800);
     this.throttleAttack = smoothingFactor(0.045);
@@ -206,6 +209,13 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
     this.filteredOutput = 0;
 
     this.port.onmessage = ({ data }) => {
+      if (data?.type === "tuning") {
+        const voicing = data.voicing;
+        if (voicing && VOICING_CHANNELS.every((channel) => Number.isFinite(voicing[channel]))) {
+          this.targetVoicing = Object.fromEntries(VOICING_CHANNELS.map((channel) => [channel, clamp(voicing[channel], 0.45, 1.6)]));
+        }
+        return;
+      }
       if (data?.type === "reset-clock") {
         this.telemetryQueue.length = 0;
         this.previousTelemetry = null;
@@ -267,6 +277,11 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
     const channels = outputs[0];
     const output = channels?.[0];
     if (!output) return true;
+
+    const voicing = this.voicing;
+    const voicingRate = 1 - Math.exp(-output.length / (sampleRate * 0.045));
+    for (const channel of VOICING_CHANNELS) voicing[channel] += voicingRate * (this.targetVoicing[channel] - voicing[channel]);
+    const pressureTailDecay = 1 - smoothingFactor(0.0021 * voicing.pulseTail);
 
     const playheadTime = currentTime - TELEMETRY_DELAY_SECONDS;
     const endTime = playheadTime + output.length / sampleRate;
@@ -355,16 +370,17 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
       // A short pressure envelope excites broadband turbulence as exhaust flow starts.
       const pressureBurst = pumping * 0.55 + charge;
       this.pressureFront = (this.pressureFront + pressureBurst) * this.pressureFrontDecay;
-      this.pressureTail = (this.pressureTail + pressureBurst) * this.pressureTailDecay;
+      this.pressureTail = (this.pressureTail + pressureBurst) * pressureTailDecay;
       this.pressureLowPass += this.pressureNoiseSmoothing * (noise - this.pressureLowPass);
       const turbulence = this.pressureLowPass - this.pressureNoiseBaseline;
-      const blowdown = (this.pressureTail - this.pressureFront) * (0.09 + 0.08 * brightness + turbulence * (0.49 + 0.45 * brightness));
+      const blowdown = (this.pressureTail - this.pressureFront)
+        * (0.09 + 0.08 * brightness + turbulence * (0.49 + 0.45 * brightness) * voicing.turbulence);
 
       // A firm cut darkens the exhaust briefly while the timed air pulses continue.
       const cut = clamp((this.shiftCut - 0.18) / 0.72, 0, 1);
       const cutTone = cut * cut * (3 - 2 * cut);
-      const exhaustBody = (body + deeperBody) * (1 - 0.06 * cutTone);
-      const exhaustHarmonics = (overtone + edge) * (1 - 0.32 * cutTone);
+      const exhaustBody = (body + deeperBody) * (1 - 0.06 * cutTone) * voicing.body;
+      const exhaustHarmonics = (overtone + edge) * (1 - 0.32 * cutTone) * voicing.harmonics;
       const exhaust = (exhaustBody + exhaustHarmonics) * 0.87 + blowdown * (1 - 0.25 * cutTone);
       const delayedPressure = this.exhaustDelay[this.exhaustDelayIndex];
       this.exhaustDelay[this.exhaustDelayIndex] = exhaust;
@@ -374,13 +390,13 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
       // The returning pressure wave from an open end is inverted and attenuated.
       const closingThrottle = running ? Math.max(0, this.throttle - throttle) : 0;
       const whine = supercharger ? supercharger.render(shaftTarget + index * shaftIncrement, this.throttle, this.load, turbulence, closingThrottle) : 0;
-      const mix = 0.96 * exhaust - 0.12 * this.reflectedPressure + whine;
+      const mix = 0.96 * exhaust - 0.12 * this.reflectedPressure * voicing.reflection + whine;
       this.dcMean += this.dcSmoothing * (mix - this.dcMean);
       this.filteredOutput += this.outputSmoothing * (mix - this.dcMean - this.filteredOutput);
       let normalized = this.filteredOutput / (1 + Math.abs(this.filteredOutput));
       if (this.collectorBody) {
         const collectorPressure = this.collectorBody.render(exhaust, pressure, this.nextFiringIndex, rpm);
-        const extension = collectorPressure * 0.50 * (1 - 0.76 * brightness - 0.12 * cutTone);
+        const extension = collectorPressure * 0.50 * (1 - 0.76 * brightness - 0.12 * cutTone) * voicing.body;
         // Give the body its own soft knee so low frequencies don't compress the exhaust edge or whine.
         const direction = extension < 0 ? -1 : 1;
         const headroom = 1 - direction * normalized;

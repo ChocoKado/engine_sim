@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Vehicle } from "../data/vehicles";
+import type { TuningProfile } from "../data/tuning";
 import type { SimulationState } from "../lib/simulation";
 import { VALVE_EVENTS } from "../lib/kinematics";
 import { getOverallRatio } from "../lib/transmission";
@@ -23,13 +24,19 @@ function fade({ context, gain }: AudioGraph, target: number) {
   gain.gain.setTargetAtTime(target, now, 0.035);
 }
 
-export function useEngineAudio(vehicle: Vehicle) {
+export function useEngineAudio(vehicle: Vehicle, tuning: TuningProfile) {
   const [audioStatus, setAudioStatus] = useState<AudioStatus>("muted");
   const [volume, setVolume] = useState(DEFAULT_VOLUME);
   const graph = useRef<AudioGraph | null>(null);
   const requested = useRef(false);
   const volumeRef = useRef(DEFAULT_VOLUME);
   const latestState = useRef<{ state: SimulationState; timestampMs: number } | null>(null);
+  const latestVoicing = useRef(tuning.voicing);
+
+  useEffect(() => {
+    latestVoicing.current = tuning.voicing;
+    graph.current?.node?.port.postMessage({ type: "tuning", voicing: tuning.voicing });
+  }, [tuning]);
 
   const applyVolume = useCallback((nextVolume: number) => {
     if (!Number.isFinite(nextVolume)) return;
@@ -167,6 +174,7 @@ export function useEngineAudio(vehicle: Vehicle) {
       activated.node = node;
       activated.clockOffsetSeconds = undefined;
       node.port.postMessage({ type: "reset-clock" });
+      node.port.postMessage({ type: "tuning", voicing: latestVoicing.current });
       node.onprocessorerror = () => {
         if (graph.current !== activated) return;
         requested.current = false;

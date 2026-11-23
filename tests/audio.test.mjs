@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import { vehicles } from "../data/vehicles.ts";
+import { tuningProfiles } from "../data/tuning.ts";
 import { VALVE_EVENTS } from "../lib/kinematics.ts";
 import { createSimulationState, FIXED_STEP_SECONDS, INITIAL_SIMULATION_INPUT, stepSimulation } from "../lib/simulation.ts";
 import { enqueueShift, getOverallRatio } from "../lib/transmission.ts";
@@ -74,7 +75,10 @@ function captureAudio(vehicle, audioOptions = {}, trackPitch = false) {
     return signal;
   }
 
-  return { blocks, pulses, pitch };
+  return {
+    blocks, pulses, pitch,
+    setTuning: (voicing) => processor.port.onmessage({ data: { type: "tuning", voicing } }),
+  };
 }
 
 function rms(signal) {
@@ -118,6 +122,24 @@ function bandRms(signal, lowerHz, upperHz) {
 function assertBounded(signal) {
   assert.ok(signal.every((sample) => Number.isFinite(sample) && Math.abs(sample) < 0.38));
 }
+
+test("live tuning alters the exhaust spectrum without interrupting its firing clock", () => {
+  const vehicle = vehicles.find(({ id }) => id === "yamaha-r9");
+  const control = { rpm: 9300, throttle: 0.85, combustion: 0.8, load: 0.7 };
+  const signals = tuningProfiles.map((profile) => {
+    const audio = captureAudio(vehicle);
+    audio.blocks(150, control);
+    audio.setTuning(profile.voicing);
+    const samples = audio.blocks(175, control);
+    assertBounded(samples);
+    assert.ok(samples.some((sample) => Math.abs(sample) > 0.01));
+    return { samples: samples.slice(-8192), pulses: audio.pulses };
+  });
+  const [baseline, baffled, open, intake] = signals;
+  for (const signal of signals.slice(1)) assert.deepEqual(signal.pulses, baseline.pulses);
+  assert.ok(upperBandShare(open.samples) > 1.08 * upperBandShare(baffled.samples));
+  assert.notDeepEqual(intake.samples, baseline.samples);
+});
 
 const firingIntervals = {
   "yamaha-r15": [1920],

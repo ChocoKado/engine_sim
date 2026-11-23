@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent, PointerEvent, ReactNode } from "react";
+import { tuningProfiles } from "../data/tuning";
+import type { TuningProfile } from "../data/tuning";
 import type { AudioStatus } from "../hooks/useEngineAudio";
 import type { SimulationInput } from "../lib/simulation";
 
@@ -17,6 +19,8 @@ interface RidingControlsProps {
   audioStatus: AudioStatus;
   volume: number;
   onVolumeChange: (value: number) => void;
+  tuning: TuningProfile;
+  onTuningChange: (tuning: TuningProfile) => void;
   onToggleAudio: () => void;
   onShift: (direction: -1 | 1) => void;
   onPedalChange: (pedal: Pedal, pressed: boolean) => void;
@@ -222,7 +226,7 @@ const audioLabels: Record<AudioStatus, string> = {
 
 export function RidingControls({
   engineOn, engineFailed, shiftMode, onToggleEngine, onReset, audioStatus, onToggleAudio,
-  volume, onVolumeChange, onShift, onPedalChange, resetKey,
+  volume, onVolumeChange, tuning, onTuningChange, onShift, onPedalChange, resetKey,
 }: RidingControlsProps) {
   return (
     <section
@@ -275,6 +279,24 @@ export function RidingControls({
           onChange={(event) => onVolumeChange(event.currentTarget.valueAsNumber)}
         />
         <span className="volume-value" aria-hidden="true">{volume}%</span>
+      </div>
+      <div className="tuning-controls">
+        <label htmlFor="engine-voicing">合成音色</label>
+        <div className="tuning-select-wrap">
+          <select
+            className="tuning-select"
+            id="engine-voicing"
+            value={tuning.id}
+            onChange={(event) => {
+              const next = tuningProfiles.find((profile) => profile.id === event.currentTarget.value);
+              if (next) onTuningChange(next);
+            }}
+          >
+            {tuningProfiles.map((profile) => (
+              <option key={profile.id} value={profile.id}>{profile.label} · {profile.version}</option>
+            ))}
+          </select>
+        </div>
       </div>
     </section>
   );

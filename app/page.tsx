@@ -4,6 +4,8 @@ import { useState } from "react";
 import type { CSSProperties } from "react";
 import { EngineView } from "../components/EngineView";
 import { RidingControls, ShiftModeControls } from "../components/RidingControls";
+import { tuningProfiles } from "../data/tuning";
+import type { TuningProfile } from "../data/tuning";
 import { vehicles } from "../data/vehicles";
 import type { Vehicle } from "../data/vehicles";
 import { useEngineAudio } from "../hooks/useEngineAudio";
@@ -41,7 +43,8 @@ function Tachometer({ rpm, referenceRpm }: { rpm: number; referenceRpm: number }
 
 function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
   const [showEngine, setShowEngine] = useState(false);
-  const { audioStatus, sendAudioState, toggleAudio, volume, changeVolume } = useEngineAudio(vehicle);
+  const [tuning, setTuning] = useState<TuningProfile>(tuningProfiles[0]);
+  const { audioStatus, sendAudioState, toggleAudio, volume, changeVolume } = useEngineAudio(vehicle, tuning);
   const { snapshot, readState, pedalReset, setPedal, shift, setShiftMode, toggleEngine, resetSimulation } = useSimulation(vehicle, sendAudioState);
   const { engineAngularVelocity, vehicleSpeed, gear, engineOn, shiftMode, shift: pendingShift, lastShift, engineFailed } = snapshot;
 
@@ -108,6 +111,8 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
         onToggleAudio={toggleAudio}
         volume={volume}
         onVolumeChange={changeVolume}
+        tuning={tuning}
+        onTuningChange={setTuning}
         onShift={shift}
         onPedalChange={setPedal}
         resetKey={pedalReset}
