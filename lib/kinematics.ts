@@ -28,7 +28,8 @@ export function getEnginePose(vehicle: Vehicle, crankAngleRad: number, engineRpm
   const vvaMode = !vva ? null : vva.switchRpm === null ? "unknown" : engineRpm >= vva.switchRpm ? "high" : "low";
   const intakeMaximum = vvaMode === "high" && vva ? vva.highIntakeLiftM : intakeLiftM;
 
-  const cylinders = vehicle.audio.firingAnglesRad.map((firingAngle) => {
+  const firingAngles = vehicle.geometry.cylinderFiringAnglesRad ?? vehicle.audio.firingAnglesRad;
+  const cylinders = firingAngles.map((firingAngle) => {
     const localAngle = wrapCycle(angle - firingAngle);
     const crankPinYM = crankRadius * Math.cos(localAngle);
     const crankPinZM = crankRadius * Math.sin(localAngle);

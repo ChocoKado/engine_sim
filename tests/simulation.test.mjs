@@ -33,6 +33,13 @@ function rollingInSecond(vehicle) {
 }
 
 for (const vehicle of vehicles) {
+  test(`${vehicle.name}: neutral throttle reaches 10,000 RPM without moving the wheel`, () => {
+    const idle = simulate(vehicle, running, 240);
+    const revving = simulate(vehicle, { ...running, throttle: 1 }, 174, idle);
+    assert.ok(rpmFromRadiansPerSecond(revving.engineAngularVelocity) >= 10_000);
+    assert.equal(revving.wheelAngularVelocity, 0);
+  });
+
   test(`${vehicle.name}: neutral revs independently of wheel speed and brakes`, () => {
     const idle = simulate(vehicle, running, 240);
     assert.ok(Math.abs(rpmFromRadiansPerSecond(idle.engineAngularVelocity) - vehicle.physics.idleRpm) < 1);
@@ -50,7 +57,7 @@ for (const vehicle of vehicles) {
     assert.equal(neutralBrake.engineAngularVelocity, neutralCoast.engineAngularVelocity);
   });
 
-  test(`${vehicle.name}: first-gear launch uses finite slip and pure rolling`, () => {
+  test(`${vehicle.name}: first-gear launch transfers torque through a slipping clutch`, () => {
     const idle = simulate(vehicle, running, 120);
     const input = { ...running, throttle: 1 };
     const firstGear = { ...idle, gear: 1 };
@@ -60,7 +67,9 @@ for (const vehicle of vehicles) {
     assert.ok(launch.vehicleSpeed > 1);
     assert.ok(launch.drivetrainTorqueNm > 0);
     assert.ok(launch.clutchSlipRadPerSecond > 0);
-    assert.equal(launch.vehicleSpeed, launch.wheelAngularVelocity * vehicle.physics.rollingRadiusM);
+    const wheelSurfaceSpeed = launch.wheelAngularVelocity * vehicle.physics.rollingRadiusM;
+    assert.ok(wheelSurfaceSpeed + 1e-9 >= launch.vehicleSpeed);
+    assert.ok(launch.tireSlipRatio >= -1e-9 && launch.tireSlipRatio < 1);
     assert.ok(launch.crankAngleRad >= 0 && launch.crankAngleRad < 4 * Math.PI);
   });
 

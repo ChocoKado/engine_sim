@@ -27,7 +27,8 @@ function buildEngine(vehicle: Vehicle) {
   const throwRadius = vehicle.geometry.strokeM * metresToScene / 2;
   const rodLength = vehicle.geometry.rodLengthM * metresToScene;
   const spacing = vehicle.geometry.cylinderSpacingM * metresToScene;
-  const count = vehicle.audio.firingAnglesRad.length;
+  const firingAngles = vehicle.geometry.cylinderFiringAnglesRad ?? vehicle.audio.firingAnglesRad;
+  const count = firingAngles.length;
   const width = (count - 1) * spacing + bore * 1.28;
   const radius = bore * 0.61;
   const barrelBottom = rodLength - throwRadius - bore * 0.21;
@@ -99,7 +100,7 @@ function buildEngine(vehicle: Vehicle) {
         const intake = valveType === "intake";
         const { opensDegrees, closesDegrees } = VALVE_EVENTS[valveType];
         const liftPeakRad = (opensDegrees + closesDegrees) * Math.PI / 360;
-        const eccentricAngle = Math.PI - (liftPeakRad + vehicle.audio.firingAnglesRad[index]) / 2;
+        const eccentricAngle = Math.PI - (liftPeakRad + firingAngles[index]) / 2;
         const eccentricity = bore * 0.055;
         const lobe = cylinder(cam, bore * 0.11, bore * 0.115, intake ? intakeMetal : exhaustMetal,
           x + bore * (intake ? -0.2 : 0.2), Math.cos(eccentricAngle) * eccentricity, Math.sin(eccentricAngle) * eccentricity);

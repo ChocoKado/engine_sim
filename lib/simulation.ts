@@ -30,6 +30,7 @@ export interface SimulationState extends SimulationInput, TransmissionState {
   readonly crankAngleRad: number;
   readonly engineTorqueNm: number;
   readonly combustionTorqueNm: number;
+  readonly shiftCut: number;
   readonly drivetrainTorqueNm: number;
   readonly clutchSlipRadPerSecond: number;
   readonly tireSlipRatio: number;
@@ -58,6 +59,7 @@ export function createSimulationState(vehicle: Vehicle): SimulationState {
     crankAngleRad: 0,
     engineTorqueNm: 0,
     combustionTorqueNm: 0,
+    shiftCut: 0,
     drivetrainTorqueNm: 0,
     clutchSlipRadPerSecond: 0,
     tireSlipRatio: 0,
@@ -148,7 +150,8 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
   const highRpmTaper = 1 - unitInterval((rpm - physics.peakPowerRpm) / (physics.fuelCutRpm - physics.peakPowerRpm));
   const availableCombustion = (fullThrottleTorqueNm(rpm, physics) + friction) * highRpmTaper;
   const idleCombustion = Math.min(0.65 * availableCombustion, Math.max(0, friction + pumping + 0.42 * (idleSpeed - engineSpeed)));
-  const matchingCombustion = availableCombustion * unitInterval((revMatchRpm - rpm) / 1400);
+  const matchingCharge = unitInterval((revMatchRpm - rpm) / 1400);
+  const matchingCombustion = availableCombustion * matchingCharge;
   const combustion = engineOn
     ? Math.max(throttle * availableCombustion * combustionScale, idleCombustion * combustionScale, matchingCombustion)
     : 0;
@@ -161,7 +164,9 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
   const fullCapacity = slip < 0 ? physics.slipperCapacityNm : physics.clutchCapacityNm;
   const capacity = fullCapacity * Math.max(launchEngagement, rollingEngagement) * clutchScale;
   // A finite-capacity friction coupling can push or back-drive the engine without snapping RPM to wheel speed.
-  const torqueToSynchronize = Math.abs(slip) / (dt * (1 / physics.engineInertiaKgM2 + ratio ** 2 / physics.wheelInertiaKgM2));
+  const roadMassInertia = (physics.curbMassKg + RIDER_MASS_KG) * physics.rollingRadiusM ** 2;
+  const effectiveWheelInertia = physics.wheelInertiaKgM2 + roadMassInertia * (1 - unitInterval(Math.abs(state.tireSlipRatio) / 0.1));
+  const torqueToSynchronize = Math.abs(slip) / (dt * (1 / physics.engineInertiaKgM2 + ratio ** 2 / effectiveWheelInertia));
   const clutchTorque = engineOn && gear !== 0
     ? Math.sign(slip) * Math.min(Math.abs(slip) * physics.clutchDampingNmPerRadPerSecond, capacity, torqueToSynchronize)
     : 0;
@@ -176,6 +181,10 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
   const damageRate = Math.max(0, (nextRpm / physics.referenceRpm - 1.10) / 0.10);
   const damageExposure = Math.min(1, state.damageExposure + (mechanicalOverRev && engineOn ? dt * damageRate : 0));
   const engineFailed = state.engineFailed || damageExposure >= 1;
+  const activeShift = transmission.shift;
+  const shiftCut = engineOn && activeShift && activeShift.fromGear > 0 && activeShift.targetGear > 0
+    ? throttle * (1 - combustionScale) * (1 - matchingCharge)
+    : 0;
 
   return {
     ...transmission,
@@ -188,6 +197,7 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
     crankAngleRad: (state.crankAngleRad + dt * (engineSpeed + nextEngineSpeed) / 2) % RAD_PER_ENGINE_CYCLE,
     engineTorqueNm: engineTorque,
     combustionTorqueNm: combustion,
+    shiftCut,
     drivetrainTorqueNm: drivetrainTorque,
     clutchSlipRadPerSecond: gear === 0 || !engineOn ? 0 : nextEngineSpeed - road.wheelAngularVelocity * ratio,
     mechanicalOverRev,

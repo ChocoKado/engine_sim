@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Vehicle } from "../data/vehicles";
 import type { SimulationState } from "../lib/simulation";
+import { VALVE_EVENTS } from "../lib/kinematics";
 import { getOverallRatio } from "../lib/transmission";
 
 export type AudioStatus = "muted" | "starting" | "enabled" | "paused" | "unavailable";
@@ -69,6 +70,7 @@ export function useEngineAudio(vehicle: Vehicle) {
       angularVelocity: state.engineAngularVelocity,
       throttle: state.throttle,
       combustion: Math.min(1, state.combustionTorqueNm / peakTorqueNm),
+      shiftCut: state.shiftCut,
       load: ratio ? Math.min(1, Math.abs(state.drivetrainTorqueNm) / (ratio * peakTorqueNm)) : 0,
       engineOn: state.engineOn,
       contextTime: audio.context.currentTime,
@@ -125,7 +127,7 @@ export function useEngineAudio(vehicle: Vehicle) {
             numberOfInputs: 0,
             numberOfOutputs: 1,
             outputChannelCount: [1],
-            processorOptions: vehicle.audio,
+            processorOptions: { ...vehicle.audio, exhaustOpeningRad: VALVE_EVENTS.exhaust.opensDegrees * Math.PI / 180 },
           });
           node.connect(gain);
           return node;

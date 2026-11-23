@@ -3,10 +3,12 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import { vehicles } from "../data/vehicles.ts";
+import { VALVE_EVENTS } from "../lib/kinematics.ts";
 
 const rate = 48000;
 const blockSize = 128;
 const cycleRadians = 4 * Math.PI;
+const exhaustOpeningRad = VALVE_EVENTS.exhaust.opensDegrees * Math.PI / 180;
 const script = readFileSync(new URL("../public/engine-sound-processor.js", import.meta.url), "utf8");
 
 function captureAudio(vehicle) {
@@ -21,7 +23,7 @@ function captureAudio(vehicle) {
     },
   });
   vm.runInContext(script, context);
-  const processor = new Processor({ processorOptions: vehicle.audio });
+  const processor = new Processor({ processorOptions: { ...vehicle.audio, exhaustOpeningRad } });
   const pulses = [];
   let sample = 0;
   const advance = processor.advanceCrank.bind(processor);
@@ -87,18 +89,31 @@ function assertBounded(signal) {
   assert.ok(signal.every((sample) => Number.isFinite(sample) && Math.abs(sample) < 0.30));
 }
 
-for (const [index, vehicle] of vehicles.entries()) {
-  test(`${vehicle.name}: correct 720-degree firing intervals and bounded output`, () => {
+const firingIntervals = {
+  "yamaha-r15": [1920],
+  "yamaha-r3": [480, 1440],
+  "yamaha-r6": [480, 480, 480, 480],
+  "yamaha-r7": [720, 1200],
+  "yamaha-r9": [640, 640, 640],
+  "yamaha-r1": [720, 480, 240, 480],
+};
+
+for (const vehicle of vehicles) {
+  test(`${vehicle.name}: pressure starts at exhaust opening and keeps the firing intervals`, () => {
     const audio = captureAudio(vehicle);
     const signal = audio.blocks(120, {});
     const gaps = audio.pulses.slice(1).map((pulse, position) => pulse - audio.pulses[position]);
-    const required = index === 0 ? [1920] : [480, 1440];
+    const required = firingIntervals[vehicle.id];
+    const expectedFirstPulse = Math.ceil(exhaustOpeningRad / (100 * Math.PI) * rate) - 1;
+    assert.ok(Math.abs(audio.pulses[0] - expectedFirstPulse) <= 1);
     assert.ok(gaps.length > 5);
     assert.ok(gaps.every((gap, position) => Math.abs(gap - required[position % required.length]) <= 1), gaps.join(","));
     assertBounded(signal);
     assert.ok(signal.some((sample) => Math.abs(sample) > 0.005));
   });
+}
 
+for (const vehicle of vehicles.slice(0, 2)) {
   test(`${vehicle.name}: idle is audible and throttle lift keeps the exhaust present`, () => {
     const idle = captureAudio(vehicle).blocks(250, { rpm: 1500, throttle: 0, combustion: 0.15, load: 0 }).slice(-8192);
     assert.ok(rms(idle) > 0.009);
@@ -128,6 +143,35 @@ for (const [index, vehicle] of vehicles.entries()) {
     assertBounded(mid);
     assertBounded(high);
     assertBounded(top);
+  });
+
+  test(`${vehicle.name}: 85 ms shift cut changes the sound without losing the exhaust beat`, () => {
+    const rpm = 8500;
+    const drive = { rpm, throttle: 0.90, combustion: 0.88, load: 0.78 };
+    const unloading = { ...drive, combustion: 0.08, load: 0.18 };
+    const cycleSamples = Math.round(rate * 120 / rpm);
+    const audio = captureAudio(vehicle);
+    const steadyRms = rms(audio.blocks(190, drive).slice(-cycleSamples * 8));
+    const shift = audio.blocks(32, { ...unloading, shiftCut: 0.90 });
+    const recovered = audio.blocks(36, drive);
+
+    const slowResponse = captureAudio(vehicle);
+    slowResponse.blocks(190, drive);
+    const rawCombustionChange = slowResponse.blocks(32, unloading);
+    slowResponse.blocks(36, drive);
+    assert.deepEqual(audio.pulses, slowResponse.pulses);
+
+    const quickRatio = rms(shift.slice(0, cycleSamples * 2)) / rms(rawCombustionChange.slice(0, cycleSamples * 2));
+    assert.ok(quickRatio < 0.94, `shift cue did not respond quickly: ${quickRatio}`);
+    const cutRatio = rms(shift.slice(-cycleSamples * 2)) / steadyRms;
+    assert.ok(cutRatio > 0.55 && cutRatio < 0.86, `shift/drive RMS ratio: ${cutRatio}`);
+    for (let offset = 0; offset + cycleSamples <= shift.length; offset += cycleSamples) {
+      assert.ok(rms(shift.slice(offset, offset + cycleSamples)) > steadyRms * 0.50);
+    }
+    const recoveryRatio = rms(recovered.slice(cycleSamples * 2, cycleSamples * 4)) / steadyRms;
+    assert.ok(recoveryRatio > 0.87 && recoveryRatio < 1.10, `recovered/drive RMS ratio: ${recoveryRatio}`);
+    assertBounded(shift);
+    assertBounded(recovered);
   });
 }
 

@@ -35,6 +35,10 @@
 | S27 | Yamaha R3 ABS 2026 日本 | https://www.yamaha-motor.co.jp/mc/spec-data/secret/yzf-r3-2026.html | 初級與終傳齒數，台版暫用參考 |
 | S28 | Web Audio AudioWorklet | https://www.w3.org/TR/webaudio/#AudioWorkletGlobalScope | 音訊時基與處理介面 |
 | S29 | 台灣山葉原廠零件查詢 | https://www.yamaha-motor.com.tw/accerssie/partsSearch | 查詢對應台灣車型零件需引擎號碼或車身號碼 |
+| S30 | Yamaha 2026 歐規 R6 RACE 型錄 | [歐洲型錄](https://www.yamaha-motor.eu/content/dam/yme/language-masters/en/eicma-2025/digital-brochures/2026_EICMA_MC_BROCHURE_EN.pdf) | 峰值、排氣量、缸徑與行程、裝備重量與輪胎 |
+| S31 | 2026 台規 R7 車主手冊 | [D42-28199-T0](https://www.yamaha-motor.com.tw/assets/images/motor/YZF-R7-2026/D42-28199-T0.pdf) | 六檔齒比、儀表紅區 |
+| S32 | 2026 歐規 R9 型錄、台規手冊 | [型錄](https://cdn2.yamaha-motor.eu/prod/product-assets/2026/YZF900R9/Factsheets/2026-YZF900R9_en.pdf) · [BKN-28199-T1](https://www.yamaha-motor.com.tw/assets/images/motor/YZF-R9-2025/BKN-28199-T1.pdf) | 歐規全功率峰值、台規六檔傳動與儀表紅區參考 |
+| S33 | 2020 日規 R1 ABS 與 Yamaha 十字曲軸技報 | [規格](https://global.yamaha-motor.com/jp/news/2020/0528/yzf-r1.html) · [原廠技報圖 5](https://global.yamaha-motor.com/jp/design_technology/technical/product/pdf/browse/45ss01.pdf) | 日規車身、引擎與傳動資料，十字曲軸點火順序 |
 
 ### M0 核對的台灣規格（A 級）
 
@@ -108,6 +112,24 @@ R15／R3 的初級與終傳比、後輪有效滾動半徑、完整扭矩曲線�
 
 - 參考程序合成如何將汽缸事件、進排氣和機械聲分開，以及如何讓排氣共鳴跟隨燃燒脈衝與斷油狀態。[Baldan 等人的程序合成論文](https://air.iuav.it/retrieve/de164c2a-5461-60ee-e053-3a05fe0a7787/SIVE15_submission_4.pdf) · [Doerfler 與 Wyse 的脈衝與共鳴器研究](https://arxiv.org/abs/2603.09391) · [Ange Yaghi 的 Engine Simulator](https://github.com/ange-yaghi/engine-sim#how-do-i-use-it)
 - `engine_sim` 自行合成跟著曲軸轉動的泵氣脈衝、帶負載的燃燒與進氣層，以及隨轉速加重的短高頻排氣共鳴。R15 與 R3 沿用各自的燃燒間隔。這些是 D 級音色參數，尚未以兩車的授權實錄校準。
+
+## M7 拉轉與換檔對照
+
+- 印度 R15 V4 道路測試從靜止到 60 km/h 約 4 秒。印度 R3 的同項測試為 2.61 秒，二檔 20–50 km/h 為 2.09 秒。兩份跨市場道路資料只用於對照帶負載反應。台版空檔拉轉時間與等效慣量未取得實測，慣量調整屬 C 級。[91Wheels R15 實測](https://www.91wheels.com/news/2021-yamaha-r15-v4-0-acceleration-braking-test) · [Autocar India R3 實測](https://www.autocarindia.com/auto-features-amp/yamaha-r3-performance-tested-435751)
+- 由台規齒比可推導，相同輪速且完全接合時，三升四的引擎轉速比為 R15 `0.8381`、R3 `0.8065`（S23、S24）。模擬另考慮輪速變動與接合滑差，顯示換檔前及再接合結束的實際模擬 RPM。
+- 參考 Yamaha Y-AMT 的卸載／接合次序及快排製造商的短暫卸載臨界時間。網站約 67 ms 離合分離、約 300 ms 完成再接合的設定為 C 級虛擬換檔。[Yamaha 原廠換檔原理](https://global.yamaha-motor.com/news/2024/0726/y-amt.html) · [HealTech 快排技術文件](https://www.healtech-electronics.com/app/iqse/faq_en/)
+- 參考 BeamNG 的引擎／排氣分層，以及 Engine Simulator 用不同排氣響應塑造音色的方式。新增示意排氣閥開啟相位、短壓力波與合成管路反射。Cycle World 的 R3 動力機影片是歷史美規參考，音檔未用作網站素材。[BeamNG 調音文件](https://documentation.beamng.com/modding/vehicle/sections/sounds/engine_audio/) · [Engine Simulator 排氣響應](https://github.com/ange-yaghi/engine-sim/blob/master/es/sound-library/impulse_responses.mr) · [Cycle World R3 實錄](https://www.cycleworld.com/2015/05/27/2015-yamaha-yzf-r3-entry-level-sportbike-motorcycle-dyno-run-video-and-performance-chart/)
+
+## M8 Yamaha 四款車規格與聲音（2026-11-23）
+
+| 車型 | 原廠同款數據（A 級） | 點火與跨版本取值 |
+|---|---|---|
+| 2026 歐規 R6 RACE | 599 cc、185 kg、67 × 42.5 mm、61.7 Nm／10,500 RPM、118.4 PS／14,500 RPM（S30） | 等距 180° 為平面曲軸示意（B 級推定），各缸點火順序 `unknown`。初級 `85/41`、終傳 `45/16`、紅區 `16,500 RPM` 與六檔引用歷年原廠資料（C 級）。[一般 R6 車主手冊](https://www.yamaha-motor.com.ar/modelo/descargar-manual-de-servicio/yzf-r6) · [GYTR 六檔 STD 對照](https://www.yamaha-motor.eu/content/dam/yme/ch/hostettler-ag/pdfs-brochures/2023/2023_YAM_GYTR_ACC_SUPERSPORT.pdf) |
+| 2026 台規 R7 | 689 cc、189 kg、80 × 68.6 mm、6.9 kgf·m／6,500 RPM、73.4 PS／8,750 RPM、六檔、紅區 10,500 RPM（S25、S31） | CP2 曲軸 270°，推導間隔 270°／450°（S08，B 級）。初級 `77/40` 與終傳 `42/16` 引用日本規格（C 級）。[Yamaha 日本型錄](https://www.yamaha-motor.co.jp/mc/lineup/pdf/Catalog_yzf-r7_2023.pdf) |
+| 2026 歐規 R9 全功率版 | 890 cc、195 kg、78 × 62.1 mm、93 Nm／7,000 RPM、119 PS／10,000 RPM（S32） | CP3 採 240° 等距點火（B 級），各缸點火順序 `unknown`。台規六檔、10,500 RPM 儀表紅區、MT-09 家族初級 `79/47` 與海外 R9 零件終傳 `43/16` 暫用（C 級）。[Yamaha CP3 技報](https://global.yamaha-motor.com/jp/design_technology/technical/pdf/chapters/YMC-TR56_Product_03.pdf) · [MT-09 初級](https://global.yamaha-motor.com/jp/news/2021/0622/mt-09.html) · [R9 同件號離合器](https://shop.yamahacity.com.au/part/yamaha/B7N1615000) · [R9 原廠齒盤零件圖](https://www.tenkateracingproducts.com/yzf-r9-oem-rear-wheel-parts) |
+| 2020 日規 R1 ABS | 997 cc、201 kg、79 × 50.9 mm、113 Nm／11,500 RPM、200 PS／13,500 RPM、六檔、初級 `67/41`、終傳 `41/16`（S33） | 十字曲軸 `1→3→2→4`，間隔 270°／180°／90°／180°（S33）。14,000 RPM 紅區引用後續日規手冊（C 級）。[2026 日規原廠手冊](https://www2.yamaha-motor.co.jp/Manual/pdf/mc/2026D45L.pdf) |
+
+四款模型的斷油點、慣量、離合係數與完整動力曲線都採近似。音色依點火間隔、轉速、負載及原創管路反射分開設定，3D 尺寸與聲浪為 D 級。錄音式模擬器可用轉速／負載匹配的實車錄音，這也是實錄可校準的方向。本站未使用外部錄音。[Crankcase Audio REV](https://www.crankcaseaudio.com/) · [BeamNG 調音文件](https://documentation.beamng.com/modding/vehicle/sections/sounds/engine_audio/)
 
 ## 4. 開發者引用習慣
 

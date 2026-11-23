@@ -100,7 +100,7 @@ button { font: inherit; }
 }
 
 .vehicle-options, .console-layout, .control-grid { display: grid; gap: .75rem; }
-.vehicle-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.vehicle-options { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; }
 .vehicle-option { position: relative; }
 
 .vehicle-option input {
@@ -114,9 +114,10 @@ button { font: inherit; }
   position: relative;
   display: grid;
   align-content: center;
-  gap: .26rem;
-  min-height: 4.25rem;
-  padding: .65rem .85rem .65rem 1rem;
+  gap: .2rem;
+  min-height: 3.65rem;
+  height: 100%;
+  padding: .4rem .46rem .4rem .55rem;
   border: 1px solid var(--line);
   border-inline-start: .22rem solid #55574f;
   border-radius: .45rem;
@@ -125,20 +126,21 @@ button { font: inherit; }
 }
 
 .vehicle-card strong {
-  padding-inline-end: 1.2rem;
-  font: 800 clamp(1.1rem, .95rem + .95vw, 1.65rem)/1.08 var(--mono);
+  padding-inline-end: .85rem;
+  font: 800 clamp(.9rem, .76rem + .62vw, 1.2rem)/1.12 var(--mono);
   letter-spacing: -.06em;
+  overflow-wrap: anywhere;
 }
 
-.vehicle-spec { color: var(--muted); font-size: .8125rem; }
+.vehicle-spec { color: var(--muted); font-size: .75rem; line-height: 1.25; overflow-wrap: anywhere; }
 .vehicle-spec span { margin-inline: .1rem; }
 
 .radio-indicator {
   position: absolute;
-  top: .8rem;
-  right: .75rem;
-  width: 1rem;
-  height: 1rem;
+  top: .52rem;
+  right: .33rem;
+  width: .73rem;
+  height: .73rem;
   border: 1px solid #84867a;
   border-radius: 50%;
 }
@@ -402,6 +404,7 @@ button { font: inherit; }
 .volume-value { text-align: end; font-family: var(--mono); }
 
 @media (min-width: 40rem) and (orientation: landscape), (min-width: 54rem) {
+  .vehicle-options { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   .console-layout { grid-template-columns: minmax(0, 1.36fr) minmax(0, 1fr); align-items: stretch; }
   .panel { padding: clamp(.85rem, 2vw, 1.45rem); }
   .readouts { padding: .85rem 1rem; }
@@ -412,7 +415,7 @@ button { font: inherit; }
 @media (orientation: landscape) and (max-height: 32rem), (orientation: portrait) and (max-height: 42rem) {
   .site-header-bar { margin-bottom: .45rem; padding-bottom: .4rem; }
   .vehicle-section { margin-block: 0 .6rem; }
-  .vehicle-card { min-height: 3.5rem; padding-block: .4rem; }
+  .vehicle-card { min-height: 3.5rem; }
   .panel { padding: .6rem; }
   .readouts { gap: .4rem; margin-block: .35rem; padding: .5rem .6rem; }
   .rpm-heading { margin-block-end: .35rem; }
@@ -441,16 +444,9 @@ button { font: inherit; }
   .wordmark { grid-area: 1 / 1; }
   .site-header h1 { grid-area: 1 / 2; font-size: 1.35rem; }
   .preview-status { grid-area: 1 / 3; justify-self: end; }
-  .vehicle-section {
-    display: grid;
-    grid-template-columns: minmax(8.3rem, .36fr) minmax(0, 1fr);
-    align-items: center;
-    gap: .7rem;
-    margin-block-start: .45rem;
-  }
-  .section-heading { column-gap: .4rem; }
+  .vehicle-card { min-height: 2.75rem; }
+  .vehicle-spec { display: none; }
   .section-heading h2 { font-size: .875rem; }
-  .section-heading small { display: block; margin-inline-start: 0; }
   .readouts { grid-template-columns: minmax(0, 1.8fr) minmax(0, .68fr) minmax(2.6rem, .5fr); align-items: stretch; }
   .rpm-readout { grid-column: auto; align-self: center; }
   .rpm-heading { gap: .25rem; }

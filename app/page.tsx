@@ -11,13 +11,14 @@ import { useSimulation } from "../hooks/useSimulation";
 import { rpmFromRadiansPerSecond } from "../lib/simulation";
 
 const gearSequence = [1, 0, 2, 3, 4, 5, 6];
-const tachometerMaxRpm = 15_000;
-const tachometerTicks = [0, 3, 6, 9, 12, 15];
+const rpmPerTick = 3_000;
 
 function Tachometer({ rpm, referenceRpm }: { rpm: number; referenceRpm: number }) {
+  const maxRpm = Math.max(15_000, (Math.floor(referenceRpm / rpmPerTick) + 1) * rpmPerTick);
+  const tachometerTicks = Array.from({ length: maxRpm / rpmPerTick + 1 }, (_, index) => index * rpmPerTick);
   const scale = {
-    "--rpm-position": `${Math.min(rpm / tachometerMaxRpm, 1) * 100}%`,
-    "--redline-position": `${referenceRpm / tachometerMaxRpm * 100}%`,
+    "--rpm-position": `${Math.min(rpm / maxRpm, 1) * 100}%`,
+    "--redline-position": `${referenceRpm / maxRpm * 100}%`,
   } as CSSProperties;
 
   return (
@@ -29,7 +30,7 @@ function Tachometer({ rpm, referenceRpm }: { rpm: number; referenceRpm: number }
       <div className="rpm-arc rpm-track" aria-hidden="true" />
       <div className="rpm-scale" aria-hidden="true">
         {tachometerTicks.map((tick) => (
-          <span key={tick} data-redline={tick * 1_000 >= referenceRpm}>{tick}</span>
+          <span key={tick} data-redline={tick >= referenceRpm}>{tick / 1_000}</span>
         ))}
       </div>
       <p className="rpm-scale-unit" aria-hidden="true">×1000 RPM</p>
@@ -85,6 +86,12 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
             {snapshot.shift.targetGear > 0 && `・預估接合 ${Math.round(snapshot.shift.targetRpm)} RPM`}
           </p>
         )}
+        {!snapshot.shift && snapshot.lastShift && (
+          <p className="dashboard-note shift-result">
+            上次換檔 {snapshot.lastShift.fromGear}→{snapshot.lastShift.targetGear}・
+            {Math.round(snapshot.lastShift.startRpm)} → {Math.round(snapshot.lastShift.endRpm)} RPM
+          </p>
+        )}
         {(mechanicalOverRev || peakOverRevRpm > 0) && (
           <p className="over-rev-status">
             {mechanicalOverRev
@@ -132,7 +139,7 @@ export default function Home() {
 
       <section className="vehicle-section" aria-labelledby="vehicle-title">
         <div className="section-heading">
-          <h2 id="vehicle-title">選擇車型 <small>2026 台灣版</small></h2>
+          <h2 id="vehicle-title">選擇車型 <small>{activeVehicle.version}</small></h2>
           <a href={activeVehicle.source}>原廠資料</a>
         </div>
         <div className="vehicle-options" role="radiogroup" aria-labelledby="vehicle-title">

@@ -10,6 +10,14 @@ export interface ShiftState {
   readonly targetGear: number;
   readonly elapsedSeconds: number;
   readonly targetRpm: number;
+  readonly startRpm: number;
+}
+
+interface ShiftResult {
+  readonly fromGear: number;
+  readonly targetGear: number;
+  readonly startRpm: number;
+  readonly endRpm: number;
 }
 
 export interface TransmissionState {
@@ -17,6 +25,7 @@ export interface TransmissionState {
   readonly shiftMode: ShiftMode;
   readonly shiftQueue: readonly ShiftDirection[];
   readonly shift: ShiftState | null;
+  readonly lastShift: ShiftResult | null;
   readonly shiftCooldownSeconds: number;
 }
 
@@ -37,8 +46,8 @@ interface TransmissionStep {
   readonly revMatchRpm: number;
 }
 
-const UNLOAD_SECONDS = 0.055;
-const RATIO_CHANGE_SECONDS = 0.12;
+const UNLOAD_SECONDS = 0.035;
+const RATIO_CHANGE_SECONDS = 0.105;
 const SHIFT_END_SECONDS = 0.30;
 const AUTO_COOLDOWN_SECONDS = 0.48;
 const NEUTRAL_MAX_SPEED_MPS = 2;
@@ -50,6 +59,7 @@ export const INITIAL_TRANSMISSION_STATE: TransmissionState = {
   shiftMode: "MT",
   shiftQueue: [],
   shift: null,
+  lastShift: null,
   shiftCooldownSeconds: 0,
 };
 
@@ -69,6 +79,11 @@ function matchedRpm(vehicle: Vehicle, gear: number, wheelAngularVelocity: number
 
 function withinAutomaticRpmLimit(targetRpm: number, vehicle: Vehicle): boolean {
   return targetRpm <= 0.94 * vehicle.physics.referenceRpm;
+}
+
+function smoothProgress(progress: number): number {
+  const normalized = Math.min(1, Math.max(0, progress));
+  return normalized ** 2 * (3 - 2 * normalized);
 }
 
 function manualTarget(gear: number, request: ShiftDirection | undefined, maxGear: number, speed: number): number {
@@ -118,6 +133,7 @@ export function advanceTransmission(
     shiftMode: input.shiftMode,
     shiftQueue: modeChanged ? [] : previous.shiftQueue,
     shift: previous.shift,
+    lastShift: previous.lastShift,
     shiftCooldownSeconds,
   };
   let { shift } = transmission;
@@ -128,7 +144,7 @@ export function advanceTransmission(
       : manualTarget(transmission.gear, transmission.shiftQueue[0], vehicle.gears, input.vehicleSpeed);
     if (transmission.shiftQueue.length) transmission = { ...transmission, shiftQueue: transmission.shiftQueue.slice(1) };
     if (targetGear !== transmission.gear) {
-      shift = { phase: "unload", fromGear: transmission.gear, targetGear, elapsedSeconds: 0, targetRpm: 0 };
+      shift = { phase: "unload", fromGear: transmission.gear, targetGear, elapsedSeconds: 0, targetRpm: 0, startRpm: input.engineRpm };
     }
   }
 
@@ -150,14 +166,22 @@ export function advanceTransmission(
   }
 
   if (elapsedSeconds >= SHIFT_END_SECONDS) {
-    transmission = { ...transmission, gear, shift: null, shiftCooldownSeconds: AUTO_COOLDOWN_SECONDS };
+    const lastShift = input.engineOn && shift.fromGear > 0 && gear > 0 && gear !== shift.fromGear
+      ? { fromGear: shift.fromGear, targetGear: gear, startRpm: shift.startRpm, endRpm: input.engineRpm }
+      : transmission.lastShift;
+    transmission = { ...transmission, gear, shift: null, lastShift, shiftCooldownSeconds: AUTO_COOLDOWN_SECONDS };
     return { transmission, clutchScale: 1, combustionScale: 1, revMatchRpm: 0 };
   }
 
-  const clutchScale = phase === "unload"
-    ? 1 - elapsedSeconds / UNLOAD_SECONDS
-    : phase === "recouple" ? (elapsedSeconds - RATIO_CHANGE_SECONDS) / (SHIFT_END_SECONDS - RATIO_CHANGE_SECONDS) : 0;
-  const combustionScale = MIN_COMBUSTION_SCALE + (1 - MIN_COMBUSTION_SCALE) * clutchScale;
+  const recoupling = (elapsedSeconds - RATIO_CHANGE_SECONDS) / (SHIFT_END_SECONDS - RATIO_CHANGE_SECONDS);
+  const positiveUpshift = targetGear > shift.fromGear && shift.fromGear > 0;
+  const clutchScale = phase === "unload" ? 1 - smoothProgress(elapsedSeconds / UNLOAD_SECONDS)
+    : smoothProgress(recoupling / (positiveUpshift ? 0.8 : 1));
+  // On an upshift, bring the clutch back before the combustion torque so it can pull the engine toward the new ratio.
+  const recovery = positiveUpshift && phase === "recouple"
+    ? smoothProgress((recoupling - 0.5) / 0.5)
+    : clutchScale;
+  const combustionScale = MIN_COMBUSTION_SCALE + (1 - MIN_COMBUSTION_SCALE) * recovery;
   const revMatchRpm = input.shiftMode === "AT" && phase !== "unload" && targetGear > 0 && targetGear < shift.fromGear
     && withinAutomaticRpmLimit(targetRpm, vehicle) ? targetRpm : 0;
 

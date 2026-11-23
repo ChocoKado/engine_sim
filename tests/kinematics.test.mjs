@@ -36,3 +36,16 @@ test("720-degree cycle, cylinder offset and indicative valves use the firing pha
   assert.equal(getEnginePose(r15, 2.5 * Math.PI, 9500).vvaMode, "unknown");
   assert.equal(getEnginePose(r3, 2.5 * Math.PI).vvaMode, null);
 });
+
+test("flatplane and crossplane layouts drive their cylinders in physical order", () => {
+  const r6 = vehicles.find(({ id }) => id === "yamaha-r6");
+  const r1 = vehicles.find(({ id }) => id === "yamaha-r1");
+  const [outerLeft, innerLeft, innerRight, outerRight] = getEnginePose(r6, 0).cylinders;
+  assert.equal(outerLeft.pistonYM, outerRight.pistonYM);
+  assert.equal(innerLeft.pistonYM, innerRight.pistonYM);
+  assert.ok(outerLeft.pistonYM > innerLeft.pistonYM);
+  const firingOrder = r1.audio.firingAnglesRad.map((angle) =>
+    getEnginePose(r1, angle + 1e-6).cylinders.findIndex((cylinder) => cylinder.crankAngleRad < 2e-6) + 1,
+  );
+  assert.deepEqual(firingOrder, [1, 3, 2, 4]);
+});
