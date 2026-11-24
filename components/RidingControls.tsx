@@ -251,7 +251,7 @@ export function RidingControls({
       <div className="control-heading">
         <div>
           <h2 id="controls-title">{title}</h2>
-          <p id="pedal-instruction">按住上下滑，上方開度較大，放手歸零。</p>
+          <p id="pedal-instruction">上滑加大，放手歸零。</p>
         </div>
         <div className="control-actions">
           <button

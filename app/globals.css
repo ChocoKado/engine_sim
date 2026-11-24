@@ -590,6 +590,35 @@ button { font: inherit; }
   .volume-controls { margin-top: .4rem; }
 }
 
+@media (orientation: portrait) and (max-width: 42rem) {
+  .vehicle-options-scroll { grid-template-rows: auto; }
+  .console-layout { gap: .55rem; }
+  .controls-panel { padding: .65rem; }
+  .control-actions { flex-shrink: 0; }
+  .audio-toggle { min-inline-size: 5.35rem; padding-inline: .3rem; }
+  .control-grid { gap: .5rem; }
+  .shift-button { min-height: 3rem; }
+  .pedal-button {
+    gap: .25rem;
+    min-height: 7.5rem;
+    min-height: clamp(7.5rem, 18svh, 10rem);
+  }
+  .pedal-button::before {
+    inset: .8rem auto .8rem .8rem;
+    width: .4rem;
+  }
+  .pedal-status { font-size: clamp(1.45rem, 6.5vw, 1.85rem); }
+}
+
+@media (orientation: portrait) and (max-width: 42rem) and (max-height: 38rem) {
+  .readouts { grid-template-columns: minmax(0, 1.6fr) minmax(3.5rem, .8fr) minmax(2.5rem, .45fr); }
+  .rpm-readout { grid-column: auto; align-self: center; }
+  .rpm-heading .readout-value { font-size: 1.28rem; }
+  .speed-readout { align-content: center; }
+  .speed-readout .readout-value { font-size: 1.75rem; }
+  .gear-readout { padding-inline: .15rem; }
+}
+
 @media (min-width: 40rem) and (orientation: landscape) and (max-height: 32rem) {
   .console-shell { padding-block: max(.65rem, env(safe-area-inset-top)) max(.65rem, env(safe-area-inset-bottom)); }
 
