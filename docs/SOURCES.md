@@ -256,6 +256,8 @@ RS 125 採原廠 EU5 手冊的 58／13 終傳，初傳確值 `unknown`，以瑞�
 
 排氣回火是獨立的合成壓力聲。工況使用同一份油門、RPM、燃燒和負載資料，中高轉收油時依近期負載估算出現機會，聲響數量、延遲及力度隨機。此為音色近似，實車的過量燃料、二次進氣、排氣溫度及 ECU 控制因車而異。[減速斷油與排氣燃燒的原始專利資料](https://patents.google.com/patent/EP1437499A1/en)
 
+帶油升檔另依物理傳入的正向升檔事件與燃燒扭矩切斷量觸發。中高轉且近期有燃燒負載時，每次在斷扭段內可能出現一聲合成短響，機率、延遲與力度為示意。 [快排卸載原理](https://www.healtech-electronics.com/app/iqse/faq_en/) · [Ducati Quick Shift](https://www.ducati.com/us/en/bikes/streetfighter/streetfighter-v4-my24/electronics)
+
 以下採平路 AT 全油門 75 秒。道路車速限速和 RPM 斷油分開計算。解除模式保留動力、風阻與齒比。不同版本的實測、原廠列值與模擬估計分開列。
 
 | 車型 | 模擬 km/h | 核對基準 |

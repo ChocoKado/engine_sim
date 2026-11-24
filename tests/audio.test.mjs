@@ -128,6 +128,15 @@ test("afterfire is cancelled by opening the throttle or stopping the engine befo
   }
 });
 
+test("shift afterfire requires a powered upshift at mid to high RPM", () => {
+  for (const [rpm, throttle, upshifting] of [[4300, 1, true], [8000, 0.45, true], [8000, 1, false]]) {
+    const audio = captureAudio(vehicles[1], {}, false, () => 0.08);
+    audio.blocks(180, { rpm, throttle });
+    audio.blocks(100, { rpm, throttle, upshifting, shiftCut: 0.85 });
+    assert.deepEqual(audio.afterfires, []);
+  }
+});
+
 function rms(signal) {
   return Math.sqrt(signal.reduce((sum, sample) => sum + sample ** 2, 0) / signal.length);
 }
@@ -396,8 +405,8 @@ test("a simulated R9 upshift changes exhaust harmonics without interrupting cran
   const recovery = trace.findIndex(({ shiftCut }, index) => index > cutStart && shiftCut === 0);
   assert.ok(cutStart > 0 && recovery > cutStart);
 
-  function render(withShiftCue) {
-    const audio = captureAudio(vehicle);
+  function render(withShiftCue, random) {
+    const audio = captureAudio(vehicle, {}, false, random);
     let index = 0;
     const signal = audio.blocks(400, (wallTime) => {
       const contextTime = index * FIXED_STEP_SECONDS;
@@ -412,14 +421,29 @@ test("a simulated R9 upshift changes exhaust harmonics without interrupting cran
         combustion: Math.min(1, frame.combustionTorqueNm / vehicle.physics.peakTorqueNm),
         load: Math.min(1, Math.abs(frame.drivetrainTorqueNm) / (getOverallRatio(vehicle, frame.gear) * vehicle.physics.peakTorqueNm)),
         shiftCut: withShiftCue ? frame.shiftCut : 0,
+        upshifting: withShiftCue && frame.shift?.fromGear > 0 && frame.shift.targetGear > frame.shift.fromGear,
       };
     });
-    return { signal, pulses: audio.pulses };
+    return { signal, pulses: audio.pulses, pops: audio.afterfires };
   }
 
   const audible = render(true);
   const control = render(false);
+  const earlyPop = render(true, () => 0.08);
+  let randomCalls = 0;
+  const latePop = render(true, () => randomCalls++ === 0 ? 0.08 : 0.94);
   const sampleAt = (tick, relativeSeconds) => Math.round((tick * FIXED_STEP_SECONDS + playbackDelaySeconds + relativeSeconds) * rate);
+  assert.deepEqual(audible.pops, []);
+  assert.equal(earlyPop.pops.length, 1);
+  assert.equal(latePop.pops.length, 1);
+  assert.ok(earlyPop.pops[0] >= sampleAt(cutStart, 0.012));
+  assert.ok(latePop.pops[0] < sampleAt(recovery, 0));
+  assert.ok(latePop.pops[0] - earlyPop.pops[0] > rate * 0.025);
+  assert.deepEqual(earlyPop.pulses, audible.pulses);
+  const start = earlyPop.pops[0];
+  const burst = earlyPop.signal.slice(start, start + 0.02 * rate).map((sample, index) => sample - audible.signal[start + index]);
+  assert.ok(rms(burst) > 0.025);
+  assertBounded(earlyPop.signal);
   const cut = audible.signal.slice(sampleAt(cutStart, 0.018), sampleAt(cutStart, 0.062));
   const rawCut = control.signal.slice(sampleAt(cutStart, 0.018), sampleAt(cutStart, 0.062));
   const restored = audible.signal.slice(sampleAt(recovery, 0.055), sampleAt(recovery, 0.105));

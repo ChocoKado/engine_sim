@@ -154,31 +154,49 @@ class ExhaustAfterfire {
   reset() {
     this.charge = 0;
     this.wasOpen = false;
+    this.wasUpshifting = false;
+    this.armedFromUpshift = false;
     this.count = 0;
   }
 
-  update(throttle, rpm, combustion, load, shiftCut, harmonics, seconds) {
+  update({ throttle, angularVelocity, combustion, load, shiftCut, upshifting }, harmonics, seconds) {
+    const rpm = angularVelocity * RADIANS_PER_SECOND_TO_RPM;
     const open = throttle > 0.08;
+    const voicing = 0.66 + 0.34 * clamp(harmonics, 0.5, 1.5);
     if (open) {
+      if (!this.armedFromUpshift) this.count = 0;
+      if (upshifting && !this.wasUpshifting && throttle >= 0.60 && shiftCut >= 0.50 && rpm >= 5000) {
+        const strength = this.charge * voicing;
+        if (strength > 0.20 && Math.random() < clamp(0.16 + 0.65 * strength, 0, 0.78)) {
+          this.armedFromUpshift = true;
+          this.count = 1;
+          this.delay = Math.round(sampleRate * (0.016 + Math.random() * 0.040));
+          this.strength = strength * 0.92;
+        }
+      }
       const heat = clamp((rpm - 2600) / 5000, 0, 1) * clamp((throttle - 0.12) / 0.5, 0, 1);
-      const target = heat * (0.63 + 0.24 * combustion + 0.13 * load);
+      const target = heat * (0.63 + 0.24 * Math.sqrt(combustion) + 0.13 * load);
       this.charge += (1 - Math.exp(-seconds / 0.13)) * (target - this.charge);
-      this.count = 0;
     } else if (this.wasOpen) {
-      const strength = this.charge * (0.66 + 0.34 * clamp(harmonics, 0.5, 1.5));
-      if (rpm > 3400 && strength > 0.14 && shiftCut < 0.15 && Math.random() < clamp(0.2 + 0.87 * strength, 0, 0.89)) {
+      const strength = this.charge * voicing;
+      if (!this.armedFromUpshift && rpm > 3400 && strength > 0.14 && shiftCut < 0.15 && Math.random() < clamp(0.2 + 0.87 * strength, 0, 0.89)) {
         this.count = 1 + Number(Math.random() < strength * 0.55) + Number(Math.random() < strength * 0.19);
         this.delay = Math.round(sampleRate * (0.032 + Math.random() * 0.120));
         this.strength = strength;
       }
       this.charge = 0;
     }
-    if (rpm < 2500) this.count = 0;
+    if (rpm < 2500 || (this.armedFromUpshift && !upshifting)) {
+      this.count = 0;
+      this.armedFromUpshift = false;
+    }
     this.wasOpen = open;
+    this.wasUpshifting = upshifting;
   }
 
   fire() {
     this.count -= 1;
+    this.armedFromUpshift = false;
     this.delay = Math.round(sampleRate * (0.062 + Math.random() * 0.142));
     const impulse = (0.30 + this.strength * 0.52) * (0.62 + Math.random() * 0.38);
     this.strength *= 0.72;
@@ -281,10 +299,11 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
       }
       if (data?.type !== "state") return;
 
-      const { angleRad, angularVelocity, throttle, combustion, load, shiftCut = 0, engineOn, contextTime } = data;
+      const { angleRad, angularVelocity, throttle, combustion, load, shiftCut = 0, upshifting = false, engineOn, contextTime } = data;
       if (!Number.isFinite(angleRad) || !Number.isFinite(angularVelocity) || angularVelocity < 0
         || angularVelocity > 4000 || !Number.isFinite(throttle) || !Number.isFinite(combustion)
-        || !Number.isFinite(load) || !Number.isFinite(shiftCut) || typeof engineOn !== "boolean" || !Number.isFinite(contextTime)) {
+        || !Number.isFinite(load) || !Number.isFinite(shiftCut) || typeof upshifting !== "boolean"
+        || typeof engineOn !== "boolean" || !Number.isFinite(contextTime)) {
         this.telemetryQueue.length = 0;
         this.previousTelemetry = null;
         return;
@@ -297,7 +316,7 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
       queue.push({
         angleRad: wrapAngle(angleRad), angularVelocity, engineOn, contextTime,
         throttle: clamp(throttle, 0, 1), combustion: clamp(combustion, 0, 1), load: clamp(load, 0, 1),
-        shiftCut: clamp(shiftCut, 0, 1),
+        shiftCut: clamp(shiftCut, 0, 1), upshifting,
         superchargerAngularVelocity: data.superchargerAngularVelocity,
       });
       if (queue.length > 32) this.previousTelemetry = queue.shift();
@@ -352,8 +371,7 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
     const combustion = running ? Math.sqrt(telemetry.combustion) : 0;
     const shiftCut = running ? telemetry.shiftCut : 0;
     if (running) {
-      this.afterfire.update(throttle, telemetry.angularVelocity * RADIANS_PER_SECOND_TO_RPM,
-        combustion, load, shiftCut, voicing.harmonics, output.length / sampleRate);
+      this.afterfire.update(telemetry, voicing.harmonics, output.length / sampleRate);
     } else {
       this.afterfire.reset();
     }

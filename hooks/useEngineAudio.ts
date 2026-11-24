@@ -85,6 +85,7 @@ export function useEngineAudio(vehicle: Vehicle, tuning: TuningProfile) {
       throttle: state.throttle,
       combustion: Math.min(1, state.combustionTorqueNm / peakTorqueNm),
       shiftCut: state.shiftCut,
+      upshifting: state.shift !== null && state.shift.fromGear > 0 && state.shift.targetGear > state.shift.fromGear,
       load: ratio ? Math.min(1, Math.abs(state.drivetrainTorqueNm) / (ratio * peakTorqueNm)) : 0,
       engineOn: state.engineOn,
       contextTime: timestampMs / 1000 + audio.clockOffsetSeconds,

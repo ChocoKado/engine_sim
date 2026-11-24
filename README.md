@@ -1,6 +1,6 @@
 # engine_sim
 
-手機騎乘控制台，提供 Yamaha、Kawasaki、Aprilia、Ducati、Suzuki、Honda、BMW 共 84 組現售、歷代及上市前預覽車型。品牌下方可從「全部車款」直接選車，標示年式與市場。各車支援多指油門、煞車、撥片換檔和虛擬 AT。合成聲浪與 3D 剖面共用物理狀態，包含收油排氣回火和 H2／H2R 機械增壓聲。H2、Hayabusa 可在儀表下方模擬解除車速限速。
+手機騎乘控制台，提供 Yamaha、Kawasaki、Aprilia、Ducati、Suzuki、Honda、BMW 共 84 組現售、歷代及上市前預覽車型。品牌下方可從「全部車款」直接選車，標示年式與市場。各車支援多指油門、煞車、撥片換檔和虛擬 AT。合成聲浪與 3D 剖面共用物理狀態，包含收油與帶油升檔的排氣回火，以及 H2／H2R 機械增壓聲。H2、Hayabusa 可在儀表下方模擬解除車速限速。
 
 [Vercel 正式站](https://enginesim-ten.vercel.app/) · [M7 HTTPS Preview](https://engine-bb88cxk6b-choco-7242.vercel.app/)
 
