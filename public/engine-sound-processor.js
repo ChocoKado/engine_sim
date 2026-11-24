@@ -142,12 +142,17 @@ class SuperchargerWhine {
 }
 
 class ExhaustAfterfire {
-  constructor(exhaustFrequencyHz) {
-    this.body = new DampedResonator(110 + exhaustFrequencyHz * 0.70, 9);
-    this.crackDecay = 1 - smoothingFactor(0.0045);
-    this.noiseDecay = 1 - smoothingFactor(0.00035);
-    this.crack = 0;
-    this.noiseFront = 0;
+  constructor(exhaustFrequencyHz, reflectionMs) {
+    this.shell = new ExhaustBodyMode(clamp(exhaustFrequencyHz * 1.45, 120, 410), 5.5);
+    this.reflection = new Float32Array(Math.ceil(sampleRate * clamp(reflectionMs, 1.4, 6) / 1000));
+    this.reflectionIndex = 0;
+    this.frontDecay = 1 - smoothingFactor(0.00052);
+    this.reboundDecay = 1 - smoothingFactor(0.00165);
+    this.scatterDecay = 1 - smoothingFactor(0.0037);
+    this.front = 0;
+    this.rebound = 0;
+    this.scatter = 0;
+    this.tailSamples = 0;
     this.reset();
   }
 
@@ -196,21 +201,31 @@ class ExhaustAfterfire {
 
   fire() {
     this.count -= 1;
-    this.armedFromUpshift = false;
     this.delay = Math.round(sampleRate * (0.062 + Math.random() * 0.142));
     const impulse = (0.30 + this.strength * 0.52) * (0.62 + Math.random() * 0.38);
     this.strength *= 0.72;
-    this.crack += impulse;
-    this.noiseFront += impulse;
+    const pressure = impulse * (this.armedFromUpshift ? 1.22 : 1);
+    this.front += pressure;
+    this.rebound += pressure;
+    this.scatter += impulse * (this.armedFromUpshift ? 0.64 : 1);
+    this.tailSamples = Math.ceil(sampleRate * 0.055);
+    this.armedFromUpshift = false;
     return impulse;
   }
 
   render(noise) {
     const impulse = this.count > 0 && --this.delay <= 0 ? this.fire() : 0;
-    this.crack *= this.crackDecay;
-    this.noiseFront *= this.noiseDecay;
-    const pressure = this.crack - this.noiseFront;
-    return 0.85 * this.body.render(impulse) + pressure * (0.13 + 1.35 * noise);
+    if (this.tailSamples === 0) return 0;
+    this.tailSamples -= 1;
+    // The steep pressure front and rebound make the crack. Only a small part rings in the muffler.
+    this.front *= this.frontDecay;
+    this.rebound *= this.reboundDecay;
+    this.scatter *= this.scatterDecay;
+    const pressure = 2.65 * this.front - 0.83 * this.rebound;
+    const delayed = this.reflection[this.reflectionIndex];
+    this.reflection[this.reflectionIndex] = pressure;
+    this.reflectionIndex = (this.reflectionIndex + 1) % this.reflection.length;
+    return pressure - 0.24 * delayed + 9 * this.shell.render(impulse) + 2.1 * this.scatter * noise;
   }
 }
 
@@ -219,20 +234,24 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
     super();
 
     const {
-      firingAnglesRad, exhaustFrequencyHz, pulseDecayMs,
+      firingAnglesRad, exhaustBanks, exhaustFrequencyHz, pulseDecayMs,
       exhaustOpeningRad = 0, exhaustReflectionMs, exhaustBody, brightnessStartRpm = 8000, brightnessMaxRpm, supercharger,
     } = processorOptions;
     const exhaustOffset = Number.isFinite(exhaustOpeningRad) ? exhaustOpeningRad : 0;
-    this.exhaustPulseAnglesRad = firingAnglesRad.map((angle) => wrapAngle(angle + exhaustOffset)).sort((a, b) => a - b);
+    const events = firingAnglesRad.map((angle, index) => ({ angle: wrapAngle(angle + exhaustOffset), bank: exhaustBanks?.[index] ?? 0 }));
+    events.sort((a, b) => a.angle - b.angle);
+    this.exhaustPulseAnglesRad = events.map(({ angle }) => angle);
+    this.exhaustBanks = exhaustBanks ? events.map(({ bank }) => bank) : null;
     this.exhaust = new DampedResonator(exhaustFrequencyHz, pulseDecayMs * 0.93);
+    this.otherBank = this.exhaustBanks ? new DampedResonator(exhaustFrequencyHz * 0.88, pulseDecayMs * 1.05) : null;
     this.exhaustOvertone = new DampedResonator(exhaustFrequencyHz * 2.55, pulseDecayMs * 0.42);
     this.exhaustEdge = new DampedResonator(exhaustFrequencyHz * 12.5, 1.85);
-    this.afterfire = new ExhaustAfterfire(exhaustFrequencyHz);
     this.tripleCollector = firingAnglesRad.length === 3 ? new DampedResonator(exhaustFrequencyHz * 0.78, pulseDecayMs * 1.2) : null;
     this.collectorBody = Number.isFinite(exhaustBody?.frequencyHz) && Number.isFinite(exhaustBody.gain) && exhaustBody.gain > 0
       ? new ExhaustCollectorBody(exhaustBody, firingAnglesRad.length) : null;
     // A quarter-wave pipe's round-trip time is half a period of its fundamental.
     const reflectionMs = Number.isFinite(exhaustReflectionMs) ? exhaustReflectionMs : 500 / exhaustFrequencyHz;
+    this.afterfire = new ExhaustAfterfire(exhaustFrequencyHz, reflectionMs);
     this.exhaustDelay = new Float32Array(Math.ceil(sampleRate * clamp(reflectionMs, 0.8, 8) / 1000));
     this.exhaustDelayIndex = 0;
     this.exhaustReflectionSmoothing = frequencyFactor(1700);
@@ -439,7 +458,9 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
       // Shifts soften the combustion pulse while the crank continues pumping air.
       const charge = exhaustPulse ? this.combustion * (0.41 + 0.12 * this.load) * (1 - 0.18 * this.shiftCut) : 0;
       const pressure = pumping + charge;
-      const body = this.exhaust.render(pressure);
+      const otherBankPulse = this.exhaustBanks && pressure
+        && this.exhaustBanks[this.nextFiringIndex === 0 ? this.exhaustBanks.length - 1 : this.nextFiringIndex - 1] === 1;
+      const body = this.exhaust.render(otherBankPulse ? 0 : pressure) + (this.otherBank?.render(otherBankPulse ? pressure : 0) ?? 0);
       const deeperBody = this.tripleCollector ? this.tripleCollector.render(pressure) * (0.22 + 0.28 * this.load) : 0;
       const overtone = this.exhaustOvertone.render(pressure) * (0.34 + 0.13 * this.load + 0.44 * brightness);
       const edge = this.exhaustEdge.render(pressure * (0.063 + 0.94 * brightness));

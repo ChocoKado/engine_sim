@@ -144,7 +144,8 @@ export function useEngineAudio(vehicle: Vehicle, tuning: TuningProfile) {
             outputChannelCount: [1],
             processorOptions: {
               ...vehicle.audio,
-              exhaustOpeningRad: VALVE_EVENTS.exhaust.opensDegrees * Math.PI / 180,
+              exhaustOpeningRad: vehicle.audio.exhaustOpeningRad
+                ?? (vehicle.geometry.rotary ? 130 : VALVE_EVENTS.exhaust.opensDegrees) * Math.PI / 180,
               supercharger: vehicle.supercharger,
             },
           });

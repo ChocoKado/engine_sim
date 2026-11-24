@@ -41,7 +41,8 @@ export function EngineView({ vehicle, snapshot, readState }: {
         </div>
       </div>
       <p className="dashboard-note">
-        拖曳旋轉，雙指或滾輪縮放。連桿尺寸、外殼與汽門正時為示意。
+        拖曳旋轉，雙指或滾輪縮放。
+        {vehicle.geometry.rotary ? "轉子、偏心軸與殼體為示意。" : "連桿尺寸、外殼與汽門正時為示意。"}
         {vehicle.geometry.vva && " VVA 切換點待驗。"}
         {vehicle.supercharger && " 增壓葉輪與殼體為示意。"}
       </p>

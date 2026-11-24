@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { cars } from "../data/cars.ts";
 import { vehicles } from "../data/vehicles.ts";
 import {
   advanceSimulation,
@@ -18,6 +19,36 @@ function simulate(vehicle, input, ticks, initial = createSimulationState(vehicle
   for (let tick = 0; tick < ticks; tick += 1) state = stepSimulation(state, input, vehicle);
   return state;
 }
+
+test("sports cars rev independently in neutral, accelerate through gears and brake while coupled", () => {
+  for (const car of cars) {
+    const { physics } = car;
+    const floor = { ...running, throttle: 1 };
+    const idle = simulate(car, running, 250);
+    const neutral = simulate(car, floor, 300, idle);
+    assert.equal(neutral.vehicleSpeed, 0, car.name);
+    assert.ok(rpmFromRadiansPerSecond(neutral.engineAngularVelocity) >= physics.referenceRpm * 0.85, car.name);
+    const fast = simulate(car, { ...floor, shiftMode: "AT" }, 120 * 75);
+    assert.ok(fast.gear >= 4 && fast.vehicleSpeed > 40, car.name);
+    assert.ok(rpmFromRadiansPerSecond(fast.engineAngularVelocity) <= physics.fuelCutRpm, car.name);
+    assert.equal(fast.vehicleSpeed, fast.wheelAngularVelocity * physics.rollingRadiusM);
+    assert.ok(Math.abs(fast.clutchSlipRadPerSecond) < 1e-8, car.name);
+    if (physics.speedLimitKmh) assert.ok(fast.vehicleSpeed * 3.6 <= physics.speedLimitKmh, car.name);
+    const braked = simulate(car, { ...running, brake: 1 }, 120, fast);
+    assert.ok(braked.vehicleSpeed < fast.vehicleSpeed - 5, car.name);
+  }
+});
+
+test("published turbo torque plateaus are used at both ends and in the middle", () => {
+  for (const car of cars.filter(({ physics }) => physics.peakTorqueEndRpm !== undefined)) {
+    const { peakTorqueRpm, peakTorqueEndRpm, peakTorqueNm } = car.physics;
+    for (const rpm of [peakTorqueRpm, (peakTorqueRpm + peakTorqueEndRpm) / 2, peakTorqueEndRpm]) {
+      const state = { ...createSimulationState(car), engineAngularVelocity: rpm * Math.PI / 30 };
+      const loaded = stepSimulation(state, { ...running, throttle: 1 }, car);
+      assert.ok(Math.abs(loaded.engineTorqueNm - peakTorqueNm) < 1e-9, car.name);
+    }
+  }
+});
 
 function rollingInSecond(vehicle) {
   const { physics } = vehicle;

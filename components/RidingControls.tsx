@@ -11,6 +11,7 @@ type Pedal = "brake" | "throttle";
 type ShiftMode = SimulationInput["shiftMode"];
 
 interface RidingControlsProps {
+  title: string;
   engineOn: boolean;
   engineFailed: boolean;
   shiftMode: ShiftMode;
@@ -226,14 +227,14 @@ const audioLabels: Record<AudioStatus, string> = {
 };
 
 export function RidingControls({
-  engineOn, engineFailed, shiftMode, onToggleEngine, onReset, audioStatus, onToggleAudio,
+  title, engineOn, engineFailed, shiftMode, onToggleEngine, onReset, audioStatus, onToggleAudio,
   volume, onVolumeChange, tuning, onTuningChange, onShift, onPedalChange, resetKey,
 }: RidingControlsProps) {
   return (
     <section className="panel controls-panel" aria-labelledby="controls-title">
       <div className="control-heading">
         <div>
-          <h2 id="controls-title">騎乘控制</h2>
+          <h2 id="controls-title">{title}</h2>
           <p id="pedal-instruction">長按操作，放手回彈。</p>
         </div>
         <div className="control-actions">

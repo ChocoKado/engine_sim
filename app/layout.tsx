@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "騎乘控制台｜engine_sim",
-  description: "Yamaha YZF-R15 與 YZF-R3 的手機騎乘控制台操作示意。",
+  title: "引擎模擬控制台｜engine_sim",
+  description: "手機可用的機車、汽車、飛機與航天引擎模擬，含聲浪、檔位與引擎運動。",
 };
 
 export const viewport: Viewport = {

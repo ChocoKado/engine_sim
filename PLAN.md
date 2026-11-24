@@ -46,9 +46,9 @@
 
 涵蓋 Yamaha R、Kawasaki Ninja／ZX、Aprilia RS／RSV、Ducati Panigale、Suzuki GSX-R／GSX-8R／GIXXER SF／Hayabusa、Honda CBR 與 BMW RR 的現售車系和歷史代表。具名性能版有選車條目，動力與傳動相同時共用設定。上市前規格可用時標成預覽。來源表記錄跨版近似與待查項目。歷史車先用四行程核心，二行程代表需有對應週期與排氣模型。[車款清單](data/MODEL_CATALOG.csv)
 
-### Phase E — 長期願景
+### Phase E — 汽車、飛機與航天引擎
 
-汽車（L/V/Boxer/Wankel）、航空活塞、渦輪噴射、火箭推進排在摩托車之後，依各領域建立物理核心。
+汽車涵蓋直列四缸／六缸、V6／V8、Boxer 與 Wankel，沿用共享轉速和輪速，加入汽車齒比、傳動損失與扭矩上限。飛機引擎台架包含活塞螺旋槳、渦扇和純渦噴。航天引擎台架以 RS-25 比較海平面與真空推力。各模式同步顯示物理狀態、音訊與剖面。 [規格與近似](docs/SOURCES.md#m13-汽車航空與航天)
 
 ## 3. 產品操作與畫面
 

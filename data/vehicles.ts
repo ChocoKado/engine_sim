@@ -6,8 +6,10 @@ import { defineTrim } from "./motorcycle.ts";
 import { suzukiVehicles } from "./suzuki.ts";
 
 export interface Vehicle {
+  readonly kind?: "car";
   readonly id: string;
-  readonly brand: "Yamaha" | "Kawasaki" | "Aprilia" | "Ducati" | "Suzuki" | "Honda" | "BMW";
+  readonly brand: "Yamaha" | "Kawasaki" | "Aprilia" | "Ducati" | "Suzuki" | "Honda" | "BMW"
+    | "Toyota" | "Ford" | "Mazda" | "Nissan";
   readonly name: string;
   readonly version: string;
   readonly displacementCc: number;
@@ -27,10 +29,18 @@ export interface Vehicle {
     readonly exhaustLiftM: number;
     readonly bankAngleRad?: number;
     readonly cylinderFiringAnglesRad?: readonly number[];
+    readonly rotary?: {
+      readonly rotors: number;
+      readonly eccentricityM: number;
+      readonly rotorRadiusM: number;
+      readonly rotorWidthM: number;
+    };
     readonly vva?: { readonly switchRpm: number | null; readonly highIntakeLiftM: number };
   };
   readonly audio: {
     readonly firingAnglesRad: readonly number[];
+    readonly exhaustBanks?: readonly number[];
+    readonly exhaustOpeningRad?: number;
     readonly exhaustFrequencyHz: number;
     readonly pulseDecayMs: number;
     readonly exhaustBody: {
@@ -48,9 +58,12 @@ export interface Vehicle {
     readonly gearRatios: readonly number[];
     readonly primaryRatio: number;
     readonly finalDriveRatio: number;
+    readonly drivelineEfficiency?: number;
     readonly lowRpmTorqueRatio?: number;
     readonly peakTorqueNm: number;
     readonly peakTorqueRpm: number;
+    readonly peakTorqueEndRpm?: number;
+    readonly maxDriveAccelerationG?: number;
     readonly peakPowerPs: number;
     readonly peakPowerRpm: number;
     readonly idleRpm: number;

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
+import { cars } from "../data/cars.ts";
 import { vehicles } from "../data/vehicles.ts";
 import { tuningProfiles } from "../data/tuning.ts";
 import { VALVE_EVENTS } from "../lib/kinematics.ts";
@@ -30,7 +31,12 @@ function captureAudio(vehicle, audioOptions = {}, trackPitch = false, random = (
   });
   vm.runInContext(script, context);
   const processor = new Processor({
-    processorOptions: { ...vehicle.audio, exhaustOpeningRad, supercharger: vehicle.supercharger, ...audioOptions },
+    processorOptions: {
+      ...vehicle.audio,
+      exhaustOpeningRad: vehicle.audio.exhaustOpeningRad ?? (vehicle.geometry.rotary ? 130 * Math.PI / 180 : exhaustOpeningRad),
+      supercharger: vehicle.supercharger,
+      ...audioOptions,
+    },
   });
   const pulses = [];
   const afterfires = [];
@@ -111,7 +117,7 @@ test("hot throttle lifts can produce different afterfire delays and counts witho
   assert.deepEqual(burst.pulses, silent.pulses);
   const start = burst.pops[0];
   const addedBurst = burst.signal.slice(start, start + 0.024 * rate).map((sample, index) => sample - silent.signal[start + index]);
-  assert.ok(rms(addedBurst) > 0.025);
+  assertPressureCrack(addedBurst);
   assertBounded(burst.signal);
 });
 
@@ -139,6 +145,13 @@ test("shift afterfire requires a powered upshift at mid to high RPM", () => {
 
 function rms(signal) {
   return Math.sqrt(signal.reduce((sum, sample) => sum + sample ** 2, 0) / signal.length);
+}
+
+function assertPressureCrack(signal) {
+  const early = rms(signal.slice(0, 0.005 * rate));
+  const late = rms(signal.slice(0.015 * rate));
+  assert.ok(Math.max(...signal.map(Math.abs)) > 0.14);
+  assert.ok(early > 0.040 && late < early * 0.18);
 }
 
 function upperBandShare(signal) {
@@ -255,6 +268,29 @@ for (const vehicle of vehicles) {
     assertBounded(high.signal);
   });
 }
+
+test("the car catalog renders continuous bounded sound and keeps rotary and V8 shaft cadence", () => {
+  for (const vehicle of cars) {
+    const audio = captureAudio(vehicle);
+    const signal = audio.blocks(145, { rpm: 6000 });
+    assertBounded(signal);
+    assert.ok(rms(signal.slice(-4096)) > 0.004, vehicle.name);
+    assert.ok(audio.pulses.length > 30, vehicle.name);
+  }
+
+  for (const [id, interval] of [["mazda-rx8", 240], ["ford-mustang-gt", 120]]) {
+    const vehicle = cars.find((car) => car.id === id);
+    const audio = captureAudio(vehicle);
+    audio.blocks(100, { rpm: 6000 });
+    assert.ok(audio.pulses.slice(1).every((sample, i) => Math.abs(sample - audio.pulses[i] - interval) <= 1), id);
+  }
+
+  const mustang = cars.find(({ id }) => id === "ford-mustang-gt");
+  const banked = captureAudio(mustang).blocks(145, { rpm: 3900 });
+  const merged = captureAudio(mustang, { exhaustBanks: undefined }).blocks(145, { rpm: 3900 });
+  const change = banked.slice(-4096).map((sample, i) => sample - merged[merged.length - 4096 + i]);
+  assert.ok(rms(change) > 0.008);
+});
 
 for (const id of ["yamaha-r3", "yamaha-r9"]) {
   test(`${id}: irregular frame delivery retains steady pitch and a continuous release glide`, () => {
@@ -442,7 +478,7 @@ test("a simulated R9 upshift changes exhaust harmonics without interrupting cran
   assert.deepEqual(earlyPop.pulses, audible.pulses);
   const start = earlyPop.pops[0];
   const burst = earlyPop.signal.slice(start, start + 0.02 * rate).map((sample, index) => sample - audible.signal[start + index]);
-  assert.ok(rms(burst) > 0.025);
+  assertPressureCrack(burst);
   assertBounded(earlyPop.signal);
   const cut = audible.signal.slice(sampleAt(cutStart, 0.018), sampleAt(cutStart, 0.062));
   const rawCut = control.signal.slice(sampleAt(cutStart, 0.018), sampleAt(cutStart, 0.062));

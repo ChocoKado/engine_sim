@@ -3,6 +3,9 @@ import type { Vehicle } from "../data/vehicles";
 const RADIANS_PER_STROKE = Math.PI;
 const CYCLE_RAD = 4 * Math.PI;
 const STROKES = ["power", "exhaust", "intake", "compression"] as const;
+const REVOLUTION_RAD = 2 * Math.PI;
+
+export type RotaryGeometry = NonNullable<Vehicle["geometry"]["rotary"]>;
 
 export const VALVE_EVENTS = {
   intake: { opensDegrees: 345, closesDegrees: 560 },
@@ -45,4 +48,23 @@ export function getEnginePose(vehicle: Vehicle, crankAngleRad: number, engineRpm
   });
 
   return { camAngleRad: angle / 2, cylinders, vvaMode };
+}
+
+export function getRotaryPose(geometry: RotaryGeometry, shaftAngleRad: number) {
+  return Array.from({ length: geometry.rotors }, (_, index) => {
+    const eccentricAngle = shaftAngleRad + REVOLUTION_RAD * index / geometry.rotors;
+    return {
+      centerXM: geometry.eccentricityM * Math.cos(eccentricAngle),
+      centerYM: geometry.eccentricityM * Math.sin(eccentricAngle),
+      // Three identical apexes make a 120° rotor turn equivalent for the scene.
+      angleRad: eccentricAngle / 3,
+    };
+  });
+}
+
+export function getTrochoidPoint(angleRad: number, radius: number, eccentricity: number) {
+  return {
+    x: radius * Math.cos(angleRad) + eccentricity * Math.cos(3 * angleRad),
+    y: radius * Math.sin(angleRad) + eccentricity * Math.sin(3 * angleRad),
+  };
 }

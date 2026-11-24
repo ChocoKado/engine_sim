@@ -75,6 +75,15 @@ button { font: inherit; }
 
 .vehicle-section { margin-block: .55rem 1rem; }
 
+.simulation-modes {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .4rem;
+  margin-block: .75rem;
+}
+
+.simulation-modes .mode-button { touch-action: manipulation; }
+
 .section-heading {
   display: flex;
   align-items: center;

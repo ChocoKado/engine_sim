@@ -304,6 +304,30 @@ R1／R6 GYTR 的可調傳動與 ECU 曲線 `unknown`，以對應平台的基準�
 | Honda CBR1000RR-R | 14500 | 320.5 |
 | BMW F 450 RR | 9850 | 178.1 |
 
+## M13 汽車、航空與航天
+
+六款汽車採手排規格作基準，以虛擬撥片操作。引擎功率、扭矩錨點、齒比、重量及主要幾何按指定版本；未量測的轉動慣量、傳動效率、抓地扭矩上限、風阻與排氣響應為 C／D 級近似。下表為 75 秒平路全油門虛擬 AT 跑出的車速。
+
+| 汽車 | 模擬 km/h | 核對來源與版本 |
+|---|---:|---|
+| GR86・Boxer 四缸 | 229.0 | 日規 2025 RZ 6MT。有效道路阻力以英規 140 mph 作跨市場校準，日規電子限速 `unknown`。[Toyota 日本規格](https://toyota.jp/pages/contents/request/webcatalog/86/gr86_main_202507.pdf) · [Toyota 英規](https://media.toyota.co.uk/toyota-presents-the-new-gr86/) |
+| Civic Type R・直列四缸 | 269.6 | Honda 2027 美規 FL5 6MT，採原廠扭矩平台。[Honda 規格](https://automobiles.honda.com/civic-type-r/specs-features-trim-comparison) |
+| GR Supra・直列六缸 | 248.7 | 北美 2025 3.0 6MT 動力和約 249 km/h 限速。內部齒比取同代英規。[Toyota 北美手冊](https://www.toyota.com/content/dam/toyota/brochures/pdf/2025/grsupra_ebrochure.pdf) · [英規齒比](https://media.toyota.co.uk/wp-content/uploads/sites/5/pdf/220607M-GR-Supra-Tech-Spec.pdf) |
+| Nissan Z・V6 | 285.7 | 2024 澳規 6MT，有效風阻及斷油近似，原車限速 `unknown`。[Nissan 澳洲規格](https://www.nissan.com.au/content/dam/Nissan/AU/Files/Brochures/Models/Specsheet/Nissan_Z_Key-Visual_Collateral_SpecSheet_eSpec_v2.pdf) |
+| Mustang GT・V8 | 248.7 | 2025 美規 6MT 主動排氣版，限速採同代 2024 實測約 155 mph。左右排氣脈衝按 Coyote 原廠點火順序拆分。[Ford 2025 規格](https://www.fromtheroad.ford.com/content/dam/fordmediasite/us/en/library/2025/specs/2025_Mustang_Technical_Specs.pdf) · [Ford Coyote 資料](https://performanceparts.ford.com/download/PDFS/Coyote%20Technical%20Reference2.pdf) · [Car and Driver 實測](https://www.caranddriver.com/reviews/a44892132/2024-ford-mustang-gt-test/) |
+| RX-8・Wankel 雙轉子 | 234.9 | 2009 美規 6MT。偏心軸每圈兩次排氣脈衝，轉子角速度為偏心軸三分之一。英規 234 km/h 用於道路阻力近似。[Mazda 美國規格](https://news.mazdausa.com/download/2009-RX-8-Spec.pdf) · [Mazda 技報](https://www2.mazda.com/ja/technology/gihou/2023/wbbook/pageindices/index68.html) · [Mazda 英規型錄存檔](https://autocatalogarchive.com/wp-content/uploads/2025/03/Mazda-RX-8-2009-UK.pdf) |
+
+航空和航天使用固定步長的靜態引擎台架。額定動力、額定推力及參考環境有據。接轉時間、螺旋槳負載曲線、引擎剖面與音訊為近似，飛行軌跡與裝置程序在台架模型範圍之外。
+
+| 引擎 | 額定基準 |
+|---|---|
+| Lycoming IO-360-L2A | 2,700 RPM、180 hp，參考負載下約 134.2 kW。[Lycoming 操作手冊](https://www.lycoming.com/sites/default/files/file/2025-11/60297-12%20-%20O-360%2C%20HO-360%2C%20IO-360%2C%20AIO-360%2C%20HIO-360%20Series.pdf) |
+| CFM56-7B27 | 渦扇靜態起飛推力 121.43 kN，雙轉子接轉僅顯示相對轉速。[EASA 認證資料](https://www.easa.europa.eu/en/downloads/7795/en) |
+| Olympus 593 Mk 610 | 純渦噴海平面無加力 31,350 lbf，約 139.45 kN。[FAA E20EU 認證資料存檔](https://www.scribd.com/document/724007832/E20eu) · [Rolls-Royce 引擎歷史](https://www.rolls-royce.com/media/our-stories/discover/2020/intelligentengine-exploring-sustainable-supersonic-flight.aspx) |
+| RS-25 | SLS 109% 額定點，海平面 418,000 lbf、真空 512,300 lbf。[NASA 規格](https://www.nasa.gov/wp-content/uploads/2025/04/sls-4963-sls-rs-25-engine-fact-sheet-508.pdf) |
+
+回火音色改用陡峭壓力前緣、短反向回彈、耗散噪聲與排氣管初次反射。升檔的前緣較銳利，收油的氣流尾聲稍重。係數屬 D 級原創合成，對比方向取自排氣有限振幅壓力波研究。 [SAE 異常排氣噪聲研究](https://saemobilus.sae.org/papers/study-generation-mechanism-abnormal-exhaust-noise-871924) · [排氣聲輻射實驗](https://www.sciencedirect.com/science/article/pii/S0022460X7080044X)
+
 ## 4. 開發者引用習慣
 
 每新增或修改一筆真實規格，請保存來源 URL、核對日、年式/地區/型號、原始值、單位、證據等級（A/B/C/D），以及對應的設定檔/測試；找不到資料就填 `unknown` 而不是猜。

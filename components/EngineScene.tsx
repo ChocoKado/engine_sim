@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import type { Vehicle } from "../data/vehicles";
-import { getEnginePose, VALVE_EVENTS } from "../lib/kinematics";
+import { getEnginePose, getRotaryPose, getTrochoidPoint, VALVE_EVENTS } from "../lib/kinematics";
+import type { RotaryGeometry } from "../lib/kinematics";
 import { rpmFromRadiansPerSecond } from "../lib/simulation";
 import type { SimulationState } from "../lib/simulation";
 
@@ -17,6 +18,11 @@ interface EngineSceneProps {
 
 const metresToScene = 10;
 const verticalAxis = new THREE.Vector3(0, 1, 0);
+const fullTurn = 2 * Math.PI;
+
+function metal(color: number, metalness: number, roughness: number) {
+  return new THREE.MeshStandardMaterial({ color, metalness, roughness, side: THREE.DoubleSide });
+}
 
 function impellerVanes(radius: number) {
   const vertices: number[] = [];
@@ -49,7 +55,118 @@ function impellerVanes(radius: number) {
   return geometry;
 }
 
+function buildRotaryEngine(geometry: RotaryGeometry) {
+  const group = new THREE.Group();
+  const stack = new THREE.Group();
+  const cover = new THREE.Group();
+  // Rotary profiles are drawn in XY and extruded along their common shaft.
+  stack.rotation.y = Math.PI / 2;
+  group.add(stack);
+  stack.add(cover);
+
+  const radius = geometry.rotorRadiusM * metresToScene;
+  const eccentricity = geometry.eccentricityM * metresToScene;
+  const width = geometry.rotorWidthM * metresToScene;
+  // Leave a schematic gap so both stages can be inspected in the default view.
+  const spacing = width * 2.2;
+  const stackLength = (geometry.rotors - 1) * spacing + width;
+  const caseRadius = radius * 1.15;
+  const frame = metal(0x40566d, 0.38, 0.51);
+  const rib = metal(0x617b90, 0.30, 0.55);
+  const rotorMetal = metal(0xd9e3e7, 0.44, 0.32);
+  const shaftMetal = metal(0xc3945e, 0.48, 0.43);
+
+  function traceTrochoid(path: THREE.Path, curveRadius: number, clockwise = false) {
+    const segments = 96;
+    for (let segment = 0; segment < segments; segment += 1) {
+      const angle = fullTurn * segment / segments * (clockwise ? -1 : 1);
+      const { x, y } = getTrochoidPoint(angle, curveRadius, eccentricity);
+      if (segment === 0) path.moveTo(x, y);
+      else path.lineTo(x, y);
+    }
+    path.closePath();
+    return path;
+  }
+
+  function extrude(parent: THREE.Object3D, shape: THREE.Shape, depth: number, z: number, material: THREE.Material) {
+    const mesh = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth, steps: 1, bevelEnabled: false }), material);
+    mesh.position.z = z - depth / 2;
+    parent.add(mesh);
+  }
+
+  function axle(parent: THREE.Object3D, axleRadius: number, length: number, z: number, material: THREE.Material) {
+    const mesh = new THREE.Mesh(new THREE.CylinderGeometry(axleRadius, axleRadius, length, 24), material);
+    mesh.rotation.x = Math.PI / 2;
+    mesh.position.z = z;
+    parent.add(mesh);
+  }
+
+  function makeRotor(z: number) {
+    const rotor = new THREE.Group();
+    rotor.position.z = z;
+    stack.add(rotor);
+
+    const outline = new THREE.Shape();
+    const apexRadius = radius * 0.984;
+    outline.moveTo(apexRadius, 0);
+    for (let side = 0; side < 3; side += 1) {
+      const end = fullTurn * (side + 1) / 3;
+      const mid = end - Math.PI / 3;
+      outline.quadraticCurveTo(
+        radius * 0.77 * Math.cos(mid), radius * 0.77 * Math.sin(mid),
+        apexRadius * Math.cos(end), apexRadius * Math.sin(end),
+      );
+    }
+    outline.closePath();
+    outline.holes.push(new THREE.Path().absarc(0, 0, radius * 0.27, 0, fullTurn, true));
+    extrude(rotor, outline, width * 0.92, 0, rotorMetal);
+    for (let apex = 0; apex < 3; apex += 1) {
+      const angle = fullTurn * apex / 3;
+      const seal = new THREE.Mesh(new THREE.BoxGeometry(radius * 0.027, radius * 0.025, width * 0.89), shaftMetal);
+      seal.position.set(apexRadius * Math.cos(angle), apexRadius * Math.sin(angle), 0);
+      seal.rotation.z = angle;
+      rotor.add(seal);
+    }
+    return rotor;
+  }
+
+  const rotors = Array.from({ length: geometry.rotors }, (_, index) => {
+    const z = (index - (geometry.rotors - 1) / 2) * spacing;
+    const casing = new THREE.Shape();
+    traceTrochoid(casing, caseRadius);
+    casing.holes.push(traceTrochoid(new THREE.Path(), radius, true));
+    extrude(stack, casing, width, z, rib);
+
+    const backplate = new THREE.Shape();
+    traceTrochoid(backplate, caseRadius);
+    extrude(stack, backplate, width * 0.09, z - width * 0.52, frame);
+    extrude(cover, backplate, width * 0.09, z + width * 0.52, frame);
+
+    const eccentric = new THREE.Group();
+    eccentric.position.z = z;
+    stack.add(eccentric);
+    axle(eccentric, radius * 0.24, width * 0.99, 0, shaftMetal);
+    return { eccentric, rotor: makeRotor(z) };
+  });
+  axle(stack, radius * 0.08, stackLength + width * 0.68, 0, shaftMetal);
+
+  function applyPose(state: SimulationState) {
+    const pose = getRotaryPose(geometry, state.crankAngleRad);
+    for (const [index, { rotor, eccentric }] of rotors.entries()) {
+      const { centerXM, centerYM, angleRad } = pose[index];
+      rotor.position.x = eccentric.position.x = centerXM * metresToScene;
+      rotor.position.y = eccentric.position.y = centerYM * metresToScene;
+      rotor.rotation.z = angleRad;
+    }
+  }
+
+  const diameter = 2 * (caseRadius + eccentricity);
+  return { group, cover, applyPose, height: diameter, width: stackLength + width * 0.68, depth: diameter, layout: "rotary" as const };
+}
+
 function buildEngine(vehicle: Vehicle) {
+  if (vehicle.geometry.rotary) return buildRotaryEngine(vehicle.geometry.rotary);
+
   const group = new THREE.Group();
   const cover = new THREE.Group();
   group.add(cover);
@@ -62,6 +179,7 @@ function buildEngine(vehicle: Vehicle) {
   const halfBankAngle = (vehicle.geometry.bankAngleRad ?? 0) / 2;
   const bankAngles = halfBankAngle > 0 ? [-halfBankAngle, halfBankAngle] : [0];
   const isVEngine = bankAngles.length === 2;
+  const isBoxer = Math.abs(halfBankAngle - Math.PI / 2) < 1e-6;
   const bankSize = firingAngles.length / bankAngles.length;
   const bankWidth = (bankSize - 1) * spacing + bore * 1.28;
   // The axial stagger leaves room for both rods at a shared crank throw.
@@ -82,10 +200,6 @@ function buildEngine(vehicle: Vehicle) {
   const crankMetal = metal(0xc3945e, 0.48, 0.43);
   const intakeMetal = metal(0x61d5ab, 0.25, 0.38);
   const exhaustMetal = metal(0xff9e75, 0.27, 0.38);
-
-  function metal(color: number, metalness: number, roughness: number) {
-    return new THREE.MeshStandardMaterial({ color, metalness, roughness, side: THREE.DoubleSide });
-  }
 
   function box(parent: THREE.Object3D, w: number, h: number, d: number, material: THREE.Material, x: number, y: number, z: number) {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
@@ -276,9 +390,10 @@ function buildEngine(vehicle: Vehicle) {
     }
   }
 
-  const height = (camY + bore * 0.2) * Math.cos(halfBankAngle) + throwRadius;
+  const height = isBoxer ? bore * 1.3 : (camY + bore * 0.2) * Math.cos(halfBankAngle) + throwRadius;
   const depth = isVEngine ? (camY * Math.sin(halfBankAngle) + bore * 0.6) * 2 : 0;
-  return { group, cover, applyPose, height, width, depth, isVEngine };
+  const layout = isBoxer ? "boxer" : isVEngine ? "v" : "inline";
+  return { group, cover, applyPose, height, width, depth, layout };
 }
 
 export default function EngineScene({ vehicle, readState, cutaway, paused }: EngineSceneProps) {
@@ -306,7 +421,8 @@ export default function EngineScene({ vehicle, readState, cutaway, paused }: Eng
     canvas.className = "engine-canvas";
     canvas.tabIndex = 0;
     canvas.setAttribute("role", "img");
-    const subject = vehicle.supercharger ? "引擎與機械增壓器內構" : "引擎內構";
+    const subject = vehicle.geometry.rotary ? "轉子引擎內構"
+      : vehicle.supercharger ? "引擎與機械增壓器內構" : "引擎內構";
     canvas.setAttribute("aria-label", `${vehicle.name} ${subject}示意，可旋轉及縮放`);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     host.appendChild(canvas);
@@ -325,8 +441,10 @@ export default function EngineScene({ vehicle, readState, cutaway, paused }: Eng
     const camera = new THREE.PerspectiveCamera(37, 1, 0.05, 50);
     const controls = new OrbitControls(camera, canvas);
     const size = Math.max(engine.height, engine.width, engine.depth);
-    const centerY = engine.height * 0.34;
-    if (engine.isVEngine) camera.position.set(size * 1.68, centerY + size * 0.32, size * 0.55);
+    const centerY = engine.layout === "boxer" || engine.layout === "rotary" ? 0 : engine.height * 0.34;
+    if (engine.layout === "rotary") camera.position.set(size * 1.30, size * 0.54, size * 1.25);
+    else if (engine.layout === "boxer") camera.position.set(size * 1.55, size * 0.72, size * 0.48);
+    else if (engine.layout === "v") camera.position.set(size * 1.68, centerY + size * 0.32, size * 0.55);
     else camera.position.set(size * 0.57, centerY + size * 0.24, size * 1.73);
     controls.target.set(0, centerY, 0);
     controls.enablePan = false;

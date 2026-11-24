@@ -1,0 +1,17 @@
+.options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; }
+.options:has(label:only-child) { grid-template-columns: minmax(0, 1fr); }
+.detail { color: var(--muted); font-size: .72rem; line-height: 1.25; }
+.instruments { grid-template-columns: minmax(0, 1fr) minmax(5rem, .48fr); align-items: center; }
+.instruments :global(.readout-value) { font-size: clamp(1.55rem, 5vw, 3.1rem); }
+.metric { display: grid; align-content: center; gap: .2rem; }
+.metric output { font: 750 .87rem/1.1 var(--mono); color: var(--accent); }
+.spools { display: grid; gap: .45rem; }
+.progress { width: 100%; height: .55rem; grid-column: 1 / -1; accent-color: var(--accent); }
+.command { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: .25rem .55rem; color: var(--muted); font-size: .9rem; }
+.command span:last-of-type { font-family: var(--mono); }
+.command input { grid-column: 1 / -1; }
+.profile { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+
+@media (max-width: 390px) {
+  .options:not(:has(label:only-child)) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

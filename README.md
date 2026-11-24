@@ -4,6 +4,8 @@
 
 [Vercel 正式站](https://enginesim-ten.vercel.app/) · [M7 HTTPS Preview](https://engine-bb88cxk6b-choco-7242.vercel.app/)
 
+頂部可切換機車、汽車、飛機與航天。汽車提供 GR86、Civic Type R、GR Supra、Nissan Z、Mustang GT 與 RX-8，涵蓋直列、V 型、水平對臥和雙轉子。飛機與航天以引擎台架呈現螺旋槳負載、渦扇／渦噴接轉及 RS-25 的海平面／真空推力。
+
 模型以指定版本的原廠規格為基礎。跨市場傳動、近似斷油點與實測缺項列在來源。後輪採純滾動，車速納入煞車、滾阻與風阻。3D 幾何、聲浪、完整動力曲線及故障閾值採近似。 [車款清單](data/MODEL_CATALOG.csv) · [來源與模擬車速](docs/SOURCES.md)
 
 ## 本機啟動
