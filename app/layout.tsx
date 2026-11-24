@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "引擎模擬控制台｜engine_sim",
-  description: "手機可用的機車、公路車、F1、飛機與航天引擎模擬，含聲浪、檔位與引擎運動。",
+  description: "手機可用的機車、公路車、F1、耐力賽、飛機與航天引擎模擬，含啟動、聲浪、檔位與引擎運動。",
 };
 
 export const viewport: Viewport = {

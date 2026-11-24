@@ -77,12 +77,34 @@ button { font: inherit; }
 
 .simulation-modes {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: .4rem;
   margin-block: .75rem;
 }
 
 .simulation-modes .mode-button { padding-inline: .15rem; touch-action: manipulation; }
+
+@media (max-width: 369px) {
+  .simulation-modes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.ignition-readout {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  margin: .45rem 0 0;
+  color: var(--muted);
+  font-size: .8125rem;
+}
+.ignition-readout span {
+  width: .48rem;
+  height: .48rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+.ignition-readout[data-phase="electric"] { color: #a4d6ff; }
+.ignition-readout[data-phase="cranking"] { color: var(--accent); }
+.ignition-readout[data-phase="running"] { color: #c1dda0; }
 
 .drive-readout {
   display: flex;

@@ -11,7 +11,7 @@ const yAxis = new THREE.Vector3(0, 1, 0);
 
 export function buildExhaust(vehicle: Vehicle, banks: readonly ExhaustPort[][], scale: number) {
   const group = new THREE.Group();
-  const race = vehicle.kind === "formula1";
+  const race = vehicle.kind === "formula1" || vehicle.kind === "endurance";
   const manifold = new THREE.MeshStandardMaterial({ color: 0xb59576, metalness: 0.66, roughness: 0.31 });
   const steel = new THREE.MeshStandardMaterial({ color: 0x9aadb6, metalness: 0.7, roughness: 0.24 });
   const cast = new THREE.MeshStandardMaterial({ color: 0x4d5358, metalness: 0.56, roughness: 0.52 });

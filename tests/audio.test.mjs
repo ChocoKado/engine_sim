@@ -517,39 +517,92 @@ function frequencyAmplitude(signal, frequency) {
   return 2 * Math.hypot(cosine, sine) / signal.length;
 }
 
-test("Supra pressure release has several separated flutter bursts over the continuous exhaust note", () => {
+test("Supra tuned pressure release has distinct fading bursts over continuous exhaust", () => {
   const supra = cars.find(({ id }) => id === "toyota-gr-supra");
-  const base = captureAudio(supra);
-  const voiced = captureAudio(supra);
+  const stock = captureAudio(supra);
+  const modified = captureAudio(supra);
+  modified.setTuning({ ...tuningProfiles[0].voicing, turboFlutter: 1 });
   const setup = { rpm: 4650, throttle: 0, combustion: 0.05, load: 0.18 };
-  const silent = base.blocks(220, setup);
-  const flutter = voiced.blocks(220, (time) => ({ ...setup, turboRelease: time < 0.15 ? 0 : Math.exp(-(time - 0.15) / 0.082) }));
-  const difference = flutter.map((sample, index) => sample - silent[index]);
-  const levelAt = (start, duration = 0.018) => rms(difference.slice(Math.floor(start * rate), Math.floor((start + duration) * rate)));
-  assert.deepEqual(base.pulses, voiced.pulses);
+  const release = (time) => ({ ...setup, turboRelease: time < 0.15 ? 0 : Math.exp(-(time - 0.15) / 0.082) });
+  const bypass = stock.blocks(220, release);
+  const flutter = modified.blocks(220, release);
+  const difference = flutter.map((sample, index) => sample - bypass[index]);
+  const levelAt = (start, duration = 0.014) => rms(difference.slice(Math.floor(start * rate), Math.floor((start + duration) * rate)));
+  assert.deepEqual(stock.pulses, modified.pulses);
   assert.equal(levelAt(0.12), 0);
-  assert.ok(levelAt(0.193) > 0.012);
-  assert.ok(levelAt(0.245) > levelAt(0.217) * 2);
-  assert.ok(levelAt(0.327) > levelAt(0.278) * 1.5);
-  assert.ok(levelAt(0.52) < levelAt(0.193) * 0.16);
+  const first = levelAt(0.197);
+  const second = Math.max(levelAt(0.227), levelAt(0.236));
+  const third = Math.max(levelAt(0.281), levelAt(0.293), levelAt(0.302));
+  assert.ok(first > 0.018);
+  assert.ok(first > second && second > third * 1.10 && third > 0.005, [first, second, third].join(", "));
+  assert.ok(second > levelAt(0.213, 0.007) * 1.12);
+  assert.ok(levelAt(0.52) < first * 0.16);
   assertBounded(flutter);
 });
 
-test("rotary idle voicing accents alternating exhaust pulses and fades outside the idle band", () => {
+test("bridge port rotor voicing varies idle pulse strength without changing shaft timing", () => {
   for (const car of cars.filter(({ geometry }) => geometry.rotary)) {
     const rpm = car.physics.idleRpm;
     const controls = { rpm, throttle: 0, combustion: 0.2, load: 0 };
-    const standard = captureAudio(car, { rotaryIdleRpm: 0 });
+    const standard = captureAudio(car);
     const brap = captureAudio(car);
-    const baseline = standard.blocks(300, controls).slice(-19200);
-    const idle = brap.blocks(300, controls).slice(-19200);
+    brap.setTuning({ ...tuningProfiles[0].voicing, rotaryPort: 1 });
+    const baseline = standard.blocks(390, controls);
+    const idle = brap.blocks(390, controls);
     assert.deepEqual(brap.pulses, standard.pulses);
-    const brapEnergy = frequencyAmplitude(idle, rpm / 60);
-    assert.ok(brapEnergy > frequencyAmplitude(baseline, rpm / 60) * 3, car.name);
+    const burstLevels = (samples) => brap.pulses.filter((sample) => sample > rate * 0.28 && sample < samples.length - 720)
+      .map((sample) => rms(samples.slice(sample, sample + 720)));
+    const levelRange = (levels) => Math.max(...levels) / Math.min(...levels);
+    assert.ok(levelRange(burstLevels(baseline)) < 1.12, car.name);
+    assert.ok(levelRange(burstLevels(idle)) > 2, car.name);
     const onThrottle = { rpm: 4800, throttle: 0.9, combustion: 0.8, load: 0.8 };
-    assert.deepEqual(captureAudio(car).blocks(100, onThrottle), captureAudio(car, { rotaryIdleRpm: 0 }).blocks(100, onThrottle));
+    const loadedPort = captureAudio(car);
+    loadedPort.setTuning({ ...tuningProfiles[0].voicing, rotaryPort: 1 });
+    assert.deepEqual(captureAudio(car).blocks(100, onThrottle), loadedPort.blocks(100, onThrottle));
     assertBounded(idle);
   }
+});
+
+test("electric motor is audible before combustion and cranking catches without losing shaft cadence", () => {
+  const vehicle = cars.find(({ id }) => id === "ford-mustang-gt");
+  const audio = captureAudio(vehicle, { electricStarter: true }, true);
+  const signal = audio.blocks(360, (time) => ({
+    engineOn: time >= 0.52,
+    rpm: time < 0.26 ? 0 : time < 0.52 ? 300 : 1360,
+    motorAngularVelocity: time < 0.08 ? 0 : 220,
+    motorLoad: time < 0.52 ? 0.82 : 0.28,
+    starter: time >= 0.26 && time < 0.52 ? 0.9 : 0,
+    throttle: 0,
+    combustion: time < 0.52 ? 0 : 0.29,
+    load: 0,
+  }));
+  const window = (start, end) => signal.slice(start * rate, end * rate);
+  assert.equal(rms(window(0.05, 0.10)), 0);
+  const ev = window(0.19, 0.27);
+  assert.ok(rms(ev) > 0.01);
+  assert.ok(frequencyAmplitude(ev, 220 * 5 / (2 * Math.PI)) > 0.013);
+  assert.ok(audio.pulses.every((sample) => sample >= 0.285 * rate), "electric driving cannot turn a stopped crank");
+  assert.ok(audio.pulses.some((sample) => sample < 0.55 * rate), "starter turns the crank before ignition");
+  assert.ok(rms(window(0.63, 0.79)) > 2.8 * rms(ev));
+  assertBounded(signal);
+});
+
+test("geared starter has an engagement tick and whir distinct from hybrid electric starting", () => {
+  const vehicle = vehicles[0];
+  const controls = (time) => ({
+    engineOn: false,
+    rpm: time < 0.08 ? 0 : 240,
+    starter: time < 0.08 ? 0 : 1,
+    combustion: 0,
+    throttle: 0,
+  });
+  const geared = captureAudio(vehicle).blocks(95, controls);
+  const electric = captureAudio(vehicle, { electricStarter: true }).blocks(95, controls);
+  const engagementPeak = (signal) => Math.max(...signal.slice(0.12 * rate, 0.13 * rate).map(Math.abs));
+  assert.ok(engagementPeak(geared) > 0.05);
+  assert.ok(engagementPeak(geared) > engagementPeak(electric) * 4);
+  assert.ok(rms(geared.slice(0.16 * rate)) > rms(electric.slice(0.16 * rate)) * 2);
+  assertBounded(geared);
 });
 
 test("F1 V10 and V12 audio follows the number of cylinders at high RPM without clipping", () => {

@@ -13,7 +13,7 @@ const READOUT_INTERVAL_MS = 50;
 export function useSimulation(vehicle: Vehicle, onFrame: (state: SimulationState, timestampMs: number) => void) {
   const [snapshot, setSnapshot] = useState(() => createSimulationState(vehicle));
   const state = useRef(snapshot);
-  const input = useRef<SimulationInput>(INITIAL_SIMULATION_INPUT);
+  const input = useRef<SimulationInput>({ ...INITIAL_SIMULATION_INPUT, shiftMode: snapshot.shiftMode });
   const [pedalReset, setPedalReset] = useState(0);
   const readState = useCallback(() => state.current, []);
 
@@ -35,7 +35,7 @@ export function useSimulation(vehicle: Vehicle, onFrame: (state: SimulationState
         if (next.state !== previousState) onFrame(next.state, timestamp - remainderSeconds * 1000);
 
         const commandApplied = next.state.gear !== previousState.gear ||
-          next.state.engineOn !== previousState.engineOn ||
+          next.state.enginePhase !== previousState.enginePhase ||
           next.state.shiftMode !== previousState.shiftMode ||
           next.state.shift?.phase !== previousState.shift?.phase ||
           next.state.engineFailed !== previousState.engineFailed;
@@ -91,7 +91,7 @@ export function useSimulation(vehicle: Vehicle, onFrame: (state: SimulationState
     const { roadSpeedLimitDisabled } = input.current;
     const initial = { ...createSimulationState(vehicle), roadSpeedLimitDisabled };
     state.current = initial;
-    input.current = { ...INITIAL_SIMULATION_INPUT, roadSpeedLimitDisabled };
+    input.current = { ...INITIAL_SIMULATION_INPUT, shiftMode: initial.shiftMode, roadSpeedLimitDisabled };
     setSnapshot(initial);
     setPedalReset((version) => version + 1);
   }

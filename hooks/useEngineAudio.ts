@@ -28,7 +28,9 @@ export function useEngineAudio(vehicle: Vehicle, tuning: TuningProfile, showExha
   const [audioStatus, setAudioStatus] = useState<AudioStatus>("muted");
   const [volume, setVolume] = useState(DEFAULT_VOLUME);
   const graph = useRef<AudioGraph | null>(null);
+  const activation = useRef<Promise<void> | null>(null);
   const requested = useRef(false);
+  const userMuted = useRef(false);
   const volumeRef = useRef(DEFAULT_VOLUME);
   const latestState = useRef<{ state: SimulationState; timestampMs: number } | null>(null);
   const lastFlame = useRef({ timestampMs: -Infinity, strength: 0 });
@@ -85,8 +87,13 @@ export function useEngineAudio(vehicle: Vehicle, tuning: TuningProfile, showExha
     const observedOffset = audio.context.currentTime - performance.now() / 1000;
     const previousOffset = audio.clockOffsetSeconds ?? observedOffset;
     // The audio clock is quantized to render blocks. Keep that jitter out of the physics timestamps.
-    const clockError = Math.min(0.004, Math.max(-0.004, observedOffset - previousOffset));
-    audio.clockOffsetSeconds = previousOffset + clockError * 0.015;
+    const clockError = observedOffset - previousOffset;
+    if (Math.abs(clockError) > 0.075) {
+      audio.clockOffsetSeconds = observedOffset;
+      audio.node.port.postMessage({ type: "reset-clock" });
+    } else {
+      audio.clockOffsetSeconds = previousOffset + Math.min(0.004, Math.max(-0.004, clockError)) * 0.015;
+    }
     const ratio = getOverallRatio(vehicle, state.gear);
     const { peakTorqueNm } = vehicle.physics;
     audio.node.port.postMessage({
@@ -95,6 +102,9 @@ export function useEngineAudio(vehicle: Vehicle, tuning: TuningProfile, showExha
       angularVelocity: state.engineAngularVelocity,
       superchargerAngularVelocity: state.superchargerAngularVelocity,
       turboRelease: state.turboRelease,
+      starter: state.starter,
+      motorAngularVelocity: state.motorAngularVelocity,
+      motorLoad: state.motorLoad,
       throttle: state.throttle,
       combustion: Math.min(1, state.combustionTorqueNm / peakTorqueNm),
       shiftCut: state.shiftCut,
@@ -130,18 +140,35 @@ export function useEngineAudio(vehicle: Vehicle, tuning: TuningProfile, showExha
   function toggleAudio() {
     const audio = graph.current;
     if (requested.current) {
+      userMuted.current = true;
       requested.current = false;
       if (audio) fade(audio, 0);
       setAudioStatus("muted");
       return;
     }
+    userMuted.current = false;
+    void requestAudibleAudio();
+  }
+
+  function requestAudibleAudio() {
     requested.current = true;
     setAudioStatus("starting");
-    void activateAudio();
+    return requestActivation();
+  }
+
+  function startIgnitionAudio() {
+    if (!requested.current && !userMuted.current) return requestAudibleAudio();
+    if (requested.current) return activation.current;
+    if (showExhaustRef.current) prepareAudio();
   }
 
   function prepareAudio() {
-    if (!graph.current || graph.current.context.state !== "running") void activateAudio();
+    if (!graph.current || graph.current.context.state !== "running") void requestActivation();
+  }
+
+  function requestActivation() {
+    activation.current ??= activateAudio().finally(() => { activation.current = null; });
+    return activation.current;
   }
 
   async function activateAudio() {
@@ -170,6 +197,7 @@ export function useEngineAudio(vehicle: Vehicle, tuning: TuningProfile, showExha
               supercharger: vehicle.supercharger,
               turbocharger: vehicle.turbocharger,
               rotaryIdleRpm: vehicle.geometry.rotary ? vehicle.physics.idleRpm : undefined,
+              electricStarter: Boolean(vehicle.physics.electricDrive),
             },
           });
           node.connect(gain);
@@ -232,5 +260,5 @@ export function useEngineAudio(vehicle: Vehicle, tuning: TuningProfile, showExha
     }
   }
 
-  return { audioStatus, volume, changeVolume, sendAudioState, toggleAudio, prepareAudio, readExhaustFlame };
+  return { audioStatus, volume, changeVolume, sendAudioState, toggleAudio, startIgnitionAudio, prepareAudio, readExhaustFlame };
 }

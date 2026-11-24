@@ -369,6 +369,21 @@ F1 的輪胎抓地隨速度平方的近似下壓力增加。齒比分配、翼�
 
 RX-7、RX-8 的改裝風格怠速加強交替的排氣脈衝，隨轉速及油門增大逐漸退出，偏心軸和轉子的相位維持原模型。3D 歧管、集管、渦輪和尾管描繪路徑拓撲，管路尺寸及火焰色形為示意。AudioWorklet 每次合成回火時同步發送火焰事件，3D 模式靜音後仍可顯示。 [Mazda 轉子技報](https://www.mazda.com/content/dam/mazda/corporate/mazda-com/en/pdf/innovation/monozukuri/technology/tech-review/2003/2003_no002.pdf) · [Racing Beat 汽口型式](https://www.racingbeat.com/manuals/rb-rotary-catalog.2016.pdf)
 
+## M15 耐力賽電力出站與啟動音
+
+| 車款 | 版本資料 | 模擬點火門檻 |
+|---|---|---:|
+| Cadillac V-Series.R | 2023 Le Mans 5.5 L 自然進氣 V8，ACO 登錄 680 PS／8,600 RPM。[ACO 參賽資料](https://assets.lemans.org/explorer/pdf/courses/2023/24-heures-du-mans/infos-course/liste-engages-24h-infos-course.pdf) · [Cadillac 聲音解析](https://www.youtube.com/watch?v=v7MwpxBblD8) | 34 km/h |
+| Porsche 963 | 2023 LMDh 4.6 L 雙渦輪 V8，Porsche 有記錄電力離開維修區後 V8 點火的過程。視覺缸徑按排氣量與行程近似。[Porsche 技術資料](https://newsroom.porsche.com/en/2023/motorsports/porsche-hypercar-gtp-prototype-963-technology-31043.html) · [出站敘述](https://newsroom.porsche.com/en_US/2023/motorsport/porsche-963-lmdh-thomas-laudenbach-christophorus-405-30821.html) | 32 km/h |
+| BMW M Hybrid V8 | 2023 LMDh 4.0 L P66/3 雙渦輪 V8，分離離合器支援維修區電力起步。[BMW 技術資料](https://newsroom.bmwgroup.com/global/the-heart-of-the-bmw-m-hybrid-v8-p663-eight-cylinder-hybrid-turbo-engine-drives-the-lmdh-prototype) | 34 km/h |
+| Acura ARX-06 | 2023 IMSA GTP 2.4 L AR24e 90° 雙渦輪 V6，原廠列最高 10,000 RPM。[Acura 技術資料](https://acuranews.com/en-US/releases/acura-unveils-all-new-electrified-arx-06-race-car) | 37 km/h |
+
+四款採 LMDh 共用 50 kW 馬達及 1.35 kWh 電池基準。模擬先由馬達驅動後輪，達代表車速後由 MGU 帶轉引擎並漸進接合。接合完成後撤去出站馬達扭矩，避免將 50 kW 疊加到已按賽事級別校準的內燃機輸出；煞車時可回收。表中門檻、輪上起步扭矩、齒比、空力及音色為近似。實車起步策略依車隊、條件及賽事規則而變。[FIA LMDh 技術規則](https://api.fia.com/system/files/documents/lmdh-technical-regulations-2025.10.16-blackline.pdf) · [Bosch／IMSA 混合動力](https://www.imsa.com/news/2023/03/16/bosch-and-imsa-announce-long-term-partnership/) · [Cadillac 車廠出站敘述](https://news.cadillac.com/newsroom.detail.html/Pages/topic/us/en/2026/aug/0814-cadillac-v-one-concept.html)
+
+公路車聲音區分起動馬達接合、帶轉、初次點火與怠速。冷態熄火後會保留部分暖度，短時間再次啟動的高怠速較弱。冷車增幅及約數十秒的退場是加速呈現的互動曲線，依實車異動的環境溫度、ECU 與實際熱車時間仍待量測。[Toyota 冷啟動高怠速解說](https://pressroom.toyota.com/why-is-my-car-doing-this/) · [Honda 啟動原理](https://global.honda/en/motorcycle-aftersales/plusone/202406.html)
+
+GR Supra 車型基準採較柔和的卸壓聲。選「進氣・渦輪顫振」可聽到增壓退掉後逐次減弱、變低且間隔加長的氣流脈衝。 RX-7／RX-8 基準維持平穩點火，橋式汽口改裝音色才加入較不規則的低轉脈衝。原廠和改裝比較用於辨別聲音現象，網站使用合成聲音。[Mishimoto Supra 進氣 A/B](https://www.youtube.com/watch?v=HV5-HZ4GTio) · [Garrett 壓縮機顫振](https://www.garrettmotion.com/wp-content/uploads/2019/10/GAM_Turbo-Tech-103_Expert-1.pdf) · [Mazda RENESIS 技報](https://www.mazda.com/content/dam/mazda/corporate/mazda-com/en/pdf/innovation/monozukuri/technology/tech-review/2003/2003_no002.pdf) · [Racing Beat 轉子汽口資料](https://www.racingbeat.com/manuals/rb-rotary-catalog.2016.pdf)
+
 ## 4. 開發者引用習慣
 
 每新增或修改一筆真實規格，請保存來源 URL、核對日、年式/地區/型號、原始值、單位、證據等級（A/B/C/D），以及對應的設定檔/測試；找不到資料就填 `unknown` 而不是猜。

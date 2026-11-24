@@ -7,7 +7,7 @@ type PublishedAndCalibratedPhysics = Omit<Vehicle["physics"],
   "clutchCapacityNm" | "slipperCapacityNm" | "clutchDampingNmPerRadPerSecond">;
 
 export interface CarSpec extends Pick<Vehicle, "id" | "brand" | "name" | "version" | "source" | "engine" | "displacementCc"> {
-  readonly kind?: "car" | "formula1";
+  readonly kind?: Vehicle["kind"];
   readonly turbocharger?: Vehicle["turbocharger"];
   readonly cylinderDimensionsMm?: readonly [bore: number, stroke: number, rodLength: number];
   readonly cylinderFiringDegrees?: readonly number[];

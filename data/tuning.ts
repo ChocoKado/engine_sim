@@ -4,9 +4,11 @@ export interface ExhaustVoicing {
   readonly reflection: number;
   readonly pulseTail: number;
   readonly turbulence: number;
+  readonly turboFlutter?: number;
+  readonly rotaryPort?: number;
 }
 
-export type TuningId = "baseline" | "baffled-exhaust" | "open-exhaust" | "high-flow-intake";
+export type TuningId = "baseline" | "baffled-exhaust" | "open-exhaust" | "high-flow-intake" | "turbo-flutter" | "rotary-port";
 
 export interface TuningProfile {
   readonly id: TuningId;
@@ -21,3 +23,13 @@ export const tuningProfiles = [
   { id: "open-exhaust", label: "排氣・開放管", version: 1, voicing: { body: 0.92, harmonics: 1.36, reflection: 0.62, pulseTail: 0.78, turbulence: 1.16 } },
   { id: "high-flow-intake", label: "進氣・高流量", version: 1, voicing: { body: 1.02, harmonics: 1.08, reflection: 1, pulseTail: 0.96, turbulence: 1.38 } },
 ] as const satisfies readonly TuningProfile[];
+
+export const turboFlutterTuning: TuningProfile = {
+  id: "turbo-flutter", label: "進氣・渦輪顫振", version: 2,
+  voicing: { ...tuningProfiles[0].voicing, turboFlutter: 1 },
+};
+
+export const rotaryPortTuning: TuningProfile = {
+  id: "rotary-port", label: "轉子・橋式汽口", version: 2,
+  voicing: { ...tuningProfiles[0].voicing, rotaryPort: 1 },
+};

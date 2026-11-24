@@ -7,6 +7,7 @@ const REVOLUTION_RAD = 2 * Math.PI;
 const RADIANS_PER_SECOND_TO_RPM = 60 / REVOLUTION_RAD;
 const BASELINE_VOICING = { body: 1, harmonics: 1, reflection: 1, pulseTail: 1, turbulence: 1 };
 const VOICING_CHANNELS = Object.keys(BASELINE_VOICING);
+const SOUND_EFFECTS = ["turboFlutter", "rotaryPort"];
 
 function clamp(value, minimum, maximum) {
   return Math.min(maximum, Math.max(minimum, value));
@@ -25,14 +26,18 @@ function frequencyFactor(hertz) {
   return 1 - Math.exp(-2 * Math.PI * hertz / sampleRate);
 }
 
+function crankTurning(frame) {
+  return frame?.engineOn || frame?.starter > 0;
+}
+
 function velocityAt(frame, next, previous, time) {
   const age = time - frame.contextTime;
-  if (next?.engineOn && next.contextTime - frame.contextTime < MAX_TELEMETRY_AGE_SECONDS) {
+  if (crankTurning(next) && next.contextTime - frame.contextTime < MAX_TELEMETRY_AGE_SECONDS) {
     const fraction = clamp(age / (next.contextTime - frame.contextTime), 0, 1);
     return frame.angularVelocity + fraction * (next.angularVelocity - frame.angularVelocity);
   }
 
-  if (previous?.engineOn && frame.contextTime - previous.contextTime < MAX_TELEMETRY_AGE_SECONDS) {
+  if (crankTurning(previous) && frame.contextTime - previous.contextTime < MAX_TELEMETRY_AGE_SECONDS) {
     const slope = (frame.angularVelocity - previous.angularVelocity) / (frame.contextTime - previous.contextTime);
     return clamp(frame.angularVelocity + slope * clamp(age, 0, MAX_EXTRAPOLATION_SECONDS), 0, 4000);
   }
@@ -233,26 +238,99 @@ class ExhaustAfterfire {
 
 class TurboRelease {
   constructor(style) {
-    this.style = style;
     this.gain = style === "subtle" ? 0.32 : style === "recirculating" ? 0.67 : 1.1;
     this.envelope = 0;
-    this.phase = 0;
-    this.smoothing = smoothingFactor(0.008);
-    this.resonator = new DampedResonator(style === "flutter" ? 720 : 1400, 1.1);
+    this.smoothing = smoothingFactor(0.012);
     this.previousLevel = 0;
+    this.pressure = 0;
+    this.untilBurst = 0;
+    this.air = 0;
+    this.airBaseline = 0;
+    this.airFloor = frequencyFactor(230);
+    this.burstEnergy = 0;
+    this.burstAge = 0;
+    this.burstSamples = 0;
   }
 
-  render(level, noise, turbulence) {
-    if (level > this.previousLevel + 0.05) this.phase = 0;
+  releaseBurst(noise) {
+    const pressure = this.pressure;
+    this.burstEnergy = pressure ** 0.87;
+    this.burstAge = 0;
+    this.burstSamples = Math.round(sampleRate * (0.022 + (1 - pressure) * 0.015));
+    this.airEdge = frequencyFactor(470 + 1840 * pressure);
+    this.untilBurst = Math.round(sampleRate * (0.032 + (1 - pressure) * 0.042 + 0.008 * noise));
+    this.pressure *= 0.49 + 0.1 * noise;
+  }
+
+  render(level, noise, turbulence, flutter) {
+    if (flutter > 0.05 && level > 0.14 && level > this.previousLevel + 0.045) {
+      this.pressure = level;
+      this.untilBurst = Math.round(sampleRate * 0.004);
+    }
     this.previousLevel = level;
     this.envelope += this.smoothing * (level - this.envelope);
-    if (this.envelope < 0.001) return 0;
-    const flutter = this.style === "flutter";
-    const rate = 9 + 10 * this.envelope;
-    this.phase = (this.phase + rate / sampleRate) % 1;
-    const bursts = flutter ? 0.12 + 0.88 * Math.max(0, Math.cos(REVOLUTION_RAD * this.phase)) ** 2 : 1;
-    const texture = flutter ? this.resonator.render(noise * 0.24) : 0;
-    return this.envelope ** (flutter ? 0.68 : 0.92) * bursts * this.gain * (texture + 1.5 * turbulence);
+    const bypass = this.envelope * (1 - 0.86 * flutter) * this.gain * 1.12 * turbulence;
+    // Each pressure reversal spends part of the remaining boost. The next puff comes later
+    // and has less top end, instead of sounding like the same hiss with a modulation applied.
+    if (this.pressure > 0.065 && --this.untilBurst <= 0) this.releaseBurst(noise);
+    if (this.burstAge >= this.burstSamples) return bypass;
+    const travel = this.burstAge++ / this.burstSamples;
+    const attack = Math.min(1, travel * 24);
+    const falloff = (1 - travel) ** 2.8;
+    this.air += this.airEdge * (noise - this.air);
+    this.airBaseline += this.airFloor * (noise - this.airBaseline);
+    const pressureNoise = 2.3 * (this.air - this.airBaseline) + 0.28 * turbulence;
+    return bypass + flutter * this.burstEnergy * attack * falloff * pressureNoise;
+  }
+}
+
+class StarterSound {
+  constructor(electric) {
+    this.electric = electric;
+    this.level = 0;
+    this.engaged = false;
+    this.phase = 0;
+    this.attack = smoothingFactor(0.02);
+    this.release = smoothingFactor(0.028);
+    this.contact = electric ? null : new DampedResonator(910, 2.8);
+  }
+
+  render(starter, angularVelocity, compression, noise) {
+    const engaged = starter > 0.02;
+    if (!engaged && !this.engaged && this.level < 0.0001) return 0;
+    const contactImpulse = engaged === this.engaged ? 0 : engaged ? 0.34 * starter : -0.032;
+    this.engaged = engaged;
+    this.level += (engaged ? this.attack : this.release) * (starter - this.level);
+    const pitch = clamp(angularVelocity * (this.electric ? 8 : 21) / REVOLUTION_RAD, this.electric ? 36 : 135, 880);
+    this.phase = (this.phase + pitch / sampleRate) % 1;
+    const phase = REVOLUTION_RAD * this.phase;
+    if (this.electric) return this.level * (0.041 * Math.sin(phase) + 0.034 * Math.sin(2 * phase) + 0.022 * noise);
+    const gearWhir = 0.16 * Math.sin(phase) + 0.08 * Math.sin(3 * phase) + 0.033 * Math.sin(5 * phase);
+    return this.level * (0.65 + 0.35 * compression) * (gearWhir + 0.105 * noise)
+      + this.contact.render(contactImpulse);
+  }
+}
+
+class ElectricMotorSound {
+  constructor() {
+    this.omega = 0;
+    this.level = 0;
+    this.phase = 0;
+    this.smoothing = smoothingFactor(0.024);
+  }
+
+  render(angularVelocity, load, turbulence) {
+    if (angularVelocity === 0 && this.omega < 0.01 && this.level < 0.0001) return 0;
+    this.omega += this.smoothing * (angularVelocity - this.omega);
+    const target = clamp(this.omega / 90, 0, 1) * (0.23 + 0.77 * Math.abs(load));
+    this.level += this.smoothing * (target - this.level);
+    // Electrical tone follows the motor shaft. Its simulated pole count is a sound parameter.
+    const pitch = Math.min(1400, this.omega * 5 / REVOLUTION_RAD);
+    this.phase = (this.phase + pitch / sampleRate) % 1;
+    const phase = this.phase * REVOLUTION_RAD;
+    const whine = 0.069 * Math.sin(phase) + 0.032 * Math.sin(2 * phase)
+      + (load < 0 ? 0.025 : 0.012) * Math.sin(3 * phase);
+    return this.level * (0.76 * whine + 0.042 * turbulence);
   }
 }
 
@@ -263,7 +341,7 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
     const {
       firingAnglesRad, exhaustBanks, exhaustFrequencyHz, pulseDecayMs,
       exhaustOpeningRad = 0, exhaustReflectionMs, exhaustBody, brightnessStartRpm = 8000, brightnessMaxRpm,
-      supercharger, turbocharger, rotaryIdleRpm,
+      supercharger, turbocharger, rotaryIdleRpm, electricStarter,
     } = processorOptions;
     const exhaustOffset = Number.isFinite(exhaustOpeningRad) ? exhaustOpeningRad : 0;
     const events = firingAnglesRad.map((angle, index) => ({ angle: wrapAngle(angle + exhaustOffset), bank: exhaustBanks?.[index] ?? 0 }));
@@ -286,6 +364,13 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
       ? new TurboRelease(turbocharger.releaseStyle ?? "recirculating") : null;
     this.rotaryIdleRpm = Number.isFinite(rotaryIdleRpm) && rotaryIdleRpm > 0 ? rotaryIdleRpm : 0;
     this.rotaryIdleBody = this.rotaryIdleRpm ? new DampedResonator(115, 12) : null;
+    this.rotaryUnburned = this.rotaryIdleBody ? new Float32Array(2) : null;
+    this.electricStarter = electricStarter === true;
+    this.starter = null;
+    this.motor = null;
+    this.startedByCranking = false;
+    this.catchCharge = 0;
+    this.catchDecay = 1 - smoothingFactor(0.15);
     this.exhaustDelay = new Float32Array(Math.ceil(sampleRate * clamp(reflectionMs, 0.8, 8) / 1000));
     this.exhaustDelayIndex = 0;
     this.exhaustReflectionSmoothing = frequencyFactor(1700);
@@ -296,8 +381,8 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
     this.pressureNoiseBaselineSmoothing = frequencyFactor(950);
     this.pressureNoiseSmoothing = frequencyFactor(4400);
     this.pressureFrontDecay = 1 - smoothingFactor(0.00028);
-    this.voicing = { ...BASELINE_VOICING };
-    this.targetVoicing = BASELINE_VOICING;
+    this.voicing = { ...BASELINE_VOICING, turboFlutter: 0, rotaryPort: 0 };
+    this.targetVoicing = { ...this.voicing };
     this.dcSmoothing = frequencyFactor(22);
     this.outputSmoothing = frequencyFactor(5800);
     this.throttleAttack = smoothingFactor(0.045);
@@ -340,6 +425,7 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
         const voicing = data.voicing;
         if (voicing && VOICING_CHANNELS.every((channel) => Number.isFinite(voicing[channel]))) {
           this.targetVoicing = Object.fromEntries(VOICING_CHANNELS.map((channel) => [channel, clamp(voicing[channel], 0.45, 1.6)]));
+          for (const effect of SOUND_EFFECTS) this.targetVoicing[effect] = Number.isFinite(voicing[effect]) ? clamp(voicing[effect], 0, 1) : 0;
         }
         return;
       }
@@ -348,6 +434,8 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
         this.previousTelemetry = null;
         this.synchronized = false;
         this.afterfire.reset();
+        this.startedByCranking = false;
+        this.catchCharge = 0;
         return;
       }
       if (data?.type !== "state") return;
@@ -366,8 +454,13 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
       const previousTime = queue.at(-1)?.contextTime;
       if (contextTime < previousTime) return;
       if (contextTime === previousTime) queue.pop();
+      const starter = Number.isFinite(data.starter) ? clamp(data.starter, 0, 1) : 0;
+      const motorAngularVelocity = Number.isFinite(data.motorAngularVelocity) ? clamp(data.motorAngularVelocity, 0, 10000) : 0;
+      const motorLoad = Number.isFinite(data.motorLoad) ? clamp(data.motorLoad, -1, 1) : 0;
+      if (starter && !this.starter) this.starter = new StarterSound(this.electricStarter);
+      if (motorAngularVelocity && !this.motor) this.motor = new ElectricMotorSound();
       queue.push({
-        angleRad: wrapAngle(angleRad), angularVelocity, engineOn, contextTime,
+        angleRad: wrapAngle(angleRad), angularVelocity, engineOn, contextTime, starter, motorAngularVelocity, motorLoad,
         throttle: clamp(throttle, 0, 1), combustion: clamp(combustion, 0, 1), load: clamp(load, 0, 1),
         shiftCut: clamp(shiftCut, 0, 1), upshifting,
         superchargerAngularVelocity: data.superchargerAngularVelocity,
@@ -411,6 +504,7 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
     const voicing = this.voicing;
     const voicingRate = 1 - Math.exp(-output.length / (sampleRate * 0.045));
     for (const channel of VOICING_CHANNELS) voicing[channel] += voicingRate * (this.targetVoicing[channel] - voicing[channel]);
+    for (const effect of SOUND_EFFECTS) voicing[effect] += voicingRate * (this.targetVoicing[effect] - voicing[effect]);
     const pressureTailDecay = 1 - smoothingFactor(0.0021 * voicing.pulseTail);
 
     const playheadTime = currentTime - TELEMETRY_DELAY_SECONDS;
@@ -419,7 +513,16 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
     while (queue[1]?.contextTime <= playheadTime) this.previousTelemetry = queue.shift();
     const [telemetry, following] = queue;
     const age = telemetry ? playheadTime - telemetry.contextTime : Infinity;
-    const running = telemetry?.engineOn && age >= -1e-9 && age < MAX_TELEMETRY_AGE_SECONDS;
+    const fresh = age >= -1e-9 && age < MAX_TELEMETRY_AGE_SECONDS;
+    const running = fresh && telemetry.engineOn;
+    const starterLevel = fresh ? telemetry.starter : 0;
+    const cranking = starterLevel > 0;
+    const motorSpeed = fresh ? telemetry.motorAngularVelocity : 0;
+    const motorLoad = fresh ? telemetry.motorLoad : 0;
+    const starter = this.starter;
+    const motor = this.motor;
+    const auxiliarySound = cranking || starter?.level > 0.0001 || motorSpeed > 0 || motor?.level > 0.0001;
+    const starterCompression = cranking && !this.electricStarter;
     const throttle = running ? telemetry.throttle : 0;
     const load = running ? telemetry.load : 0;
     const combustion = running ? Math.sqrt(telemetry.combustion) : 0;
@@ -427,9 +530,11 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
     const turboRelease = running ? telemetry.turboRelease : 0;
     if (running) {
       this.afterfire.update(telemetry, voicing.harmonics, output.length / sampleRate);
+      if (this.startedByCranking) this.catchCharge = this.electricStarter ? 1.2 : 0.85;
     } else {
       this.afterfire.reset();
     }
+    this.startedByCranking = cranking && !running;
     const gateTarget = running ? clamp(telemetry.angularVelocity / 130, 0, 1) : 0;
     const supercharger = this.supercharger;
     let shaftTarget = 0;
@@ -448,14 +553,14 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
     let velocityIncrement = 0;
     let correctionTarget = 0;
 
-    if (running) {
+    if (running || cranking) {
       velocityTarget = velocityAt(telemetry, following, this.previousTelemetry, playheadTime);
       let endIndex = 0;
-      while (queue[endIndex + 1]?.engineOn && queue[endIndex + 1].contextTime <= endTime) endIndex += 1;
+      while (crankTurning(queue[endIndex + 1]) && queue[endIndex + 1].contextTime <= endTime) endIndex += 1;
       const endVelocity = velocityAt(queue[endIndex], queue[endIndex + 1], endIndex === 0 ? this.previousTelemetry : queue[endIndex - 1], endTime);
       velocityIncrement = (endVelocity - velocityTarget) / output.length;
 
-      const changingDuration = following?.engineOn ? age : Math.min(age, MAX_EXTRAPOLATION_SECONDS);
+      const changingDuration = crankTurning(following) ? age : Math.min(age, MAX_EXTRAPOLATION_SECONDS);
       const angleAdvance = changingDuration * (telemetry.angularVelocity + velocityTarget) / 2 + (age - changingDuration) * velocityTarget;
       const anchorAngle = wrapAngle(telemetry.angleRad + angleAdvance);
       if (!this.synchronized) this.alignCrank(anchorAngle, velocityTarget);
@@ -465,7 +570,7 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
       correctionTarget = clamp(phaseError * 2.5, -maxCorrection, maxCorrection);
     } else if (this.gate < 0.0001) {
       this.synchronized = false;
-      return true;
+      if (!auxiliarySound) return true;
     }
 
     for (let index = 0; index < output.length; index += 1) {
@@ -484,6 +589,7 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
       this.combustion += chargeSmoothing * (combustion - this.combustion);
       const gateSmoothing = gateTarget >= this.gate ? this.gateAttack : this.gateRelease;
       this.gate += gateSmoothing * (gateTarget - this.gate);
+      this.catchCharge *= this.catchDecay;
 
       const rpm = this.angularVelocity * RADIANS_PER_SECOND_TO_RPM;
       const pumpingLevel = clamp((rpm - 1200) / 6500, 0, 1);
@@ -492,14 +598,23 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
       const exhaustPulse = this.advanceCrank(this.angularVelocity / sampleRate);
       const pumping = exhaustPulse ? 0.12 + 0.29 * pumpingLevel : 0;
       // Shifts soften the combustion pulse while the crank continues pumping air.
-      const charge = exhaustPulse ? this.combustion * (0.41 + 0.12 * this.load) * (1 - 0.18 * this.shiftCut) : 0;
+      const charge = exhaustPulse ? this.combustion * (0.41 + 0.12 * this.load + this.catchCharge * 0.42) * (1 - 0.18 * this.shiftCut) : 0;
       const rotaryIdle = this.rotaryIdleBody
-        ? clamp((1.9 - rpm / this.rotaryIdleRpm) / 0.72, 0, 1) * clamp(1 - 3 * this.throttle, 0, 1)
+        ? voicing.rotaryPort * clamp((1.9 - rpm / this.rotaryIdleRpm) / 0.72, 0, 1) * clamp(1 - 3 * this.throttle, 0, 1)
         : 0;
-      const rotaryStrongPulse = this.nextFiringIndex % 2 === 0;
-      // Group alternating rotor exhaust pulses near idle while keeping their timing tied to the shaft.
-      const pressure = (pumping + charge) * (1 + rotaryIdle * (rotaryStrongPulse ? 0.90 : -0.64));
-      const idleBody = this.rotaryIdleBody?.render(exhaustPulse && rotaryStrongPulse ? pressure * rotaryIdle : 0) ?? 0;
+      this.noiseSeed = (Math.imul(this.noiseSeed, 1664525) + 1013904223) >>> 0;
+      const noise = this.noiseSeed / 2147483648 - 1;
+      let rotaryAccent = 0;
+      if (exhaustPulse && rotaryIdle > 0.001) {
+        // The race-port model varies the strength of exhaust events around idle while preserving shaft phase.
+        const rotor = this.nextFiringIndex % 2;
+        const unburned = this.rotaryUnburned[rotor];
+        const weak = noise < 0.06 - 1.54 * unburned;
+        rotaryAccent = weak ? -0.73 : 0.40 + unburned * 1.15 + 0.15 * noise;
+        this.rotaryUnburned[rotor] = weak ? Math.min(0.88, unburned + 0.42) : 0;
+      }
+      const pressure = (pumping + charge) * (1 + rotaryIdle * rotaryAccent);
+      const idleBody = this.rotaryIdleBody?.render(Math.max(0, rotaryAccent) * pressure * rotaryIdle) ?? 0;
       const otherBankPulse = this.exhaustBanks && pressure
         && this.exhaustBanks[this.nextFiringIndex === 0 ? this.exhaustBanks.length - 1 : this.nextFiringIndex - 1] === 1;
       const body = this.exhaust.render(otherBankPulse ? 0 : pressure) + (this.otherBank?.render(otherBankPulse ? pressure : 0) ?? 0);
@@ -507,8 +622,6 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
       const overtone = this.exhaustOvertone.render(pressure) * (0.34 + 0.13 * this.load + 0.44 * brightness);
       const edge = this.exhaustEdge.render(pressure * (0.063 + 0.94 * brightness));
 
-      this.noiseSeed = (Math.imul(this.noiseSeed, 1664525) + 1013904223) >>> 0;
-      const noise = this.noiseSeed / 2147483648 - 1;
       this.pressureNoiseBaseline += this.pressureNoiseBaselineSmoothing * (noise - this.pressureNoiseBaseline);
 
       // A short pressure envelope excites broadband turbulence as exhaust flow starts.
@@ -535,7 +648,7 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
       const closingThrottle = running ? Math.max(0, this.throttle - throttle) : 0;
       const whine = supercharger ? supercharger.render(shaftTarget + index * shaftIncrement, this.throttle, this.load, turbulence, closingThrottle) : 0;
       const afterfire = this.afterfire.render(turbulence);
-      const release = this.turboRelease?.render(turboRelease, noise, turbulence) ?? 0;
+      const release = this.turboRelease?.render(turboRelease, noise, turbulence, voicing.turboFlutter) ?? 0;
       const mix = 0.96 * exhaust - 0.12 * this.reflectedPressure * voicing.reflection + whine + afterfire + release + 0.82 * idleBody;
       this.dcMean += this.dcSmoothing * (mix - this.dcMean);
       this.filteredOutput += this.outputSmoothing * (mix - this.dcMean - this.filteredOutput);
@@ -551,7 +664,14 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
         const remaining = headroom - knee;
         normalized += overflow > 0 ? direction * (knee + remaining * overflow / (remaining + overflow)) : extension;
       }
-      output[index] = MAX_OUTPUT * this.gate * normalized;
+      let sample = this.gate * normalized;
+      if (auxiliarySound) {
+        const motorSound = motor?.render(motorSpeed, motorLoad, turbulence) ?? 0;
+        const compression = starterCompression ? Math.exp(-10 * (this.radiansToFire - 0.35) ** 2) : 0;
+        const starterSound = starter?.render(starterLevel, this.angularVelocity, compression, noise) ?? 0;
+        sample = clamp(sample + (starterSound + motorSound) * (1 - Math.abs(sample)), -1, 1);
+      }
+      output[index] = MAX_OUTPUT * sample;
     }
 
     for (let index = 1; index < channels.length; index += 1) channels[index].set(output);

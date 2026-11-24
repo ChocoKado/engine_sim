@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { cars } from "../data/cars.ts";
+import { enduranceCars } from "../data/endurance-cars.ts";
 import { formulaOneCars } from "../data/formula-one.ts";
 import { vehicles } from "../data/vehicles.ts";
 import {
@@ -20,6 +21,61 @@ function simulate(vehicle, input, ticks, initial = createSimulationState(vehicle
   for (let tick = 0; tick < ticks; tick += 1) state = stepSimulation(state, input, vehicle);
   return state;
 }
+
+function warmRunningState(vehicle, rpm = vehicle.physics.idleRpm) {
+  return { ...createSimulationState(vehicle), ...running, powerOn: true, enginePhase: "running",
+    engineWarmth: 1, runningSeconds: 3, engineAngularVelocity: rpm * Math.PI / 30 };
+}
+
+test("cold ignition spins the crank before combustion, then settles from fast idle and restarts warm", () => {
+  for (const vehicle of [vehicles[1], cars.find(({ id }) => id === "toyota-gr-supra"), cars.find(({ id }) => id === "mazda-rx8")]) {
+    const starting = simulate(vehicle, running, 26);
+    assert.equal(starting.enginePhase, "cranking", vehicle.name);
+    assert.equal(starting.combustionTorqueNm, 0);
+    assert.equal(starting.starter, 1);
+    assert.ok(starting.engineAngularVelocity > 0 && starting.crankAngleRad > 0);
+    assert.equal(starting.vehicleSpeed, 0);
+    const cold = simulate(vehicle, running, 270, starting);
+    const hot = simulate(vehicle, running, 120 * 36, cold);
+    assert.equal(cold.enginePhase, "running");
+    assert.equal(cold.starter, 0);
+    assert.ok(rpmFromRadiansPerSecond(cold.engineAngularVelocity) > vehicle.physics.idleRpm + 170, vehicle.name);
+    assert.ok(Math.abs(rpmFromRadiansPerSecond(hot.engineAngularVelocity) - vehicle.physics.idleRpm) < 1, vehicle.name);
+    const stopped = simulate(vehicle, INITIAL_SIMULATION_INPUT, 360, hot);
+    const restarted = simulate(vehicle, running, 270, stopped);
+    assert.equal(stopped.enginePhase, "off");
+    assert.ok(rpmFromRadiansPerSecond(restarted.engineAngularVelocity) < vehicle.physics.idleRpm + 60, vehicle.name);
+  }
+});
+
+test("LMDh drives electrically from the pits before starting the engine and coupling the gearbox", () => {
+  for (const car of enduranceCars) {
+    const control = { ...running, shiftMode: "AT" };
+    const { electricDrive } = car.physics;
+    const ready = simulate(car, control, 240);
+    assert.equal(ready.enginePhase, "electric", car.name);
+    assert.equal(ready.vehicleSpeed, 0);
+    assert.equal(ready.engineAngularVelocity, 0);
+    const floor = { ...control, throttle: 1 };
+    const rolling = simulate(car, floor, 120, ready);
+    assert.equal(rolling.enginePhase, "electric", car.name);
+    assert.equal(rolling.engineAngularVelocity, 0);
+    assert.equal(rolling.combustionTorqueNm, 0);
+    assert.ok(rolling.vehicleSpeed > 1 && rolling.motorAngularVelocity > 0 && rolling.motorLoad > 0);
+    assert.ok(rolling.electricEnergyKj < ready.electricEnergyKj);
+    let state = rolling;
+    for (let tick = 0; tick < 360 && state.enginePhase === "electric"; tick += 1) state = stepSimulation(state, floor, car);
+    assert.equal(state.enginePhase, "cranking", car.name);
+    assert.ok(state.vehicleSpeed * 3.6 >= electricDrive.engineStartKmh);
+    assert.equal(state.combustionTorqueNm, 0);
+    const runningCar = simulate(car, floor, 140, state);
+    assert.equal(runningCar.enginePhase, "running");
+    assert.ok(runningCar.vehicleSpeed > state.vehicleSpeed && runningCar.combustionTorqueNm > 0);
+    assert.equal(runningCar.electricPowerKw, 0);
+    const braking = stepSimulation(runningCar, { ...control, brake: 1 }, car);
+    assert.ok(braking.electricPowerKw < 0 && braking.electricEnergyKj > runningCar.electricEnergyKj);
+  }
+});
 
 test("sports cars rev independently in neutral, accelerate through gears and brake while coupled", () => {
   for (const car of cars) {
@@ -138,7 +194,7 @@ for (const vehicle of vehicles) {
   });
 
   test(`${vehicle.name}: rolling off in neutral drops revs quickly and allows a second blip`, () => {
-    const initial = { ...createSimulationState(vehicle), engineAngularVelocity: blipRpm * Math.PI / 30 };
+    const initial = warmRunningState(vehicle, blipRpm);
     const released = simulate(vehicle, running, 192, initial);
     const releaseRpm = rpmFromRadiansPerSecond(released.engineAngularVelocity);
     assert.ok(releaseRpm <= 4000 && releaseRpm >= vehicle.physics.idleRpm);
@@ -154,7 +210,7 @@ for (const vehicle of vehicles) {
   });
 
   test(`${vehicle.name}: neutral revs independently of wheel speed and brakes`, () => {
-    const idle = simulate(vehicle, running, 240);
+    const idle = simulate(vehicle, running, 240, warmRunningState(vehicle));
     assert.ok(Math.abs(rpmFromRadiansPerSecond(idle.engineAngularVelocity) - vehicle.physics.idleRpm) < 1);
     const input = { ...running, throttle: 1 };
     const revving = simulate(vehicle, input, 120, idle);
@@ -250,7 +306,7 @@ test("per-bike parameters give distinct profiles, and ignition off transfers no 
 
 test("pure rolling keeps the R1 wheel tied to road speed through a launch and a full stop", () => {
   const vehicle = vehicles.find(({ id }) => id === "yamaha-r1");
-  let state = { ...createSimulationState(vehicle), gear: 1 };
+  let state = { ...warmRunningState(vehicle), gear: 1 };
   for (let tick = 0; tick < 660; tick += 1) {
     const input = tick < 180 ? { ...running, throttle: 1 } : { ...running, brake: 1 };
     state = stepSimulation(state, input, vehicle);

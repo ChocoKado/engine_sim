@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent, PointerEvent, ReactNode } from "react";
-import { tuningProfiles } from "../data/tuning";
 import type { TuningProfile } from "../data/tuning";
 import type { AudioStatus } from "../hooks/useEngineAudio";
 import type { SimulationInput } from "../lib/simulation";
@@ -12,7 +11,8 @@ type ShiftMode = SimulationInput["shiftMode"];
 
 interface RidingControlsProps {
   title: string;
-  engineOn: boolean;
+  powerOn: boolean;
+  electricLaunch: boolean;
   engineFailed: boolean;
   shiftMode: ShiftMode;
   onToggleEngine: () => void;
@@ -22,6 +22,7 @@ interface RidingControlsProps {
   onVolumeChange: (value: number) => void;
   tuning: TuningProfile;
   onTuningChange: (tuning: TuningProfile) => void;
+  availableTunings: readonly TuningProfile[];
   onToggleAudio: () => void;
   onShift: (direction: -1 | 1) => void;
   onPedalChange: (pedal: Pedal, pressed: boolean) => void;
@@ -227,8 +228,8 @@ const audioLabels: Record<AudioStatus, string> = {
 };
 
 export function RidingControls({
-  title, engineOn, engineFailed, shiftMode, onToggleEngine, onReset, audioStatus, onToggleAudio,
-  volume, onVolumeChange, tuning, onTuningChange, onShift, onPedalChange, resetKey,
+  title, powerOn, electricLaunch, engineFailed, shiftMode, onToggleEngine, onReset, audioStatus, onToggleAudio,
+  volume, onVolumeChange, tuning, onTuningChange, availableTunings, onShift, onPedalChange, resetKey,
 }: RidingControlsProps) {
   return (
     <section className="panel controls-panel" aria-labelledby="controls-title">
@@ -247,10 +248,10 @@ export function RidingControls({
             {audioLabels[audioStatus]}
           </button>
           <PointerActionButton
-            className={`engine-toggle${engineOn || engineFailed ? " engine-running" : ""}`}
+            className={`engine-toggle${powerOn || engineFailed ? " engine-running" : ""}`}
             onActivate={engineFailed ? onReset : onToggleEngine}
           >
-            {engineFailed ? "重設" : engineOn ? "熄火" : "啟動"}
+            {engineFailed ? "重設" : powerOn ? (electricLaunch ? "關閉動力" : "熄火") : electricLaunch ? "出站待命" : "啟動"}
           </PointerActionButton>
         </div>
       </div>
@@ -286,11 +287,11 @@ export function RidingControls({
             id="engine-voicing"
             value={tuning.id}
             onChange={(event) => {
-              const next = tuningProfiles.find((profile) => profile.id === event.currentTarget.value);
+              const next = availableTunings.find((profile) => profile.id === event.currentTarget.value);
               if (next) onTuningChange(next);
             }}
           >
-            {tuningProfiles.map((profile) => (
+            {availableTunings.map((profile) => (
               <option key={profile.id} value={profile.id}>{profile.label} · {profile.version}</option>
             ))}
           </select>

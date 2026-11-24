@@ -41,8 +41,7 @@ export const cars: readonly Vehicle[] = [
   defineCar({
     id: "toyota-gr-supra", brand: "Toyota", name: "GR Supra", version: "2025 北美 3.0・6MT",
     engine: "B58 渦輪直列六缸", displacementCc: 2998,
-    // Modified-intake acoustic voicing. The power, ratios and road limiter remain the 3.0 6MT preset.
-    turbocharger: { maxBoostBar: 1.05, spoolStartRpm: 1100, releaseStyle: "flutter" },
+    turbocharger: { maxBoostBar: 1.05, spoolStartRpm: 1100 },
     source: "https://www.toyota.com/content/dam/toyota/brochures/pdf/2025/grsupra_ebrochure.pdf",
     cylinderDimensionsMm: [82, 94.6, 148], firingDegrees: evenSix, cylinderFiringDegrees: [0, 480, 240, 600, 120, 360],
     exhaustFrequencyHz: 108, pulseDecayMs: 7.8,

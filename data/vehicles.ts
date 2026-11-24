@@ -6,7 +6,7 @@ import { defineTrim } from "./motorcycle.ts";
 import { suzukiVehicles } from "./suzuki.ts";
 
 export interface Vehicle {
-  readonly kind?: "car" | "formula1";
+  readonly kind?: "car" | "formula1" | "endurance";
   readonly id: string;
   readonly brand: string;
   readonly name: string;
@@ -23,7 +23,7 @@ export interface Vehicle {
     readonly maxBoostBar: number;
     readonly spoolStartRpm?: number;
     readonly turbineCount?: 1 | 2;
-    readonly releaseStyle?: "recirculating" | "external" | "flutter" | "subtle";
+    readonly releaseStyle?: "recirculating" | "external" | "subtle";
   };
   readonly geometry: {
     readonly boreM: number;
@@ -88,6 +88,12 @@ export interface Vehicle {
       readonly regenPowerKw: number;
       readonly taperStartKmh?: number;
       readonly taperEndKmh?: number;
+    };
+    readonly electricDrive?: {
+      readonly motorPowerKw: number;
+      readonly launchTorqueNm: number;
+      readonly batteryCapacityKwh: number;
+      readonly engineStartKmh: number;
     };
     readonly frictionNm: number;
     readonly frictionNmPerRadPerSecond: number;
