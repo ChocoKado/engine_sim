@@ -1,8 +1,12 @@
+import { apriliaVehicles, bmwVehicles, ducatiVehicles } from "./european-motorcycles.ts";
+import { moreKawasakiVehicles, moreYamahaVehicles } from "./expanded-yamaha-kawasaki.ts";
+import { hondaVehicles } from "./honda.ts";
 import { kawasakiVehicles } from "./kawasaki.ts";
+import { suzukiVehicles } from "./suzuki.ts";
 
 export interface Vehicle {
   readonly id: string;
-  readonly brand: "Yamaha" | "Kawasaki";
+  readonly brand: "Yamaha" | "Kawasaki" | "Aprilia" | "Ducati" | "Suzuki" | "Honda" | "BMW";
   readonly name: string;
   readonly version: string;
   readonly displacementCc: number;
@@ -20,6 +24,7 @@ export interface Vehicle {
     readonly cylinderSpacingM: number;
     readonly intakeLiftM: number;
     readonly exhaustLiftM: number;
+    readonly bankAngleRad?: number;
     readonly cylinderFiringAnglesRad?: readonly number[];
     readonly vva?: { readonly switchRpm: number | null; readonly highIntakeLiftM: number };
   };
@@ -50,6 +55,7 @@ export interface Vehicle {
     readonly idleRpm: number;
     readonly referenceRpm: number;
     readonly fuelCutRpm: number;
+    readonly gearFuelCutRpm?: Readonly<Partial<Record<number, number>>>;
     readonly speedLimitKmh?: number;
     readonly engineInertiaKgM2: number;
     readonly wheelInertiaKgM2: number;
@@ -365,5 +371,12 @@ export const vehicles = [
       clutchDampingNmPerRadPerSecond: 1.4,
     },
   },
+  ...moreYamahaVehicles,
   ...kawasakiVehicles,
+  ...moreKawasakiVehicles,
+  ...apriliaVehicles,
+  ...ducatiVehicles,
+  ...suzukiVehicles,
+  ...hondaVehicles,
+  ...bmwVehicles,
 ] as const satisfies readonly Vehicle[];

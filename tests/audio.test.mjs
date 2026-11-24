@@ -141,23 +141,31 @@ test("live tuning alters the exhaust spectrum without interrupting its firing cl
   assert.notDeepEqual(intake.samples, baseline.samples);
 });
 
-const firingIntervals = {
-  "yamaha-r15": [1920],
-  "yamaha-r3": [480, 1440],
-  "yamaha-r6": [480, 480, 480, 480],
-  "yamaha-r7": [720, 1200],
-  "yamaha-r9": [640, 640, 640],
-  "yamaha-r1": [720, 480, 240, 480],
-};
-const flatplaneFourIntervals = [480, 480, 480, 480];
+test("RSV4, Ducati Twin Pulse and RC30 use distinct documented firing cadences", () => {
+  const patterns = {
+    "aprilia-rsv4": [0, 180, 425, 605],
+    "ducati-panigale-v4": [0, 90, 290, 380],
+    "ducati-panigale-v4-r": [0, 90, 290, 380],
+    "honda-vfr750r-rc30": [0, 90, 360, 450],
+  };
+  for (const [id, angles] of Object.entries(patterns)) {
+    const { audio } = vehicles.find((vehicle) => vehicle.id === id);
+    assert.deepEqual(audio.firingAnglesRad.map((radians) => Math.round(radians * 180 / Math.PI)), angles);
+  }
+});
 
 for (const vehicle of vehicles) {
   test(`${vehicle.name}: pressure starts at exhaust opening and keeps the firing intervals`, () => {
     const audio = captureAudio(vehicle);
     const signal = audio.blocks(120, {});
     const gaps = audio.pulses.slice(1).map((pulse, position) => pulse - audio.pulses[position]);
-    const required = vehicle.brand === "Kawasaki" ? flatplaneFourIntervals : firingIntervals[vehicle.id];
-    const expectedFirstPulse = playbackDelaySamples + Math.ceil(exhaustOpeningRad / (100 * Math.PI) * rate) - 1;
+    const samplesPerRadian = rate / (100 * Math.PI);
+    const openings = vehicle.audio.firingAnglesRad
+      .map((angle) => (angle + exhaustOpeningRad) % cycleRadians)
+      .sort((a, b) => a - b);
+    const firstOpening = openings[0];
+    const required = openings.map((angle, index) => ((openings[index + 1] ?? (firstOpening + cycleRadians)) - angle) * samplesPerRadian);
+    const expectedFirstPulse = playbackDelaySamples + Math.ceil(firstOpening * samplesPerRadian) - 1;
     assert.ok(Math.abs(audio.pulses[0] - expectedFirstPulse) <= 1);
     assert.ok(gaps.length > 5);
     assert.ok(gaps.every((gap, position) => Math.abs(gap - required[position % required.length]) <= 1), gaps.join(","));

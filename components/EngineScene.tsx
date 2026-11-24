@@ -59,8 +59,14 @@ function buildEngine(vehicle: Vehicle) {
   const rodLength = vehicle.geometry.rodLengthM * metresToScene;
   const spacing = vehicle.geometry.cylinderSpacingM * metresToScene;
   const firingAngles = vehicle.geometry.cylinderFiringAnglesRad ?? vehicle.audio.firingAnglesRad;
-  const count = firingAngles.length;
-  const width = (count - 1) * spacing + bore * 1.28;
+  const halfBankAngle = (vehicle.geometry.bankAngleRad ?? 0) / 2;
+  const bankAngles = halfBankAngle > 0 ? [-halfBankAngle, halfBankAngle] : [0];
+  const isVEngine = bankAngles.length === 2;
+  const bankSize = firingAngles.length / bankAngles.length;
+  const bankWidth = (bankSize - 1) * spacing + bore * 1.28;
+  // The axial stagger leaves room for both rods at a shared crank throw.
+  const bankStagger = isVEngine ? bore * 0.11 : 0;
+  const width = bankWidth + 2 * bankStagger;
   const radius = bore * 0.61;
   const barrelBottom = rodLength - throwRadius - bore * 0.21;
   const barrelTop = rodLength + throwRadius + bore * 0.17;
@@ -96,7 +102,8 @@ function buildEngine(vehicle: Vehicle) {
   }
 
   function halfBarrel(parent: THREE.Object3D, r: number, h: number, material: THREE.Material, x: number, y: number, rear: boolean) {
-    const start = rear ? Math.PI / 2 : -Math.PI / 2;
+    const opening = isVEngine ? Math.PI / 2 : 0;
+    const start = opening + (rear ? Math.PI / 2 : -Math.PI / 2);
     const mesh = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 24, 1, true, start, Math.PI), material);
     mesh.position.set(x, y, 0);
     parent.add(mesh);
@@ -105,8 +112,6 @@ function buildEngine(vehicle: Vehicle) {
   box(group, width * 1.05, bore * 0.2, bore * 1.2, frame, 0, -throwRadius - bore * 0.14, 0);
   box(group, width * 1.04, bore * 0.88, bore * 0.23, frame, 0, 0, -radius * 0.86);
   box(cover, width * 1.04, bore * 0.85, bore * 0.18, frame, 0, 0, radius * 0.93);
-  box(group, width * 1.02, bore * 0.17, bore * 0.43, frame, 0, seatY + bore * 0.06, -radius * 0.65);
-  box(cover, width * 1.04, bore * 0.24, bore * 1.12, frame, 0, seatY + bore * 0.22, 0);
 
   const axle = cylinder(group, bore * 0.082, width * 1.1, crankMetal, 0, 0, 0);
   axle.rotation.z = Math.PI / 2;
@@ -115,23 +120,24 @@ function buildEngine(vehicle: Vehicle) {
     bearing.rotation.z = Math.PI / 2;
   }
 
-  const camTracks = count === 1 ? [0] : [-bore * 0.23, bore * 0.23];
-  const cams = camTracks.map((z) => {
+  const camTracks = !isVEngine && bankSize === 1 ? [0] : [-bore * 0.23, bore * 0.23];
+
+  function makeCam(bank: THREE.Group, bankFiringAngles: readonly number[], z: number) {
     const cam = new THREE.Group();
     cam.position.set(0, camY, z);
-    group.add(cam);
+    bank.add(cam);
     const material = z > 0 ? intakeMetal : z < 0 ? exhaustMetal : crankMetal;
-    const shaft = cylinder(cam, bore * 0.055, width, material, 0, 0, 0);
+    const shaft = cylinder(cam, bore * 0.055, bankWidth, material, 0, 0, 0);
     shaft.rotation.z = Math.PI / 2;
 
-    for (let index = 0; index < count; index += 1) {
-      const x = (index - (count - 1) / 2) * spacing;
-      const valveTypes: (keyof typeof VALVE_EVENTS)[] = count === 1 ? ["intake", "exhaust"] : [z > 0 ? "intake" : "exhaust"];
+    for (const [index, firingAngle] of bankFiringAngles.entries()) {
+      const x = (index - (bankSize - 1) / 2) * spacing;
+      const valveTypes: (keyof typeof VALVE_EVENTS)[] = camTracks.length === 1 ? ["intake", "exhaust"] : [z > 0 ? "intake" : "exhaust"];
       for (const valveType of valveTypes) {
         const intake = valveType === "intake";
         const { opensDegrees, closesDegrees } = VALVE_EVENTS[valveType];
         const liftPeakRad = (opensDegrees + closesDegrees) * Math.PI / 360;
-        const eccentricAngle = Math.PI - (liftPeakRad + firingAngles[index]) / 2;
+        const eccentricAngle = Math.PI - (liftPeakRad + firingAngle) / 2;
         const eccentricity = bore * 0.055;
         const lobe = cylinder(cam, bore * 0.11, bore * 0.115, intake ? intakeMetal : exhaustMetal,
           x + bore * (intake ? -0.2 : 0.2), Math.cos(eccentricAngle) * eccentricity, Math.sin(eccentricAngle) * eccentricity);
@@ -139,37 +145,37 @@ function buildEngine(vehicle: Vehicle) {
       }
     }
 
-    const gear = cylinder(cam, bore * 0.16, bore * 0.085, material, -width * 0.5, 0, 0);
+    const gear = cylinder(cam, bore * 0.16, bore * 0.085, material, -bankWidth * 0.5, 0, 0);
     gear.rotation.z = Math.PI / 2;
     return cam;
-  });
+  }
 
-  function makeValve(x: number, z: number, material: THREE.Material) {
+  function makeValve(bank: THREE.Group, x: number, z: number, material: THREE.Material) {
     const valve = new THREE.Group();
     valve.position.set(x, seatY, z);
-    group.add(valve);
+    bank.add(valve);
     cylinder(valve, bore * 0.03, bore * 0.32, material, 0, bore * 0.14, 0);
     cylinder(valve, bore * 0.127, bore * 0.048, material, 0, 0, 0);
     cylinder(valve, bore * 0.073, bore * 0.043, material, 0, bore * 0.3, 0);
     return valve;
   }
 
-  const cylinders = Array.from({ length: count }, (_, index) => {
-    const x = (index - (count - 1) / 2) * spacing;
-    halfBarrel(group, radius, barrelHeight, frame, x, barrelY, true);
-    halfBarrel(cover, radius, barrelHeight, frame, x, barrelY, false);
+  function makeCylinder(bank: THREE.Group, bankCover: THREE.Group, index: number, crankSides: readonly number[]) {
+    const x = (index - (bankSize - 1) / 2) * spacing;
+    halfBarrel(bank, radius, barrelHeight, frame, x, barrelY, true);
+    halfBarrel(bankCover, radius, barrelHeight, frame, x, barrelY, false);
     for (const y of [barrelBottom, barrelY, barrelTop]) {
-      halfBarrel(group, radius * 1.08, bore * 0.065, ribs, x, y, true);
-      halfBarrel(cover, radius * 1.08, bore * 0.065, ribs, x, y, false);
+      halfBarrel(bank, radius * 1.08, bore * 0.065, ribs, x, y, true);
+      halfBarrel(bankCover, radius * 1.08, bore * 0.065, ribs, x, y, false);
     }
 
     const crank = new THREE.Group();
     crank.position.x = x;
-    group.add(crank);
-    const crankPin = cylinder(crank, bore * 0.09, bore * 0.49, crankMetal, 0, throwRadius, 0);
+    bank.add(crank);
+    const crankPin = cylinder(crank, bore * 0.09, bore * (isVEngine ? 0.22 : 0.49), crankMetal, 0, throwRadius, 0);
     crankPin.rotation.z = Math.PI / 2;
 
-    for (const side of [-1, 1]) {
+    for (const side of crankSides) {
       const cheek = box(crank, bore * 0.13, throwRadius * 1.65, bore * 0.24, crankMetal, side * bore * 0.2, throwRadius * 0.24, 0);
       cheek.rotation.x = side * 0.08;
       const counterweight = cylinder(crank, bore * 0.21, bore * 0.13, crankMetal, side * bore * 0.2, -throwRadius * 0.62, 0);
@@ -178,14 +184,14 @@ function buildEngine(vehicle: Vehicle) {
 
     const piston = new THREE.Group();
     piston.position.x = x;
-    group.add(piston);
+    bank.add(piston);
     cylinder(piston, bore * 0.465, bore * 0.26, pistonMetal, 0, bore * 0.025, 0);
     for (const y of [0.075, 0.12]) cylinder(piston, bore * 0.474, bore * 0.018, ribs, 0, bore * y, 0);
     const wrist = cylinder(piston, bore * 0.067, bore * 0.88, rodMetal, 0, 0, 0);
     wrist.rotation.z = Math.PI / 2;
 
     const rod = new THREE.Group();
-    group.add(rod);
+    bank.add(rod);
     box(rod, bore * 0.127, rodLength * 0.81, bore * 0.15, rodMetal, 0, 0, 0);
     const bigEnd = cylinder(rod, bore * 0.145, bore * 0.18, rodMetal, 0, -rodLength / 2, 0);
     bigEnd.rotation.z = Math.PI / 2;
@@ -194,10 +200,30 @@ function buildEngine(vehicle: Vehicle) {
 
     return {
       x, crank, piston, rod,
-      intake: makeValve(x - bore * 0.2, bore * 0.18, intakeMetal),
-      exhaust: makeValve(x + bore * 0.2, -bore * 0.18, exhaustMetal),
+      intake: makeValve(bank, x - bore * 0.2, bore * 0.18, intakeMetal),
+      exhaust: makeValve(bank, x + bore * 0.2, -bore * 0.18, exhaustMetal),
+    };
+  }
+
+  const banks = bankAngles.map((tilt, index) => {
+    const bank = new THREE.Group();
+    const bankCover = new THREE.Group();
+    const side = index === 0 ? -1 : 1;
+    bank.rotation.x = bankCover.rotation.x = tilt;
+    bank.position.x = bankCover.position.x = side * bankStagger;
+    group.add(bank);
+    cover.add(bankCover);
+    box(bank, bankWidth * 1.02, bore * 0.17, bore * 0.43, frame, 0, seatY + bore * 0.06, -radius * 0.65);
+    box(bankCover, bankWidth * 1.04, bore * 0.24, bore * 1.12, frame, 0, seatY + bore * 0.22, 0);
+    const bankFiringAngles = firingAngles.slice(index * bankSize, (index + 1) * bankSize);
+    const crankSides = isVEngine ? [side] : [-1, 1];
+    return {
+      cams: camTracks.map((z) => makeCam(bank, bankFiringAngles, z)),
+      cylinders: bankFiringAngles.map((_, localIndex) => makeCylinder(bank, bankCover, localIndex, crankSides)),
     };
   });
+  const cams = banks.flatMap((bank) => bank.cams);
+  const cylinders = banks.flatMap((bank) => bank.cylinders);
 
   function addSupercharger() {
     // Scale reference: Kawasaki 2015 Ninja H2 press kit, p. 4. Housing and vane shape are schematic.
@@ -250,7 +276,9 @@ function buildEngine(vehicle: Vehicle) {
     }
   }
 
-  return { group, cover, applyPose, height: camY + bore * 0.2 + throwRadius, width };
+  const height = (camY + bore * 0.2) * Math.cos(halfBankAngle) + throwRadius;
+  const depth = isVEngine ? (camY * Math.sin(halfBankAngle) + bore * 0.6) * 2 : 0;
+  return { group, cover, applyPose, height, width, depth, isVEngine };
 }
 
 export default function EngineScene({ vehicle, readState, cutaway, paused }: EngineSceneProps) {
@@ -296,9 +324,10 @@ export default function EngineScene({ vehicle, readState, cutaway, paused }: Eng
     scene.add(engine.group);
     const camera = new THREE.PerspectiveCamera(37, 1, 0.05, 50);
     const controls = new OrbitControls(camera, canvas);
-    const size = Math.max(engine.height, engine.width);
+    const size = Math.max(engine.height, engine.width, engine.depth);
     const centerY = engine.height * 0.34;
-    camera.position.set(size * 0.57, centerY + size * 0.24, size * 1.73);
+    if (engine.isVEngine) camera.position.set(size * 1.68, centerY + size * 0.32, size * 0.55);
+    else camera.position.set(size * 0.57, centerY + size * 0.24, size * 1.73);
     controls.target.set(0, centerY, 0);
     controls.enablePan = false;
     controls.enableDamping = true;

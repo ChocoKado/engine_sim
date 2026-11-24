@@ -181,6 +181,77 @@ RevLab 以 Web Audio 實時計算點火脈衝，並把排氣音色設為可獨�
 
 排氣加厚參考汽缸脈衝、集管與消音器可形成不同共鳴的聲學模型。`exhaustBody` 設定兩個寬頻共鳴的中心頻率、阻尼與強度。多缸的排氣支管給予小幅固定差異，由現有點火脈衝驅動。所有新係數是 D 級原創合成，無對應原廠排氣管量測或實錄。 [排氣管與消音器聲學模型](https://doi.org/10.1186/s13636-024-00372-4) · [Yamaha 引擎聲合成技報](https://global.yamaha-motor.com/jp/design_technology/technical/pdf/chapters/YMC-TR32_TechPaper_04.pdf)
 
+## M12 七品牌仿賽與歷史代表（2026-11-24）
+
+`data/MODEL_CATALOG.csv` 列出 60 組設定的版本、點火間隔與逐車註記。新增車在 `data/` 按品牌存放。介面「原廠資料」連到該車的主要來源。車名後標示賽道、輸出近似及歷史版本；同動力與傳動的配件版共用基準。
+
+| 索引 | 核對及近似項目 |
+|---|---|
+| M12-Y | R125 歐規動力、車重與 VVA，變速採較早手冊，VVA 切換點 `unknown`。R25 採日規整車表。初代 R1 的 150 PS／10,000 RPM、108.3 Nm／8,500 RPM 取自原廠，裝備重量由 177 kg 乾重推估。 [R125](https://www.yamaha-motor.eu/gb/en/motorcycles/supersport/pdp/r125/) · [R125 手冊](https://www.manualslib.com/manual/1161348/Yamaha-Yzf-R125.html?page=90) · [R25](https://www.yamaha-motor.co.jp/mc/spec-data/secret/yzf-r25-2026.html) · [R1 原廠收藏](https://global.yamaha-motor.com/jp/showroom/cp/collection/yzf-r1/) · [R1 維修手冊](https://www.manualslib.com/manual/804954/Yamaha-Yzf-R1-1998.html) |
+| M12-K | Ninja 125／250／400／500／650、ZX-4RR 和 ZX-10RR 採指定市場諸元，峰值用常壓。ZX-7R 採原廠 1996 P1 機件圖及同代手冊，輸出與裝備重量採近似。 [Ninja 250](https://www.kawasaki-motors.com/ja-jp/motorcycle/ninja/sport/ninja-250/2026-ninja-250) · [Ninja 400](https://www.kawasaki-motors.com/ja-jp/motorcycle/ninja/sport/ninja-400/2026-ninja-400) · [ZX-4RR](https://www.kawasaki.eu/en/Motorcycles/A2_Bikes/Ninja_ZX-4RR_2027.dispdir.dispdir.html.html) · [ZX-10RR](https://www.kawasaki.com.au/en-au/motorcycle/ninja/supersport/ninja-zx-10r/2026-ninja-zx-10rr) · [ZX-7R 機件圖](https://www.kawasaki.com/en-us/owner-center/parts/1996/ZX750-P1) · [同代維修手冊存檔](https://www.scribd.com/document/611584777/manual-de-servico-KAWASAKI-ZX7R-NINJA-1996-03) |
+| M12-A | RS 125 引擎與六速齒比已核對，跨版減速比見備註。RS 457 用日規輸出與美規手冊總減速，RS 660 採對應歐規 EU5+ 手冊。RSV4 的 0°／180°／425°／605° 延用原廠 RR/RF 維修資料，按 1–3／2–4 分列。Mille 採同代維修手冊齒比，1998 出口動力與裝備重量為近似。 [Aprilia 車系](https://www.aprilia.com/wlassets/EICMA/EICMA-2025/Aprilia/brochure/EN-DIGITAL-Aprilia-Range-11-2025/original/EN-DIGITAL-Aprilia-Range-11-2025.pdf) · [RS 457 手冊存檔](https://www.scribd.com/document/786767320/rs-457-owners-manual-e5-usa-2024) · [RS 660 EU5+ 手冊](https://www.aprilia.com/wlassets/aprilia/pl/mauals/RS-660-RS-660-Factory/RS-660-660-FACTORY-E5-_PL/original/RS%2B660-660%2BFACTORY%2BE5%252B_PL.pdf) · [RSV4 點火順序手冊存檔](https://it.scribd.com/document/483521712/aprilia-rsv4-pdf) · [Mille 維修手冊存檔](https://www.scribd.com/document/774638682/Aprilia-RSV-Mille-Workshop-Manual) |
+| M12-D | Panigale 各檔齒比採指定版本。Twin Pulse 為 0°／90°／290°／380°。2027 V4 二至五檔 15,000 RPM，其餘檔斷油近似；V4 R 六檔 16,500 RPM、其餘 16,000 RPM，保留道路版 218 PS。三款裝備重量以原廠無燃油重量加估計油量。916 歷史諸元與近似裝備重量、傳動分列。 [Panigale V2](https://www.ducati.com/in/en/bikes/panigale/panigale-v2-2025/insights?tab=Electronics) · [Panigale V4](https://www.ducati.com/gb/en/bikes/panigale/panigale-v4-2027/insights) · [Panigale V4 R](https://www.ducati.com/gb/en/bikes/panigale/panigale-v4-r/insights) · [Ducati 916 收藏](https://www.ducati.com/us/en/heritage/bikes/916) |
+| M12-S | Hayabusa 模擬日本第三代 188 PS、149 Nm、262 kg 版本。GSX-8R 日規為 80 PS，GSX-R1000R 日規為 190 PS。GSX-R600／750 的現售美規未列峰值，採早期 Suzuki 資料估計。R125 照日本同系手冊，R150 與 1985 R750 的減速比為暫定。 [Hayabusa](https://www1.suzuki.co.jp/motor/lineup/gsx1300rrqm6/) · [GSX-8R](https://www1.suzuki.co.jp/motor/lineup/gsx800frqm6/) · [GSX-R1000R](https://www1.suzuki.co.jp/motor/lineup/gsxr1000rrrm7/?page=style&type=gsxr1000rrrm7) · [GSX-R600 原廠歷史諸元](https://motorrad.suzuki.de/cms/api/delivery/file/portal_1/page_687/widget_2259/de/GSX-R600_L6_DE.original.pdf) · [2019 GSX-R750 原廠表](https://suzuki-adplanner-assets.s3.amazonaws.com/assets/features/_2019/sportbike/fbs-gsx-r750l9.pdf) · [GSX-R750 歷代原廠資料](https://www.suzuki.co.jp/suzuki_digital_library/2_moto/sports_081.html) |
+| M12-H | MC22 249 cc 四缸與 MC51 雙缸分開。CBR400R／500R 雙缸與 FOUR 分開。英規 500 FOUR 功率、扭矩採當期官方資料，其裝備重量與齒比暫參考 400 FOUR。美規 CBR1000RR 峰值採跨市場近似，Fireblade SP 用 2024 日規完整規格。CBR900RR 齒比和裝備重量近似。RC30 點火從 360° 曲軸及 90° 缸角推導。 [MC22](https://www.honda.co.jp/factbook/motor/CBR250RR/19900300/011.html) · [MC51 早期手冊](https://www.honda.co.jp/ownersmanual/pdf/motor/cbr250rr/30K646000_web.pdf?genpo=HondaMotor) · [CBR400R FOUR](https://www.honda.co.jp/content/dam/site/www/CBR400RF/cq_img/pdf/CBR400RF_SPEC_SP.pdf) · [CBR500R FOUR](https://www.honda.co.uk/motorcycles/range/super-sport/cbr500r-four/specifications.html) · [Fireblade SP](https://www.honda.co.jp/content/dam/site/www/CBR1000RRR/cq_img/pdf/CBR1000RRR_SPEC_SP.pdf) · [CBR900RR](https://global.honda/en/CBR/history/stories/1992/) · [VFR750R](https://www.honda.co.jp/motorcycle-refresh-plan/pdf/VFR750R-RC30.pdf) |
+| M12-B | G 310 RR 用印度 Sport／Track 資料，齒比跨用 G 310 R 手冊。M／S 1000 RR 按原廠 2025 規格採不同動力與相同總齒比；初代採 2009 原廠發布。 [G 310 RR](https://www.bmw-motorrad.in/en/models/sport/g310rr/technicaldata.html) · [G 310 R 手冊](https://ownersmanuals2.com/bmw/g-310-r-2016-owners-manual-71743/page-119) · [現款 M／S 1000 RR](https://www.press.bmwgroup.com/switzerland/article/attachment/T0446040DE/624096) · [初代 S 1000 RR](https://www.press.bmwgroup.com/canada/article/attachment/T0036542EN/56488) |
+
+尚無完整動力曲線、原車輪上測功、每檔 ECU 限速和音色量測。各車音色、有效輪徑、風阻與轉動慣量屬 C／D 級。3D 剖面呈現缸列、曲軸相位、活塞及正時概念。ShiftCam、SR-VVT、IVT、V4 R 的實車檔位排列及 Honda E-Clutch 電控採本站共用的近似模型。後續樣本包括已發表待完整諸元的 2027 Fireblade、GSX-10R，以及需二行程核心的歷史仿賽。
+
+RS 125 採原廠 EU5 手冊的 58／13 終傳，初傳確值 `unknown`，以瑞士型式認證的 120 km/h 校正。Hayabusa 道路限速採同代試駕資料的約 186 mph（299 km/h）作為跨市場設定。 [RS 125 手冊](https://www.aprilia.com/wlassets/aprilia/pl/mauals/2022/APRILIA-RS125-E5-PL/original/APRILIA%2BRS125%2BE5%2BPL.pdf) · [瑞士型式 6AA349](https://www.dauto.ch/en/typenscheine/6aa349-aprilia-rs-125) · [第三代 Hayabusa 試駕](https://ridermagazine.com/2022-suzuki-hayabusa-road-test-review/)
+
+### M12 新增車款轉速與模擬車速
+
+取固定平路條件、AT 全油門 75 秒的車速。個別市場的實車速度限制與騎士風阻資料缺失，表內數字用於比較模擬輸出。
+
+| 車型 | 儀表紅區 RPM | 模擬斷油 RPM | 模擬 km/h |
+|---|---:|---:|---:|
+| Yamaha YZF-R125 | 10900 | 11400 | 128.4 |
+| Yamaha YZF-R25 | 14000 | 14300 | 171.8 |
+| Yamaha YZF-R1 ’98 | 11750 | 12000 | 276.1 |
+| Kawasaki Ninja 125 | 11200 | 11600 | 123.4 |
+| Kawasaki Ninja 250 | 13200 | 13800 | 171.5 |
+| Kawasaki Ninja 400 | 12000 | 12500 | 189.6 |
+| Kawasaki Ninja 500 | 10500 | 11000 | 182.5 |
+| Kawasaki Ninja 650 | 10000 | 10400 | 207.0 |
+| Kawasaki ZX-4RR | 15500 | 16100 | 227.1 |
+| Kawasaki ZX-10RR | 14500 | 15000 | 310.5 |
+| Kawasaki ZX-7R ’96 | 12500 | 13000 | 251.9 |
+| Aprilia RS 125 | 11000 | 11600 | 119.4 |
+| Aprilia RS 457 | 10000 | 10700 | 189.0 |
+| Aprilia RS 660 | 11500 | 11800 | 246.0 |
+| Aprilia RSV4 | 13600 | 13900 | 317.1 |
+| Aprilia RSV Mille | 10200 | 10500 | 256.4 |
+| Ducati Panigale V2 | 11300 | 11800 | 256.7 |
+| Ducati Panigale V4 | 14500 | 14600 ／ 15000（2–5 檔） | 318.1 |
+| Ducati Panigale V4 R | 16000 | 16000 ／ 16500（6 檔） | 317.4 |
+| Ducati 916 | 10000 | 10400 | 253.1 |
+| Suzuki GSX-R125 | 11200 | 11700 | 128.0 |
+| Suzuki GSX-R150 | 11600 | 12200 | 136.8 |
+| Suzuki GSX250R | 10000 | 10700 | 140.9 |
+| Suzuki GSX-8R | 9800 | 10400 | 221.0 |
+| Suzuki GSX-R600 | 15100 | 15700 | 267.7 |
+| Suzuki GSX-R750 | 14500 | 15000 | 283.8 |
+| Suzuki GSX-R1000R | 14300 | 14700 | 302.3 |
+| Suzuki Hayabusa | 11000 | 11300 | 298.6 |
+| Suzuki GSX-R750 ’85 | 10900 | 11400 | 219.5 |
+| Honda CBR150R | 10500 | 11000 | 130.6 |
+| Honda CBR250RR | 14100 | 14600 | 184.0 |
+| Honda CBR400R | 9900 | 10400 | 182.6 |
+| Honda CBR500R | 9000 | 9500 | 185.2 |
+| Honda CBR400R FOUR | 12700 | 13200 | 200.7 |
+| Honda CBR500R FOUR | 12300 | 12800 | 199.9 |
+| Honda CBR600RR | 15200 | 15700 | 264.1 |
+| Honda CBR650R | 12600 | 13100 | 236.7 |
+| Honda CBR1000RR | 13700 | 14200 | 303.4 |
+| Honda CBR1000RR-R SP | 14500 | 15000 | 320.4 |
+| Honda CBR250RR ’90 | 19000 | 19500 | 189.1 |
+| Honda VFR750R ’87 | 11500 | 12000 | 217.9 |
+| Honda CBR900RR ’92 | 11500 | 12000 | 254.3 |
+| BMW G 310 RR | 10500 | 10900 | 156.0 |
+| BMW S 1000 RR | 14600 | 15000 | 308.8 |
+| BMW M 1000 RR | 15100 | 15400 | 318.4 |
+| BMW S 1000 RR ’09 | 14000 | 14200 | 301.1 |
+
 ## 4. 開發者引用習慣
 
 每新增或修改一筆真實規格，請保存來源 URL、核對日、年式/地區/型號、原始值、單位、證據等級（A/B/C/D），以及對應的設定檔/測試；找不到資料就填 `unknown` 而不是猜。

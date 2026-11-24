@@ -49,8 +49,8 @@ test("manual requests shift through phases and skip neutral from first to second
 for (const vehicle of vehicles) {
   test(`${vehicle.name}: loaded upshift interrupts drive and reports actual RPM before and after`, () => {
     const input = { ...mt, throttle: 1 };
-    const speedAt10000 = speedForRpm(vehicle, 3, 10000);
-    const before = run(vehicle, rolling(vehicle, 3, speedAt10000), input, 18).at(-1);
+    const startSpeed = speedForRpm(vehicle, 3, Math.min(10000, 0.92 * vehicle.physics.fuelCutRpm));
+    const before = run(vehicle, rolling(vehicle, 3, startSpeed), input, 18).at(-1);
     const trace = run(vehicle, enqueueShift(before, 1), input, 60);
     assert.ok(trace[0].shiftCut > 0.85);
     const cut = trace.filter((state) => state.shift?.phase === "disengage");
@@ -60,7 +60,9 @@ for (const vehicle of vehicles) {
     assert.equal(after.lastShift.fromGear, 3);
     assert.equal(after.lastShift.targetGear, 4);
     assert.equal(after.lastShift.startRpm, rpmFromRadiansPerSecond(before.engineAngularVelocity));
-    assert.ok(after.lastShift.startRpm - after.lastShift.endRpm > 900);
+    const idealDrop = after.lastShift.startRpm * (1 - getOverallRatio(vehicle, 4) / getOverallRatio(vehicle, 3));
+    const drop = after.lastShift.startRpm - after.lastShift.endRpm;
+    assert.ok(Math.abs(drop - idealDrop) < 300);
     assert.ok(after.drivetrainTorqueNm > 0 && after.shiftCut === 0);
     const completed = trace.findIndex(({ shift }) => shift === null);
     assert.ok(completed > 0 && completed < 36);
@@ -71,7 +73,7 @@ for (const vehicle of vehicles) {
   });
 
   test(`${vehicle.name}: rapid MT downshifts can back-drive above fuel cutoff`, () => {
-    const targetRpmRatio = vehicle.id === "kawasaki-zx25r" ? 1.28 : 1.23;
+    const targetRpmRatio = vehicle.id === "kawasaki-zx25r" || vehicle.id === "aprilia-rs125" ? 1.28 : 1.23;
     const speed = { "yamaha-r15": 45, "yamaha-r3": 55 }[vehicle.id]
       ?? speedForRpm(vehicle, 3, targetRpmRatio * vehicle.physics.fuelCutRpm);
     const initial = rolling(vehicle, 6, speed);

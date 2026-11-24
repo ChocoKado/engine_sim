@@ -135,7 +135,9 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
   const neutralOverrun = gear === 0 ? unitInterval((engineSpeed - idleSpeed) / (2 * idleSpeed)) : 0;
   const unloadedDrag = 4 * pumping * closedThrottle * neutralOverrun;
   const engineLoss = friction + pumping + unloadedDrag;
-  const revFuel = unitInterval((physics.fuelCutRpm - rpm) / FUEL_CUT_WINDOW_RPM);
+  const gearFuelCutRpm = physics.gearFuelCutRpm?.[gear];
+  const fuelCutRpm = gearFuelCutRpm ?? physics.fuelCutRpm;
+  const revFuel = unitInterval((fuelCutRpm - rpm) / FUEL_CUT_WINDOW_RPM);
   const roadFuel = physics.speedLimitKmh === undefined ? 1
     : unitInterval((physics.speedLimitKmh - roadSpeed * 3.6) / SPEED_LIMIT_WINDOW_KMH);
   const availableCombustion = (fullThrottleTorqueNm(rpm, physics) + friction) * Math.min(revFuel, roadFuel);
@@ -176,10 +178,11 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
   const crankAdvance = dt * (engineSpeed + nextEngineSpeed) / 2;
   const superchargerRatio = vehicle.supercharger?.driveRatio ?? 0;
   const nextRpm = rpmFromRadiansPerSecond(nextEngineSpeed);
-  const mechanicalOverRev = nextRpm > physics.referenceRpm && (clutchTorque < 0 || state.mechanicalOverRev);
+  const overRevThresholdRpm = Math.max(physics.referenceRpm, gearFuelCutRpm ?? 0);
+  const mechanicalOverRev = nextRpm > overRevThresholdRpm && (clutchTorque < 0 || state.mechanicalOverRev);
   const newOverRev = mechanicalOverRev && !state.mechanicalOverRev;
   // An illustrative accumulated severity, with no prediction of a real engine's failure limit.
-  const damageRate = Math.max(0, (nextRpm / physics.referenceRpm - 1.10) / 0.10);
+  const damageRate = Math.max(0, (nextRpm / overRevThresholdRpm - 1.10) / 0.10);
   const damageExposure = Math.min(1, state.damageExposure + (mechanicalOverRev && engineOn ? dt * damageRate : 0));
   const engineFailed = state.engineFailed || damageExposure >= 1;
   const activeShift = transmission.shift;

@@ -13,3 +13,49 @@ kawasaki-zx10r,Kawasaki,Ninja ZX-10R,2026,EU,ZX-10R ABS,998,4,inline four,even 1
 kawasaki-zx14r,Kawasaki,Ninja ZX-14R,2025,US,ZX-14R ABS,1441,4,inline four,even 180 deg intervals,naturally aspirated,large displacement,6,PHASE_C,S16;S39,US ABS version; cutoff and timbre approximate
 kawasaki-h2,Kawasaki,Ninja H2,2019,EU,H2 road,998,4,inline four,even 180 deg intervals,mechanical centrifugal supercharger,supercharger tonal audio layer,6,PHASE_C,S40;S42,9.18 fixed speed multiplication; non-RAM air power; cutoff and timbre approximate
 kawasaki-h2r,Kawasaki,Ninja H2R,2026,EU,H2R closed-course,998,4,inline four,even 180 deg intervals,mechanical centrifugal supercharger,track-only; distinct audio and dynamics,6,PHASE_C,S41;S42,9.18 fixed speed multiplication; non-RAM air power; cutoff and timbre approximate
+yamaha-r125,Yamaha,YZF-R125,2026,EU,2026 歐規,125,1,single,720 deg firing intervals,naturally aspirated,單缸・VVA,6,PHASE_D,M12-Y,Cross-year gearing; VVA switch unknown
+yamaha-r25,Yamaha,YZF-R25,2026,JP,2026 日規,249,2,parallel twin,180/540 deg firing intervals,naturally aspirated,180° 並列雙缸,6,PHASE_D,M12-Y,Factory configuration and peak anchors. Cutoff approximate.
+yamaha-r1-1998,Yamaha,YZF-R1 ’98,1998,EU,1998 歐規・初代,998,4,inline four,180/180/180/180 deg firing intervals,naturally aspirated,直列四缸,6,PHASE_D,M12-Y,Wet mass estimated
+kawasaki-ninja125,Kawasaki,Ninja 125,2027,EU,2027 歐規,125,1,single,720 deg firing intervals,naturally aspirated,單缸,6,PHASE_D,M12-K,Factory configuration and peak anchors. Cutoff approximate.
+kawasaki-ninja250,Kawasaki,Ninja 250,2026,JP,2026 日規,248,2,parallel twin,180/540 deg firing intervals,naturally aspirated,180° 並列雙缸,6,PHASE_D,M12-K,Factory configuration and peak anchors. Cutoff approximate.
+kawasaki-ninja400,Kawasaki,Ninja 400,2026,JP,2026 日規,398,2,parallel twin,180/540 deg firing intervals,naturally aspirated,180° 並列雙缸,6,PHASE_D,M12-K,Factory configuration and peak anchors. Cutoff approximate.
+kawasaki-ninja500,Kawasaki,Ninja 500,2027,EU,2027 歐規,451,2,parallel twin,180/540 deg firing intervals,naturally aspirated,180° 並列雙缸,6,PHASE_D,M12-K,Factory configuration and peak anchors. Cutoff approximate.
+kawasaki-ninja650,Kawasaki,Ninja 650,2027,EU,2027 歐規,649,2,parallel twin,180/540 deg firing intervals,naturally aspirated,180° 並列雙缸,6,PHASE_D,M12-K,Factory configuration and peak anchors. Cutoff approximate.
+kawasaki-zx4rr,Kawasaki,ZX-4RR,2027,EU,2027 歐規・全功率,399,4,inline four,180/180/180/180 deg firing intervals,naturally aspirated,高轉直列四缸,6,PHASE_D,M12-K,Factory configuration and peak anchors. Cutoff approximate.
+kawasaki-zx10rr,Kawasaki,ZX-10RR,2026,AU,2026 澳洲版,998,4,inline four,180/180/180/180 deg firing intervals,naturally aspirated,高轉直列四缸,6,PHASE_D,M12-K,Factory configuration and peak anchors. Cutoff approximate.
+kawasaki-zx7r,Kawasaki,ZX-7R ’96,1996,Export,1996 出口版・經典,748,4,inline four,180/180/180/180 deg firing intervals,naturally aspirated,直列四缸,6,PHASE_D,M12-K,Period factory manual; export power and wet mass approximate
+aprilia-rs125,Aprilia,RS 125,2025,EU,2025 歐規,125,1,single,720 deg firing intervals,naturally aspirated,單缸,6,PHASE_D,M12-A,Earlier gearing and 58/13 final drive; primary calibrated to homologated speed
+aprilia-rs457,Aprilia,RS 457,2025,JP,2025 日規,457,2,parallel twin,270/450 deg firing intervals,naturally aspirated,270° 並列雙缸,6,PHASE_D,M12-A,JP spec with US manual gearing and limiter
+aprilia-rs660,Aprilia,RS 660,2025,EU,2025 歐規,659,2,parallel twin,270/450 deg firing intervals,naturally aspirated,270° 並列雙缸,6,PHASE_D,M12-A,Factory configuration and peak anchors. Cutoff approximate.
+aprilia-rsv4,Aprilia,RSV4,2025,EU,2025 歐規,1099,4,V4,180/245/180/115 deg firing intervals,naturally aspirated,65° V4,6,PHASE_D,M12-A,Current peak output; earlier factory firing diagram
+aprilia-rsv-mille,Aprilia,RSV Mille,1998,EU,1998 歐規・經典,998,2,V2,300/420 deg firing intervals,naturally aspirated,60° V2,6,PHASE_D,M12-A,Period references; stock export power and wet mass approximate
+ducati-panigale-v2,Ducati,Panigale V2,2025,IN,2025 印度版・890 cc,890,2,V2,270/450 deg firing intervals,naturally aspirated,90° V2・IVT,6,PHASE_D,M12-D,Fuel mass added to factory weight
+ducati-panigale-v4,Ducati,Panigale V4,2027,EU,2027 歐規,1103,4,V4,90/200/90/340 deg firing intervals,naturally aspirated,90° V4・Twin Pulse,6,PHASE_D,M12-D,Factory 15000 RPM in gears 2–5; other limits provisional
+ducati-panigale-v4-r,Ducati,Panigale V4 R,2026,EU,2026 歐規,998,4,V4,90/200/90/340 deg firing intervals,naturally aspirated,90° V4・Twin Pulse,6,PHASE_D,M12-D,16000 RPM (16500 in sixth); stock exhaust
+ducati-916,Ducati,916,1994,EU,1994 歐規・經典,916,2,V2,270/450 deg firing intervals,naturally aspirated,90° V2・Desmo,6,PHASE_D,M12-D,Factory heritage; gearing and wet mass approximate
+suzuki-gsxr125,Suzuki,GSX-R125,2025,EU,2025 歐規,124.4,1,single,720 deg firing intervals,naturally aspirated,單缸,6,PHASE_D,M12-S,Cross-year Japan gearing
+suzuki-gsxr150,Suzuki,GSX-R150,2026,ID,印尼版,147.3,1,single,720 deg firing intervals,naturally aspirated,單缸,6,PHASE_D,M12-S,Gearset and reductions provisional
+suzuki-gsx250r,Suzuki,GSX250R,2026,JP,2026 日規,248,2,parallel twin,180/540 deg firing intervals,naturally aspirated,180° 並列雙缸,6,PHASE_D,M12-S,Factory configuration and peak anchors. Cutoff approximate.
+suzuki-gsx8r,Suzuki,GSX-8R,2026,JP,2026 日規,775,2,parallel twin,270/450 deg firing intervals,naturally aspirated,270° 並列雙缸,6,PHASE_D,M12-S,Factory configuration and peak anchors. Cutoff approximate.
+suzuki-gsxr600,Suzuki,GSX-R600,2026,US,2026 美規・輸出近似,599,4,inline four,180/180/180/180 deg firing intervals,naturally aspirated,高轉直列四缸,6,PHASE_D,M12-S,Archived Suzuki data anchors 2026 US output and drivetrain
+suzuki-gsxr750,Suzuki,GSX-R750,2026,US,2026 美規・輸出近似,750,4,inline four,180/180/180/180 deg firing intervals,naturally aspirated,直列四缸,6,PHASE_D,M12-S,Archived Suzuki data anchors 2026 US output and drivetrain
+suzuki-gsxr1000r,Suzuki,GSX-R1000R,2027,JP,2027 日規,999,4,inline four,180/180/180/180 deg firing intervals,naturally aspirated,直列四缸・SR-VVT,6,PHASE_D,M12-S,Factory configuration and peak anchors. Cutoff approximate.
+suzuki-hayabusa,Suzuki,Hayabusa,2026,JP,2026 日規・第三代,1340,4,inline four,180/180/180/180 deg firing intervals,naturally aspirated,直列四缸,6,PHASE_D,M12-S,Japan factory gearing and output. Road limiter based on a third-generation test.
+suzuki-gsxr750-1985,Suzuki,GSX-R750 ’85,1985,JP,1985 日規・初代,747,4,inline four,180/180/180/180 deg firing intervals,naturally aspirated,油冷直列四缸,6,PHASE_D,M12-S,Japan factory history; gearing and wet mass approximate
+honda-cbr150r,Honda,CBR150R,2024,ID,印尼版,149.16,1,single,720 deg firing intervals,naturally aspirated,單缸,6,PHASE_D,M12-H,Gearing provisional
+honda-cbr250rr,Honda,CBR250RR,2023,JP,日規 MC51,249,2,parallel twin,180/540 deg firing intervals,naturally aspirated,180° 並列雙缸,6,PHASE_D,M12-H,Earlier MC51 manual gearset
+honda-cbr400r,Honda,CBR400R,2026,JP,2026 日規・雙缸,399,2,parallel twin,180/540 deg firing intervals,naturally aspirated,180° 並列雙缸,6,PHASE_D,M12-H,Factory configuration and peak anchors. Cutoff approximate.
+honda-cbr500r,Honda,CBR500R,2026,US,2026 美規・雙缸,471,2,parallel twin,180/540 deg firing intervals,naturally aspirated,180° 並列雙缸,6,PHASE_D,M12-H,Cross-market output and earlier platform gearset
+honda-cbr400r-four,Honda,CBR400R FOUR,2026,JP,2026 日規,399,4,inline four,180/180/180/180 deg firing intervals,naturally aspirated,直列四缸,6,PHASE_D,M12-H,Factory configuration and peak anchors. Cutoff approximate.
+honda-cbr500r-four,Honda,CBR500R FOUR,2027,UK,2027 英規,502,4,inline four,180/180/180/180 deg firing intervals,naturally aspirated,直列四缸,6,PHASE_D,M12-H,UK peak output; 400 FOUR ratios and estimated wet mass
+honda-cbr600rr,Honda,CBR600RR,2024,JP,2024 日規,599,4,inline four,180/180/180/180 deg firing intervals,naturally aspirated,高轉直列四缸,6,PHASE_D,M12-H,Factory configuration and peak anchors. Cutoff approximate.
+honda-cbr650r,Honda,CBR650R,2026,JP,2026 日規,648,4,inline four,180/180/180/180 deg firing intervals,naturally aspirated,直列四缸,6,PHASE_D,M12-H,Factory configuration and peak anchors. Cutoff approximate.
+honda-cbr1000rr,Honda,CBR1000RR,2027,US,2027 美規・輸出近似,999.8,4,inline four,180/180/180/180 deg firing intervals,naturally aspirated,直列四缸,6,PHASE_D,M12-H,Cross-market output and estimated gearbox
+honda-cbr1000rr-r-sp,Honda,CBR1000RR-R SP,2024,JP,2024 日規・Fireblade,999,4,inline four,180/180/180/180 deg firing intervals,naturally aspirated,直列四缸,6,PHASE_D,M12-H,Factory configuration and peak anchors. Cutoff approximate.
+honda-cbr250rr-mc22,Honda,CBR250RR ’90,1990,JP,1990 日規・MC22,249,4,inline four,180/180/180/180 deg firing intervals,naturally aspirated,高轉直列四缸,6,PHASE_D,M12-H,Factory configuration and peak anchors. Cutoff approximate.
+honda-vfr750r-rc30,Honda,VFR750R ’87,1987,JP,1987 日規・RC30,748,4,V4,90/270/90/270 deg firing intervals,naturally aspirated,90° V4・360° 曲軸,6,PHASE_D,M12-H,Factory gearing; firing inferred from 360-degree crank
+honda-cbr900rr,Honda,CBR900RR ’92,1992,EU,1992 歐規・初代,893,4,inline four,180/180/180/180 deg firing intervals,naturally aspirated,直列四缸,6,PHASE_D,M12-H,Factory archive power; gearing and wet mass approximate
+bmw-g310rr,BMW,G 310 RR,2024,IN,印度版・Sport,312.12,1,single,720 deg firing intervals,naturally aspirated,單缸,6,PHASE_D,M12-B,India Sport data with G 310 R gearing as reference
+bmw-s1000rr,BMW,S 1000 RR,2025,EU,2025 歐規,999,4,inline four,180/180/180/180 deg firing intervals,naturally aspirated,直列四缸・ShiftCam,6,PHASE_D,M12-B,Factory configuration and peak anchors. Cutoff approximate.
+bmw-m1000rr,BMW,M 1000 RR,2025,EU,2025 歐規,999,4,inline four,180/180/180/180 deg firing intervals,naturally aspirated,直列四缸・ShiftCam,6,PHASE_D,M12-B,Factory configuration and peak anchors. Cutoff approximate.
+bmw-s1000rr-2009,BMW,S 1000 RR ’09,2009,EU,2009 歐規・初代,999,4,inline four,180/180/180/180 deg firing intervals,naturally aspirated,直列四缸,6,PHASE_D,M12-B,Factory configuration and peak anchors. Cutoff approximate.

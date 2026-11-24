@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { EngineView } from "../components/EngineView";
 import { RidingControls, ShiftModeControls } from "../components/RidingControls";
@@ -14,7 +14,7 @@ import { rpmFromRadiansPerSecond } from "../lib/simulation";
 
 const gearSequence = [1, 0, 2, 3, 4, 5, 6];
 const rpmPerTick = 3_000;
-const vehicleBrands = ["Yamaha", "Kawasaki"] as const;
+const vehicleBrands = [...new Set(vehicles.map(({ brand }) => brand))];
 
 function Tachometer({ rpm, referenceRpm }: { rpm: number; referenceRpm: number }) {
   const maxRpm = Math.max(15_000, (Math.floor(referenceRpm / rpmPerTick) + 1) * rpmPerTick);
@@ -126,6 +126,17 @@ export default function Home() {
   const [selectedVehicles, setSelectedVehicles] = useState<Partial<Record<Vehicle["brand"], Vehicle>>>({});
   const brandVehicles = vehicles.filter((vehicle) => vehicle.brand === brand);
   const activeVehicle = selectedVehicles[brand] ?? brandVehicles[0];
+  const optionList = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const list = optionList.current;
+    const card = list?.querySelector("input:checked")?.closest(".vehicle-option");
+    if (!list || !card) return;
+    const viewport = list.getBoundingClientRect();
+    const { left, right } = card.getBoundingClientRect();
+    if (left < viewport.left) list.scrollLeft += left - viewport.left;
+    else if (right > viewport.right) list.scrollLeft += right - viewport.right;
+  }, [activeVehicle.id]);
 
   return (
     <main className="console-shell">
@@ -143,22 +154,24 @@ export default function Home() {
             <h2 id="vehicle-title">選擇車型</h2>
             <small>{activeVehicle.version}</small>
           </div>
-          <div className="vehicle-brands" role="group" aria-label="車款品牌">
+          <select
+            className="brand-select"
+            aria-label="車款品牌"
+            value={brand}
+            onChange={(event) => {
+              const selectedBrand = vehicleBrands.find((option) => option === event.currentTarget.value);
+              if (selectedBrand) setBrand(selectedBrand);
+            }}
+          >
             {vehicleBrands.map((option) => (
-              <button
-                key={option}
-                className="brand-button"
-                type="button"
-                aria-pressed={brand === option}
-                onClick={() => setBrand(option)}
-              >
-                {option}
-              </button>
+              <option key={option} value={option}>{option}</option>
             ))}
-          </div>
+          </select>
           <a href={activeVehicle.source}>原廠資料</a>
         </div>
         <div
+          key={brand}
+          ref={optionList}
           className={brandVehicles.length > 6 ? "vehicle-options vehicle-options-scroll" : "vehicle-options"}
           role="radiogroup"
           aria-labelledby="vehicle-title"

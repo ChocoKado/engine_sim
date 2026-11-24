@@ -34,15 +34,16 @@ function rollingInSecond(vehicle) {
 }
 
 for (const vehicle of vehicles) {
-  test(`${vehicle.name}: neutral throttle reaches 10,000 RPM without moving the wheel`, () => {
+  const blipRpm = Math.min(10_000, vehicle.physics.fuelCutRpm - 550);
+  test(`${vehicle.name}: neutral throttle reaches ${blipRpm} RPM without moving the wheel`, () => {
     const idle = simulate(vehicle, running, 240);
     const revving = simulate(vehicle, { ...running, throttle: 1 }, 186, idle);
-    assert.ok(rpmFromRadiansPerSecond(revving.engineAngularVelocity) >= 10_000);
+    assert.ok(rpmFromRadiansPerSecond(revving.engineAngularVelocity) >= blipRpm);
     assert.equal(revving.wheelAngularVelocity, 0);
   });
 
   test(`${vehicle.name}: rolling off in neutral drops revs quickly and allows a second blip`, () => {
-    const initial = { ...createSimulationState(vehicle), engineAngularVelocity: 10_000 * Math.PI / 30 };
+    const initial = { ...createSimulationState(vehicle), engineAngularVelocity: blipRpm * Math.PI / 30 };
     const released = simulate(vehicle, running, 192, initial);
     const releaseRpm = rpmFromRadiansPerSecond(released.engineAngularVelocity);
     assert.ok(releaseRpm <= 4000 && releaseRpm >= vehicle.physics.idleRpm);
@@ -53,7 +54,7 @@ for (const vehicle of vehicles) {
     assert.ok(Math.abs(rpmFromRadiansPerSecond(settled.engineAngularVelocity) - vehicle.physics.idleRpm) < 1);
 
     const blip = simulate(vehicle, { ...running, throttle: 1 }, 186, released);
-    assert.ok(rpmFromRadiansPerSecond(blip.engineAngularVelocity) >= 10_000);
+    assert.ok(rpmFromRadiansPerSecond(blip.engineAngularVelocity) >= blipRpm);
     assert.equal(blip.vehicleSpeed, 0);
   });
 
@@ -200,17 +201,36 @@ test("all models reach a stable, fully coupled road speed under sustained thrott
     "kawasaki-zx25r": [174, 185], "kawasaki-zx4r": [195, 215], "kawasaki-zx6r599": [247, 268],
     "kawasaki-zx6r636": [226, 242], "kawasaki-zx10r": [290, 304], "kawasaki-zx14r": [290, 307],
     "kawasaki-h2": [297, 299], "kawasaki-h2r": [345, 370],
+    "aprilia-rs125": [114, 125], "suzuki-hayabusa": [297, 299],
   };
 
   for (const vehicle of vehicles) {
     const fast = simulate(vehicle, input, 120 * 75);
-    const [minimum, maximum] = speedRanges[vehicle.id];
+    const ratio = getOverallRatio(vehicle, fast.gear);
+    const cutoff = vehicle.physics.gearFuelCutRpm?.[fast.gear] ?? vehicle.physics.fuelCutRpm;
+    const limiterSpeed = cutoff * Math.PI / 30 * vehicle.physics.rollingRadiusM / ratio * 3.6;
+    const [minimum, maximum] = speedRanges[vehicle.id] ?? [90, limiterSpeed];
     const kmh = fast.vehicleSpeed * 3.6;
     const rpm = rpmFromRadiansPerSecond(fast.engineAngularVelocity);
     assert.ok(kmh >= minimum && kmh <= maximum, `${vehicle.name}: ${kmh.toFixed(1)} km/h`);
-    assert.ok(rpm <= vehicle.physics.fuelCutRpm, `${vehicle.name}: ${rpm.toFixed(1)} RPM`);
-    const coupledEngineSpeed = fast.wheelAngularVelocity * getOverallRatio(vehicle, fast.gear);
+    assert.ok(rpm <= cutoff, `${vehicle.name}: ${rpm.toFixed(1)} RPM`);
+    const coupledEngineSpeed = fast.wheelAngularVelocity * ratio;
     assert.ok(Math.abs(fast.engineAngularVelocity - coupledEngineSpeed) < 1e-8, `${vehicle.name}: clutch slip at speed`);
     assert.ok(Math.abs(simulate(vehicle, input, 120, fast).vehicleSpeed - fast.vehicleSpeed) < 0.04, vehicle.name);
   }
+});
+
+test("the Panigale V4 R continues making torque above 16,000 RPM only in sixth", () => {
+  const vehicle = vehicles.find(({ id }) => id === "ducati-panigale-v4-r");
+  const engineAngularVelocity = 16200 * Math.PI / 30;
+  function atGear(gear) {
+    const wheelAngularVelocity = engineAngularVelocity / getOverallRatio(vehicle, gear);
+    return stepSimulation({
+      ...createSimulationState(vehicle), ...running, gear, engineAngularVelocity, wheelAngularVelocity,
+      vehicleSpeed: wheelAngularVelocity * vehicle.physics.rollingRadiusM,
+    }, { ...running, throttle: 1 }, vehicle);
+  }
+  assert.equal(atGear(5).combustionTorqueNm, 0);
+  assert.ok(atGear(6).combustionTorqueNm > 0);
+  assert.equal(atGear(6).mechanicalOverRev, false);
 });

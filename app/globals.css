@@ -92,7 +92,18 @@ button { font: inherit; }
   overflow-wrap: anywhere;
 }
 
-.vehicle-brands { display: flex; flex: none; gap: .28rem; }
+.brand-select {
+  flex: none;
+  min-height: 2.75rem;
+  max-width: 42%;
+  padding-inline: .6rem;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: .45rem;
+  background: var(--panel);
+  font: 700 1rem var(--mono);
+  touch-action: manipulation;
+}
 
 .section-heading a {
   display: inline-flex;
@@ -106,6 +117,19 @@ button { font: inherit; }
 
 .vehicle-options, .console-layout, .control-grid { display: grid; gap: .75rem; }
 .vehicle-options { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; }
+.vehicle-options-scroll {
+  grid-template-columns: none;
+  grid-template-rows: repeat(2, auto);
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - .9rem) / 3);
+  overflow-x: auto;
+  padding-bottom: .2rem;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+.vehicle-options-scroll .vehicle-option { scroll-snap-align: start; }
+.vehicle-options-scroll .vehicle-option input:focus-visible + .vehicle-card { outline-offset: -2px; }
 .vehicle-option { position: relative; }
 
 .vehicle-option input {
@@ -321,7 +345,7 @@ button { font: inherit; }
 
 .shifter-controls, .pedal-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; }
 
-.mode-button, .brand-button, .engine-toggle, .audio-toggle, .shift-button, .pedal-button {
+.mode-button, .engine-toggle, .audio-toggle, .shift-button, .pedal-button {
   min-width: 0;
   min-height: 2.75rem;
   border: 1px solid #53554b;
@@ -336,20 +360,19 @@ button { font: inherit; }
   -webkit-tap-highlight-color: transparent;
 }
 
-.mode-button, .brand-button {
+.mode-button {
   min-width: 2.75rem;
   padding: .35rem .6rem;
   font-size: .875rem;
   font-weight: 650;
 }
 
-.mode-button[aria-pressed="true"], .brand-button[aria-pressed="true"] {
+.mode-button[aria-pressed="true"] {
   border-color: #937740;
   background: var(--accent-dark);
   color: var(--accent);
 }
 
-.brand-button { padding-inline: .45rem; font-size: .8125rem; touch-action: manipulation; }
 
 .engine-toggle {
   flex: none;
@@ -463,16 +486,9 @@ button { font: inherit; }
   .vehicle-options { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   .vehicle-options-scroll {
     grid-template-columns: none;
-    grid-auto-flow: column;
-    grid-auto-columns: calc((100% - 2.8rem) / 6);
-    overflow-x: auto;
-    padding-bottom: .2rem;
-    scroll-snap-type: x proximity;
-    scrollbar-width: thin;
-    scrollbar-color: var(--line) transparent;
+    grid-template-rows: auto;
+    grid-auto-columns: calc((100% - 2.25rem) / 6);
   }
-  .vehicle-options-scroll .vehicle-option { scroll-snap-align: start; }
-  .vehicle-options-scroll .vehicle-option input:focus-visible + .vehicle-card { outline-offset: -2px; }
   .console-layout { grid-template-columns: minmax(0, 1.36fr) minmax(0, 1fr); align-items: stretch; }
   .panel { padding: clamp(.85rem, 2vw, 1.45rem); }
   .readouts { padding: .85rem 1rem; }

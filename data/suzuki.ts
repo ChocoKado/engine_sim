@@ -1,0 +1,79 @@
+import { defineMotorcycle, inlineFourFiring, singleFiring, twin180Firing, twin270Firing } from "./motorcycle.ts";
+
+const gsxSmallGears = [3.000, 1.933, 1.476, 1.217, 1.045, 0.925];
+const gsxSupersportGears = [2.785, 2.052, 1.681, 1.450, 1.304, 1.208];
+
+export const suzukiVehicles = [
+  defineMotorcycle({
+    id: "suzuki-gsxr125", brand: "Suzuki", name: "GSX-R125", version: "2025 歐規", engine: "單缸",
+    source: "https://www.globalsuzuki.com/motorcycle/smgs/products/2025gsx-r125/",
+    displacementCc: 124.4, boreMm: 62, strokeMm: 41.2, firingDegrees: singleFiring, curbMassKg: 137,
+    gearRatios: gsxSmallGears, primaryRatio: 3.285, finalDriveRatio: 3.214,
+    peakTorqueNm: 11, peakTorqueRpm: 8500, peakPowerPs: 15, peakPowerRpm: 10500,
+    referenceRpm: 11200, fuelCutRpm: 11700, rollingRadiusM: 0.300, dragAreaM2: 0.35, exhaustFrequencyHz: 186,
+  }),
+  defineMotorcycle({
+    id: "suzuki-gsxr150", brand: "Suzuki", name: "GSX-R150", version: "印尼版", engine: "單缸",
+    source: "https://www.suzuki.co.id/motorcycle/gsx-r150",
+    displacementCc: 147.3, boreMm: 62, strokeMm: 48.8, firingDegrees: singleFiring, curbMassKg: 131,
+    gearRatios: gsxSmallGears, primaryRatio: 3.285, finalDriveRatio: 3.214,
+    peakTorqueNm: 14, peakTorqueRpm: 9000, peakPowerPs: 19.17, peakPowerRpm: 10500,
+    referenceRpm: 11600, fuelCutRpm: 12200, rollingRadiusM: 0.300, dragAreaM2: 0.355, exhaustFrequencyHz: 168,
+  }),
+  defineMotorcycle({
+    id: "suzuki-gsx250r", brand: "Suzuki", name: "GSX250R", version: "2026 日規", engine: "180° 並列雙缸",
+    source: "https://www1.suzuki.co.jp/motor/lineup/gsx250rrlzm6/?page=performance&parts=chassis",
+    displacementCc: 248, boreMm: 53.5, strokeMm: 55.2, firingDegrees: twin180Firing, curbMassKg: 181,
+    gearRatios: [2.416, 1.529, 1.181, 1.043, 0.909, 0.807], primaryRatio: 3.238, finalDriveRatio: 3.285,
+    peakTorqueNm: 22, peakTorqueRpm: 6500, peakPowerPs: 24, peakPowerRpm: 8000,
+    referenceRpm: 10000, fuelCutRpm: 10700, rollingRadiusM: 0.306, dragAreaM2: 0.39, exhaustFrequencyHz: 145,
+  }),
+  defineMotorcycle({
+    id: "suzuki-gsx8r", brand: "Suzuki", name: "GSX-8R", version: "2026 日規", engine: "270° 並列雙缸",
+    source: "https://www1.suzuki.co.jp/motor/lineup/gsx800frqm6/?page=top",
+    displacementCc: 775, boreMm: 84, strokeMm: 70, firingDegrees: twin270Firing, curbMassKg: 205,
+    gearRatios: [3.071, 2.200, 1.700, 1.416, 1.230, 1.107], primaryRatio: 1.675, finalDriveRatio: 2.764,
+    peakTorqueNm: 76, peakTorqueRpm: 6800, peakPowerPs: 80, peakPowerRpm: 8500,
+    referenceRpm: 9800, fuelCutRpm: 10400, rollingRadiusM: 0.312, dragAreaM2: 0.38, exhaustFrequencyHz: 104,
+  }),
+  defineMotorcycle({
+    id: "suzuki-gsxr600", brand: "Suzuki", name: "GSX-R600", version: "2026 美規・輸出近似", engine: "高轉直列四缸",
+    source: "https://www.globalsuzuki.com/motorcycle/smgs/products/2026gsx-r600/",
+    displacementCc: 599, boreMm: 67, strokeMm: 42.5, firingDegrees: inlineFourFiring, curbMassKg: 187,
+    gearRatios: gsxSupersportGears, primaryRatio: 1.974, finalDriveRatio: 43 / 16,
+    peakTorqueNm: 69.6, peakTorqueRpm: 11500, peakPowerPs: 125, peakPowerRpm: 13500,
+    referenceRpm: 15100, fuelCutRpm: 15700, rollingRadiusM: 0.309, dragAreaM2: 0.34, exhaustFrequencyHz: 203,
+  }),
+  defineMotorcycle({
+    id: "suzuki-gsxr750", brand: "Suzuki", name: "GSX-R750", version: "2026 美規・輸出近似", engine: "直列四缸",
+    source: "https://www.globalsuzuki.com/motorcycle/smgs/products/2026gsx-r750/",
+    displacementCc: 750, boreMm: 70, strokeMm: 48.7, firingDegrees: inlineFourFiring, curbMassKg: 190,
+    gearRatios: gsxSupersportGears, primaryRatio: 1.761, finalDriveRatio: 45 / 17,
+    peakTorqueNm: 86.3, peakTorqueRpm: 11200, peakPowerPs: 150, peakPowerRpm: 13200,
+    referenceRpm: 14500, fuelCutRpm: 15000, rollingRadiusM: 0.311, dragAreaM2: 0.355, exhaustFrequencyHz: 172,
+  }),
+  defineMotorcycle({
+    id: "suzuki-gsxr1000r", brand: "Suzuki", name: "GSX-R1000R", version: "2027 日規", engine: "直列四缸・SR-VVT",
+    source: "https://www1.suzuki.co.jp/motor/lineup/gsxr1000rrrm7/?page=style&type=gsxr1000rrrm7",
+    displacementCc: 999, boreMm: 76, strokeMm: 55.1, firingDegrees: inlineFourFiring, curbMassKg: 203,
+    gearRatios: [2.562, 2.052, 1.714, 1.500, 1.360, 1.269], primaryRatio: 1.652, finalDriveRatio: 2.647,
+    peakTorqueNm: 108, peakTorqueRpm: 11000, peakPowerPs: 190, peakPowerRpm: 13200,
+    referenceRpm: 14300, fuelCutRpm: 14700, rollingRadiusM: 0.316, dragAreaM2: 0.36, exhaustFrequencyHz: 141,
+  }),
+  defineMotorcycle({
+    id: "suzuki-hayabusa", brand: "Suzuki", name: "Hayabusa", version: "2026 日規・第三代", engine: "直列四缸",
+    source: "https://www1.suzuki.co.jp/motor/lineup/gsx1300rrqm6/",
+    displacementCc: 1340, boreMm: 81, strokeMm: 65, firingDegrees: inlineFourFiring, curbMassKg: 262,
+    gearRatios: [2.615, 1.937, 1.526, 1.285, 1.136, 1.043], primaryRatio: 1.596, finalDriveRatio: 2.388,
+    peakTorqueNm: 149, peakTorqueRpm: 7000, peakPowerPs: 188, peakPowerRpm: 9700,
+    referenceRpm: 11000, fuelCutRpm: 11300, rollingRadiusM: 0.309, dragAreaM2: 0.33, speedLimitKmh: 299, exhaustFrequencyHz: 98,
+  }),
+  defineMotorcycle({
+    id: "suzuki-gsxr750-1985", brand: "Suzuki", name: "GSX-R750 ’85", version: "1985 日規・初代", engine: "油冷直列四缸",
+    source: "https://www.suzuki.co.jp/suzuki_digital_library/2_moto/sports_081.html",
+    displacementCc: 747, boreMm: 70, strokeMm: 48.7, firingDegrees: inlineFourFiring, curbMassKg: 203,
+    gearRatios: [2.750, 1.946, 1.550, 1.333, 1.190, 1.095], primaryRatio: 1.755, finalDriveRatio: 2.800,
+    peakTorqueNm: 62.8, peakTorqueRpm: 8000, peakPowerPs: 77, peakPowerRpm: 9500,
+    referenceRpm: 10900, fuelCutRpm: 11400, rollingRadiusM: 0.326, dragAreaM2: 0.39, exhaustFrequencyHz: 125,
+  }),
+];
