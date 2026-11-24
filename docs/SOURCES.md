@@ -183,7 +183,7 @@ RevLab 以 Web Audio 實時計算點火脈衝，並把排氣音色設為可獨�
 
 ## M12 七品牌仿賽與歷史代表（2026-11-24）
 
-`data/MODEL_CATALOG.csv` 列出 60 組設定的版本、點火間隔與逐車註記。新增車在 `data/` 按品牌存放。介面「原廠資料」連到該車的主要來源。車名後標示賽道、輸出近似及歷史版本；同動力與傳動的配件版共用基準。
+`data/MODEL_CATALOG.csv` 列出 84 組設定的版本、點火間隔與逐車註記。新增車在 `data/` 按品牌存放。介面「原廠資料」連到該車的主要來源。車名後標示賽道、輸出近似及歷史版本；同動力與傳動的具名版共用引擎設定。
 
 | 索引 | 核對及近似項目 |
 |---|---|
@@ -195,7 +195,7 @@ RevLab 以 Web Audio 實時計算點火脈衝，並把排氣音色設為可獨�
 | M12-H | MC22 249 cc 四缸與 MC51 雙缸分開。CBR400R／500R 雙缸與 FOUR 分開。英規 500 FOUR 功率、扭矩採當期官方資料，其裝備重量與齒比暫參考 400 FOUR。美規 CBR1000RR 峰值採跨市場近似，Fireblade SP 用 2024 日規完整規格。CBR900RR 齒比和裝備重量近似。RC30 點火從 360° 曲軸及 90° 缸角推導。 [MC22](https://www.honda.co.jp/factbook/motor/CBR250RR/19900300/011.html) · [MC51 早期手冊](https://www.honda.co.jp/ownersmanual/pdf/motor/cbr250rr/30K646000_web.pdf?genpo=HondaMotor) · [CBR400R FOUR](https://www.honda.co.jp/content/dam/site/www/CBR400RF/cq_img/pdf/CBR400RF_SPEC_SP.pdf) · [CBR500R FOUR](https://www.honda.co.uk/motorcycles/range/super-sport/cbr500r-four/specifications.html) · [Fireblade SP](https://www.honda.co.jp/content/dam/site/www/CBR1000RRR/cq_img/pdf/CBR1000RRR_SPEC_SP.pdf) · [CBR900RR](https://global.honda/en/CBR/history/stories/1992/) · [VFR750R](https://www.honda.co.jp/motorcycle-refresh-plan/pdf/VFR750R-RC30.pdf) |
 | M12-B | G 310 RR 用印度 Sport／Track 資料，齒比跨用 G 310 R 手冊。M／S 1000 RR 按原廠 2025 規格採不同動力與相同總齒比；初代採 2009 原廠發布。 [G 310 RR](https://www.bmw-motorrad.in/en/models/sport/g310rr/technicaldata.html) · [G 310 R 手冊](https://ownersmanuals2.com/bmw/g-310-r-2016-owners-manual-71743/page-119) · [現款 M／S 1000 RR](https://www.press.bmwgroup.com/switzerland/article/attachment/T0446040DE/624096) · [初代 S 1000 RR](https://www.press.bmwgroup.com/canada/article/attachment/T0036542EN/56488) |
 
-尚無完整動力曲線、原車輪上測功、每檔 ECU 限速和音色量測。各車音色、有效輪徑、風阻與轉動慣量屬 C／D 級。3D 剖面呈現缸列、曲軸相位、活塞及正時概念。ShiftCam、SR-VVT、IVT、V4 R 的實車檔位排列及 Honda E-Clutch 電控採本站共用的近似模型。後續樣本包括已發表待完整諸元的 2027 Fireblade、GSX-10R，以及需二行程核心的歷史仿賽。
+尚無完整動力曲線、原車輪上測功、每檔 ECU 限速和音色量測。各車音色、有效輪徑、風阻與轉動慣量屬 C／D 級。3D 剖面呈現缸列、曲軸相位、活塞及正時概念。ShiftCam、SR-VVT、IVT、V4 R 的實車檔位排列及 Honda E-Clutch 電控採本站共用的近似模型。後續樣本包括已發表待完整諸元的 2027 Fireblade，以及需二行程核心的歷史仿賽。
 
 RS 125 採原廠 EU5 手冊的 58／13 終傳，初傳確值 `unknown`，以瑞士型式認證的 120 km/h 校正。Hayabusa 道路限速採同代試駕資料的約 186 mph（299 km/h）作為跨市場設定。 [RS 125 手冊](https://www.aprilia.com/wlassets/aprilia/pl/mauals/2022/APRILIA-RS125-E5-PL/original/APRILIA%2BRS125%2BE5%2BPL.pdf) · [瑞士型式 6AA349](https://www.dauto.ch/en/typenscheine/6aa349-aprilia-rs-125) · [第三代 Hayabusa 試駕](https://ridermagazine.com/2022-suzuki-hayabusa-road-test-review/)
 
@@ -223,7 +223,7 @@ RS 125 採原廠 EU5 手冊的 58／13 終傳，初傳確值 `unknown`，以瑞�
 | Aprilia RSV Mille | 10200 | 10500 | 256.4 |
 | Ducati Panigale V2 | 11300 | 11800 | 256.7 |
 | Ducati Panigale V4 | 14500 | 14600 ／ 15000（2–5 檔） | 318.1 |
-| Ducati Panigale V4 R | 16000 | 16000 ／ 16500（6 檔） | 317.4 |
+| Ducati Panigale V4 R | 16000 | 16000 ／ 16500（6 檔） | 318.5 |
 | Ducati 916 | 10000 | 10400 | 253.1 |
 | Suzuki GSX-R125 | 11200 | 11700 | 128.0 |
 | Suzuki GSX-R150 | 11600 | 12200 | 136.8 |
@@ -248,9 +248,59 @@ RS 125 採原廠 EU5 手冊的 58／13 終傳，初傳確值 `unknown`，以瑞�
 | Honda VFR750R ’87 | 11500 | 12000 | 217.9 |
 | Honda CBR900RR ’92 | 11500 | 12000 | 254.3 |
 | BMW G 310 RR | 10500 | 10900 | 156.0 |
-| BMW S 1000 RR | 14600 | 15000 | 308.8 |
-| BMW M 1000 RR | 15100 | 15400 | 318.4 |
+| BMW S 1000 RR | 14600 | 15000 | 303.0 |
+| BMW M 1000 RR | 15100 | 15400 | 314.1 |
 | BMW S 1000 RR ’09 | 14000 | 14200 | 301.1 |
+
+### 收油回火、尾速與補充車型
+
+排氣回火是獨立的合成壓力聲。工況使用同一份油門、RPM、燃燒和負載資料，中高轉收油時依近期負載估算出現機會，聲響數量、延遲及力度隨機。此為音色近似，實車的過量燃料、二次進氣、排氣溫度及 ECU 控制因車而異。[減速斷油與排氣燃燒的原始專利資料](https://patents.google.com/patent/EP1437499A1/en)
+
+以下採平路 AT 全油門 75 秒。道路車速限速和 RPM 斷油分開計算。解除模式保留動力、風阻與齒比。不同版本的實測、原廠列值與模擬估計分開列。
+
+| 車型 | 模擬 km/h | 核對基準 |
+|---|---:|---|
+| H2 | 298.6 → 309.0 | 道路限速參考 299。同一引擎的解除模式為模型推算。[H2 試駕](https://amcn.com.au/editorial/road-test-kawasaki-ninja-h2/) |
+| Hayabusa | 298.6 → 310.0 | Suzuki 英國公布第三代 299 km/h 限速，跨用於日規。MOTORRAD 第二代測得 298，解除後 312 為其風洞推算。[Suzuki 第三代新聞稿](https://www.suzukipress.co.uk/release/busas-back-suzuki-reveals-new-hayabusa-for-2021/) · [MOTORRAD 高速比較測試](https://www.motorradonline.de/tourer/vergleichstest-sport-gegen-speedbikes-die-schnellsten-motorraeder-im-test/) |
+| ZX-10R | 297.9 | 同年 2026 歐規 GPS 測得 298 km/h。[10 Hz GPS 實測](https://www.crazywheels.it/27680-kawasaki-zx10r-2026-top-speed-acceleration-braking-test/amp) |
+| BMW S 1000 RR／M 1000 RR | 303.0／314.1 | BMW 德規分別列 303、314 km/h。以此微調有效風阻。[S 1000 RR](https://www.bmw-motorrad.de/de/models/sport/s1000rr/technicaldata.html) · [M 1000 RR](https://www.bmw-motorrad.de/de/models/m/m1000rr/technicaldata.html) |
+| Panigale V4 R | 318.5 | Ducati 列道路配置 318.4 km/h，超過 330 km/h 使用賽道排氣配置。[Ducati V4 R](https://www.ducati.com/gb/en/news/new-panigale-v4-r-the-maximum-expression-of-ducati-racing-technology) |
+| Fireblade SP／RSV4 | 320.4／317.1 | 日規 2024 SP 及歐規 2025 RSV4 的同版本 GPS 尾速 `unknown`。英規 Fireblade 原廠列 299，較早 RSV4 原廠公布超過 305。[Honda 英規](https://www.honda.co.uk/motorcycles/range/super-sport/cbr1000rr-r-fireblade/specifications-and-price.html) · [Aprilia 早期 RSV4](https://press.piaggiogroup.com/en_en/post/show/205020/aprilia-rsv4.html) |
+
+補充車型的資料用各車規格連結與 CSV 逐款註記。Suzuki GIXXER SF 155 按五速，採前期同系減速比。SF 250 日規採原廠齒比，FFV 以印度 E85 輸出搭配同系近似傳動。GSX-R1000 非 R 的美規車體採原廠值，峰值與傳動用跨市場近似。 [GIXXER SF](https://www.suzukimotorcycle.co.in/product-details/gixxer-sf) · [GIXXER SF 250](https://www1.suzuki.co.jp/motor/lineup/gsx250frlm6/?page=style) · [E85 原廠規格](https://www.suzukimotorcycle.co.in/brochure/Gixxer-SF250-FFV-leafle.pdf) · [GSX-R1000](https://suzukicycles.com/sportbike/2027/gsx-r1000)
+
+GSX-10R 與 F 450 RR 標為上市前預覽。使用已公布的引擎、輸出和重量，未公布的齒比分別借用 GSX-S1000 與 F 450 GS。F 450 RR 終傳以 BMW RR 規格為準。Suzuki 的 SV-7S 屬街車，GSX-S1000GT／GX 屬旅行車與跨界車。 [Suzuki 發售規劃](https://www.globalsuzuki.com/ir/library/financialresults/pdf/2026/financial_presentation_2q.pdf) · [GSX-10R](https://www.suzuki.nl/motoren/nieuws/suzuki-introduceert-gsx-10r-nieuwe-generatie-sportmotor/) · [GSX-S1000 傳動](https://www1.suzuki.co.jp/motor/lineup/gsxs1000rqm7/?page=style) · [F 450 RR](https://www.bmw-motorrad.de/de/models/sport/f450rr/technicaldata.html) · [F 450 GS 齒比](https://www.press.bmwgroup.com/austria/article/attachment/T0453692DE/639941)
+
+R1／R6 GYTR 的可調傳動與 ECU 曲線 `unknown`，以對應平台的基準動力模擬。Ninja 7 Hybrid 只模擬原廠公布的 59 PS 燃油引擎。Panigale V2 SP 的 120 PS 和 V4 限量款的 218.5 PS 取自對應道路版本，車重用原廠無油重量加估計燃油量。 [Yamaha R 系列](https://www.yamaha-motor.eu/content/dam/yme/language-masters/en/eicma-2025/digital-brochures/2026_EICMA_MC_BROCHURE_EN.pdf) · [Ninja 7 引擎規格](https://www.kawasaki.eu/content/dam/europe/master/pdf-files/brochures/Kawasaki_Brochure_FullLine_2024.pdf) · [Panigale V2 SP](https://www.ducati.com/ww/en/bikes/panigale/panigale-v2-sp/insights)
+
+### 本次 24 款補充車型
+
+| 車型 | 儀表紅區 RPM | 模擬 km/h |
+|---|---:|---:|
+| Yamaha YZF-R15M | 11500 | 137.2 |
+| Yamaha YZF-R6 GYTR | 16500 | 265.4 |
+| Yamaha YZF-R1M | 14000 | 299.3 |
+| Yamaha YZF-R1 RACE | 14000 | 300.4 |
+| Yamaha YZF-R1 GYTR | 14000 | 300.4 |
+| Kawasaki Ninja 7 Hybrid | 11000 | 193.5 |
+| Kawasaki ZX-25RR | 17000 | 182.0 |
+| Aprilia RS 457 GP Replica | 10000 | 189.0 |
+| Aprilia RS 660 Factory | 11500 | 246.0 |
+| Aprilia RSV4 Factory | 13600 | 317.1 |
+| Ducati Panigale V2 S | 11300 | 256.7 |
+| Ducati Panigale V2 SP | 11300 | 256.7 |
+| Ducati Panigale V2 MM93 | 11300 | 256.7 |
+| Ducati Panigale V2 FB63 | 11300 | 256.7 |
+| Ducati Panigale V4 S | 14500 | 318.1 |
+| Ducati Panigale V4 Lamborghini | 14400 | 314.3 |
+| Ducati Panigale V4 Márquez | 14400 | 314.3 |
+| Suzuki GIXXER SF | 9000 | 119.8 |
+| Suzuki GIXXER SF 250 | 10000 | 147.9 |
+| Suzuki GIXXER SF 250 FFV | 10000 | 148.0 |
+| Suzuki GSX-10R | 11700 | 272.3 |
+| Suzuki GSX-R1000 | 14300 | 302.2 |
+| Honda CBR1000RR-R | 14500 | 320.5 |
+| BMW F 450 RR | 9850 | 178.1 |
 
 ## 4. 開發者引用習慣
 

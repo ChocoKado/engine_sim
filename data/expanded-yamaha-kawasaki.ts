@@ -1,6 +1,12 @@
-import { defineMotorcycle, inlineFourFiring, singleFiring, twin180Firing } from "./motorcycle.ts";
+import { kawasakiVehicles } from "./kawasaki.ts";
+import { defineMotorcycle, defineTrim, inlineFourFiring, singleFiring, twin180Firing } from "./motorcycle.ts";
 
 const ninjaCloseGears = [41 / 14, 37 / 18, 34 / 21, 32 / 24, 30 / 26, 28 / 27];
+const [zx25r] = kawasakiVehicles;
+const zx25rr = defineTrim(zx25r, {
+  id: "kawasaki-zx25rr", name: "ZX-25RR", version: "2026 日規",
+  source: "https://www.kawasaki-motors.com/ja-jp/motorcycle/ninja/supersport/ninja-zx-25r/2026-ninja-zx-25rr", curbMassKg: 184,
+});
 
 export const moreYamahaVehicles = [
   defineMotorcycle({
@@ -70,6 +76,19 @@ export const moreKawasakiVehicles = [
     peakTorqueNm: 64, peakTorqueRpm: 6700, peakPowerPs: 68, peakPowerRpm: 8000,
     referenceRpm: 10000, fuelCutRpm: 10400, rollingRadiusM: 0.306, dragAreaM2: 0.38, exhaustFrequencyHz: 132,
   }),
+  defineMotorcycle({
+    id: "kawasaki-ninja7-hybrid", brand: "Kawasaki", name: "Ninja 7 Hybrid", version: "2024 歐規・燃油引擎",
+    engine: "油電並列雙缸",
+    source: "https://www.kawasaki.eu/en/Motorcycles/EV_HEV/Ninja_7_Hybrid.html",
+    displacementCc: 451, boreMm: 70, strokeMm: 58.6, firingDegrees: twin180Firing, curbMassKg: 227,
+    gearRatios: [38 / 17, 36 / 20, 33 / 22, 31 / 25, 29 / 27, 27 / 28], primaryRatio: 71 / 32, finalDriveRatio: 43 / 14,
+    peakTorqueNm: 43.6, peakTorqueRpm: 7500, peakPowerPs: 59, peakPowerRpm: 10500,
+    referenceRpm: 11000, fuelCutRpm: 11500, rollingRadiusM: 0.299, dragAreaM2: 0.39, exhaustFrequencyHz: 166,
+  }),
+  {
+    ...zx25rr,
+    physics: { ...zx25rr.physics, peakTorqueNm: 21, peakPowerPs: 46, peakPowerRpm: 16000, engineInertiaKgM2: 0.019 },
+  },
   defineMotorcycle({
     id: "kawasaki-zx4rr", brand: "Kawasaki", name: "ZX-4RR", version: "2027 歐規・全功率", engine: "高轉直列四缸",
     source: "https://www.kawasaki.eu/en/Motorcycles/A2_Bikes/Ninja_ZX-4RR_2027.dispdir.dispdir.html.html",

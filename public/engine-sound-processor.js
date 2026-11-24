@@ -141,6 +141,61 @@ class SuperchargerWhine {
   }
 }
 
+class ExhaustAfterfire {
+  constructor(exhaustFrequencyHz) {
+    this.body = new DampedResonator(110 + exhaustFrequencyHz * 0.70, 9);
+    this.crackDecay = 1 - smoothingFactor(0.0045);
+    this.noiseDecay = 1 - smoothingFactor(0.00035);
+    this.crack = 0;
+    this.noiseFront = 0;
+    this.reset();
+  }
+
+  reset() {
+    this.charge = 0;
+    this.wasOpen = false;
+    this.count = 0;
+  }
+
+  update(throttle, rpm, combustion, load, shiftCut, harmonics, seconds) {
+    const open = throttle > 0.08;
+    if (open) {
+      const heat = clamp((rpm - 2600) / 5000, 0, 1) * clamp((throttle - 0.12) / 0.5, 0, 1);
+      const target = heat * (0.63 + 0.24 * combustion + 0.13 * load);
+      this.charge += (1 - Math.exp(-seconds / 0.13)) * (target - this.charge);
+      this.count = 0;
+    } else if (this.wasOpen) {
+      const strength = this.charge * (0.66 + 0.34 * clamp(harmonics, 0.5, 1.5));
+      if (rpm > 3400 && strength > 0.14 && shiftCut < 0.15 && Math.random() < clamp(0.2 + 0.87 * strength, 0, 0.89)) {
+        this.count = 1 + Number(Math.random() < strength * 0.55) + Number(Math.random() < strength * 0.19);
+        this.delay = Math.round(sampleRate * (0.032 + Math.random() * 0.120));
+        this.strength = strength;
+      }
+      this.charge = 0;
+    }
+    if (rpm < 2500) this.count = 0;
+    this.wasOpen = open;
+  }
+
+  fire() {
+    this.count -= 1;
+    this.delay = Math.round(sampleRate * (0.062 + Math.random() * 0.142));
+    const impulse = (0.30 + this.strength * 0.52) * (0.62 + Math.random() * 0.38);
+    this.strength *= 0.72;
+    this.crack += impulse;
+    this.noiseFront += impulse;
+    return impulse;
+  }
+
+  render(noise) {
+    const impulse = this.count > 0 && --this.delay <= 0 ? this.fire() : 0;
+    this.crack *= this.crackDecay;
+    this.noiseFront *= this.noiseDecay;
+    const pressure = this.crack - this.noiseFront;
+    return 0.85 * this.body.render(impulse) + pressure * (0.13 + 1.35 * noise);
+  }
+}
+
 class EngineSoundProcessor extends AudioWorkletProcessor {
   constructor({ processorOptions }) {
     super();
@@ -154,6 +209,7 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
     this.exhaust = new DampedResonator(exhaustFrequencyHz, pulseDecayMs * 0.93);
     this.exhaustOvertone = new DampedResonator(exhaustFrequencyHz * 2.55, pulseDecayMs * 0.42);
     this.exhaustEdge = new DampedResonator(exhaustFrequencyHz * 12.5, 1.85);
+    this.afterfire = new ExhaustAfterfire(exhaustFrequencyHz);
     this.tripleCollector = firingAnglesRad.length === 3 ? new DampedResonator(exhaustFrequencyHz * 0.78, pulseDecayMs * 1.2) : null;
     this.collectorBody = Number.isFinite(exhaustBody?.frequencyHz) && Number.isFinite(exhaustBody.gain) && exhaustBody.gain > 0
       ? new ExhaustCollectorBody(exhaustBody, firingAnglesRad.length) : null;
@@ -220,6 +276,7 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
         this.telemetryQueue.length = 0;
         this.previousTelemetry = null;
         this.synchronized = false;
+        this.afterfire.reset();
         return;
       }
       if (data?.type !== "state") return;
@@ -294,6 +351,12 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
     const load = running ? telemetry.load : 0;
     const combustion = running ? Math.sqrt(telemetry.combustion) : 0;
     const shiftCut = running ? telemetry.shiftCut : 0;
+    if (running) {
+      this.afterfire.update(throttle, telemetry.angularVelocity * RADIANS_PER_SECOND_TO_RPM,
+        combustion, load, shiftCut, voicing.harmonics, output.length / sampleRate);
+    } else {
+      this.afterfire.reset();
+    }
     const gateTarget = running ? clamp(telemetry.angularVelocity / 130, 0, 1) : 0;
     const supercharger = this.supercharger;
     let shaftTarget = 0;
@@ -390,7 +453,8 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
       // The returning pressure wave from an open end is inverted and attenuated.
       const closingThrottle = running ? Math.max(0, this.throttle - throttle) : 0;
       const whine = supercharger ? supercharger.render(shaftTarget + index * shaftIncrement, this.throttle, this.load, turbulence, closingThrottle) : 0;
-      const mix = 0.96 * exhaust - 0.12 * this.reflectedPressure * voicing.reflection + whine;
+      const afterfire = this.afterfire.render(turbulence);
+      const mix = 0.96 * exhaust - 0.12 * this.reflectedPressure * voicing.reflection + whine + afterfire;
       this.dcMean += this.dcSmoothing * (mix - this.dcMean);
       this.filteredOutput += this.outputSmoothing * (mix - this.dcMean - this.filteredOutput);
       let normalized = this.filteredOutput / (1 + Math.abs(this.filteredOutput));

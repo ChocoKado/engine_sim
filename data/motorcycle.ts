@@ -5,6 +5,14 @@ export const twin180Firing = [0, 180] as const;
 export const twin270Firing = [0, 270] as const;
 export const inlineFourFiring = [0, 180, 360, 540] as const;
 
+export function defineTrim(base: Vehicle, trim: Pick<Vehicle, "id" | "name" | "version" | "source"> & {
+  curbMassKg: number;
+  rollingRadiusM?: number;
+}): Vehicle {
+  const { curbMassKg, rollingRadiusM = base.physics.rollingRadiusM, ...model } = trim;
+  return { ...base, ...model, physics: { ...base.physics, curbMassKg, rollingRadiusM } };
+}
+
 export interface MotorcycleSpec {
   readonly id: string;
   readonly brand: Vehicle["brand"];

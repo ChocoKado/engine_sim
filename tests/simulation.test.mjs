@@ -202,6 +202,7 @@ test("all models reach a stable, fully coupled road speed under sustained thrott
     "kawasaki-zx6r636": [226, 242], "kawasaki-zx10r": [290, 304], "kawasaki-zx14r": [290, 307],
     "kawasaki-h2": [297, 299], "kawasaki-h2r": [345, 370],
     "aprilia-rs125": [114, 125], "suzuki-hayabusa": [297, 299],
+    "bmw-s1000rr": [302, 304], "bmw-m1000rr": [313, 315], "ducati-panigale-v4-r": [317, 320],
   };
 
   for (const vehicle of vehicles) {
@@ -217,6 +218,19 @@ test("all models reach a stable, fully coupled road speed under sustained thrott
     const coupledEngineSpeed = fast.wheelAngularVelocity * ratio;
     assert.ok(Math.abs(fast.engineAngularVelocity - coupledEngineSpeed) < 1e-8, `${vehicle.name}: clutch slip at speed`);
     assert.ok(Math.abs(simulate(vehicle, input, 120, fast).vehicleSpeed - fast.vehicleSpeed) < 0.04, vehicle.name);
+  }
+});
+
+test("removing an electronic road-speed limit still obeys the gearing and fuel cutoff", () => {
+  const input = { ...running, throttle: 1, shiftMode: "AT", roadSpeedLimitDisabled: true };
+  for (const [id, minimum, maximum] of [["kawasaki-h2", 307, 312], ["suzuki-hayabusa", 308, 313]]) {
+    const vehicle = vehicles.find((bike) => bike.id === id);
+    const state = simulate(vehicle, input, 9000);
+    const rpm = rpmFromRadiansPerSecond(state.engineAngularVelocity);
+    assert.ok(state.vehicleSpeed * 3.6 >= minimum && state.vehicleSpeed * 3.6 <= maximum, id);
+    assert.ok(rpm < vehicle.physics.fuelCutRpm && state.gear === 6, id);
+    const restored = simulate(vehicle, { ...input, roadSpeedLimitDisabled: false }, 9000, state);
+    assert.ok(restored.vehicleSpeed * 3.6 <= vehicle.physics.speedLimitKmh, id);
   }
 });
 

@@ -20,6 +20,7 @@ export interface SimulationInput {
   readonly shiftMode: ShiftMode;
   readonly throttle: number;
   readonly brake: number;
+  readonly roadSpeedLimitDisabled: boolean;
 }
 
 export interface SimulationState extends SimulationInput, TransmissionState {
@@ -47,6 +48,7 @@ export const INITIAL_SIMULATION_INPUT: SimulationInput = {
   shiftMode: "MT",
   throttle: 0,
   brake: 0,
+  roadSpeedLimitDisabled: false,
 };
 
 export function createSimulationState(vehicle: Vehicle): SimulationState {
@@ -138,7 +140,7 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
   const gearFuelCutRpm = physics.gearFuelCutRpm?.[gear];
   const fuelCutRpm = gearFuelCutRpm ?? physics.fuelCutRpm;
   const revFuel = unitInterval((fuelCutRpm - rpm) / FUEL_CUT_WINDOW_RPM);
-  const roadFuel = physics.speedLimitKmh === undefined ? 1
+  const roadFuel = input.roadSpeedLimitDisabled || physics.speedLimitKmh === undefined ? 1
     : unitInterval((physics.speedLimitKmh - roadSpeed * 3.6) / SPEED_LIMIT_WINDOW_KMH);
   const availableCombustion = (fullThrottleTorqueNm(rpm, physics) + friction) * Math.min(revFuel, roadFuel);
   const idleCombustion = Math.min(0.65 * availableCombustion, Math.max(0, engineLoss + 0.42 * (idleSpeed - engineSpeed)));
@@ -196,6 +198,7 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
     engineOn: engineOn && !engineFailed,
     throttle,
     brake,
+    roadSpeedLimitDisabled: input.roadSpeedLimitDisabled,
     engineAngularVelocity: nextEngineSpeed,
     wheelAngularVelocity: nextWheelSpeed,
     vehicleSpeed: nextWheelSpeed * radius,

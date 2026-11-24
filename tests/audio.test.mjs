@@ -16,11 +16,12 @@ const playbackDelaySamples = rate * playbackDelaySeconds;
 const exhaustOpeningRad = VALVE_EVENTS.exhaust.opensDegrees * Math.PI / 180;
 const script = readFileSync(new URL("../public/engine-sound-processor.js", import.meta.url), "utf8");
 
-function captureAudio(vehicle, audioOptions = {}, trackPitch = false) {
+function captureAudio(vehicle, audioOptions = {}, trackPitch = false, random = () => 1) {
   let Processor;
   const context = vm.createContext({
     sampleRate: rate,
     currentTime: 0,
+    Math: Object.assign(Object.create(Math), { random }),
     AudioWorkletProcessor: class { port = {}; },
     registerProcessor(name, processor) {
       assert.equal(name, "engine-sound");
@@ -32,9 +33,15 @@ function captureAudio(vehicle, audioOptions = {}, trackPitch = false) {
     processorOptions: { ...vehicle.audio, exhaustOpeningRad, supercharger: vehicle.supercharger, ...audioOptions },
   });
   const pulses = [];
+  const afterfires = [];
   const pitch = [];
   let sample = 0;
   const advance = processor.advanceCrank.bind(processor);
+  const fire = processor.afterfire.fire.bind(processor.afterfire);
+  processor.afterfire.fire = () => {
+    afterfires.push(sample);
+    return fire();
+  };
   processor.advanceCrank = (increment) => {
     const fired = advance(increment);
     if (fired) pulses.push(sample);
@@ -76,10 +83,50 @@ function captureAudio(vehicle, audioOptions = {}, trackPitch = false) {
   }
 
   return {
-    blocks, pulses, pitch,
+    blocks, pulses, pitch, afterfires,
     setTuning: (voicing) => processor.port.onmessage({ data: { type: "tuning", voicing } }),
   };
 }
+
+test("hot throttle lifts can produce different afterfire delays and counts without changing combustion timing", () => {
+  const vehicle = vehicles.find(({ id }) => id === "yamaha-r9");
+  const liftSeconds = 0.45;
+  const rpm = 7600;
+  const render = (random) => {
+    const audio = captureAudio(vehicle, {}, false, random);
+    const signal = audio.blocks(390, (time) => time < liftSeconds
+      ? { rpm, throttle: 1, combustion: 0.8, load: 0.7 }
+      : { rpm, throttle: 0, combustion: 0, load: 0.2 });
+    return { signal, pulses: audio.pulses, pops: audio.afterfires };
+  };
+  const silent = render(() => 0.98);
+  let calls = 0;
+  const singlePop = render(() => calls++ === 0 ? 0.1 : 0.78);
+  const burst = render(() => 0.08);
+  assert.deepEqual(silent.pops, []);
+  assert.equal(singlePop.pops.length, 1);
+  assert.equal(burst.pops.length, 3);
+  assert.ok(singlePop.pops[0] - burst.pops[0] > 0.055 * rate);
+  assert.ok(burst.pops[0] > (liftSeconds + playbackDelaySeconds + 0.03) * rate);
+  assert.deepEqual(burst.pulses, silent.pulses);
+  const start = burst.pops[0];
+  const addedBurst = burst.signal.slice(start, start + 0.024 * rate).map((sample, index) => sample - silent.signal[start + index]);
+  assert.ok(rms(addedBurst) > 0.025);
+  assertBounded(burst.signal);
+});
+
+test("afterfire is cancelled by opening the throttle or stopping the engine before the pop", () => {
+  for (const engineOn of [true, false]) {
+    const audio = captureAudio(vehicles[1], {}, false, () => 0.35);
+    const rpm = 7500;
+    audio.blocks(320, (time) => {
+      if (time < 0.35) return { rpm, throttle: 1 };
+      if (time < 0.38) return { rpm, throttle: 0 };
+      return { rpm, throttle: engineOn ? 1 : 0, engineOn };
+    });
+    assert.deepEqual(audio.afterfires, []);
+  }
+});
 
 function rms(signal) {
   return Math.sqrt(signal.reduce((sum, sample) => sum + sample ** 2, 0) / signal.length);

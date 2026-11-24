@@ -143,6 +143,7 @@ function PedalButton({ pedal, label, onPedalChange }: Pick<RidingControlsProps, 
   function pressPointer(event: PointerEvent<HTMLButtonElement>) {
     if (event.button !== 0) return;
 
+    if (event.pointerType === "touch") event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     pointers.current.add(event.pointerId);
     updatePressed();
@@ -229,11 +230,7 @@ export function RidingControls({
   volume, onVolumeChange, tuning, onTuningChange, onShift, onPedalChange, resetKey,
 }: RidingControlsProps) {
   return (
-    <section
-      className="panel controls-panel"
-      aria-labelledby="controls-title"
-      onContextMenu={(event) => event.preventDefault()}
-    >
+    <section className="panel controls-panel" aria-labelledby="controls-title">
       <div className="control-heading">
         <div>
           <h2 id="controls-title">騎乘控制</h2>

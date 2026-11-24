@@ -2,6 +2,8 @@ import { defineMotorcycle, inlineFourFiring, singleFiring, twin180Firing, twin27
 
 const gsxSmallGears = [3.000, 1.933, 1.476, 1.217, 1.045, 0.925];
 const gsxSupersportGears = [2.785, 2.052, 1.681, 1.450, 1.304, 1.208];
+const gsxr1000Gears = [2.562, 2.052, 1.714, 1.500, 1.360, 1.269];
+const gixxer250Gears = [2.500, 1.687, 1.315, 1.111, 0.954, 0.826];
 
 export const suzukiVehicles = [
   defineMotorcycle({
@@ -19,6 +21,30 @@ export const suzukiVehicles = [
     gearRatios: gsxSmallGears, primaryRatio: 3.285, finalDriveRatio: 3.214,
     peakTorqueNm: 14, peakTorqueRpm: 9000, peakPowerPs: 19.17, peakPowerRpm: 10500,
     referenceRpm: 11600, fuelCutRpm: 12200, rollingRadiusM: 0.300, dragAreaM2: 0.355, exhaustFrequencyHz: 168,
+  }),
+  defineMotorcycle({
+    id: "suzuki-gixxer-sf", brand: "Suzuki", name: "GIXXER SF", version: "2026 印度版・155 cc", engine: "氣冷單缸",
+    source: "https://www.suzukimotorcycle.co.in/product-details/gixxer-sf",
+    displacementCc: 155, boreMm: 56, strokeMm: 62.9, firingDegrees: singleFiring, curbMassKg: 148,
+    gearRatios: [2.750, 1.750, 1.300, 1.045, 0.875], primaryRatio: 3.181, finalDriveRatio: 3.000,
+    peakTorqueNm: 13.8, peakTorqueRpm: 6000, peakPowerPs: 13.6, peakPowerRpm: 8000,
+    referenceRpm: 9000, fuelCutRpm: 9600, rollingRadiusM: 0.296, dragAreaM2: 0.375, exhaustFrequencyHz: 151,
+  }),
+  defineMotorcycle({
+    id: "suzuki-gixxer-sf250", brand: "Suzuki", name: "GIXXER SF 250", version: "2026 日規", engine: "油冷單缸",
+    source: "https://www1.suzuki.co.jp/motor/lineup/gsx250frlm6/?page=style",
+    displacementCc: 249, boreMm: 76, strokeMm: 54.9, firingDegrees: singleFiring, curbMassKg: 158,
+    gearRatios: gixxer250Gears, primaryRatio: 3.086, finalDriveRatio: 3.076,
+    peakTorqueNm: 22, peakTorqueRpm: 7300, peakPowerPs: 26, peakPowerRpm: 9300,
+    referenceRpm: 10000, fuelCutRpm: 10500, rollingRadiusM: 0.299, dragAreaM2: 0.365, exhaustFrequencyHz: 139,
+  }),
+  defineMotorcycle({
+    id: "suzuki-gixxer-sf250-ffv", brand: "Suzuki", name: "GIXXER SF 250 FFV", version: "印度版・E85", engine: "油冷單缸",
+    source: "https://www.suzukimotorcycle.co.in/brochure/Gixxer-SF250-FFV-leafle.pdf",
+    displacementCc: 249, boreMm: 76, strokeMm: 54.9, firingDegrees: singleFiring, curbMassKg: 163,
+    gearRatios: gixxer250Gears, primaryRatio: 3.086, finalDriveRatio: 3.076,
+    peakTorqueNm: 22.5, peakTorqueRpm: 7500, peakPowerPs: 27.9, peakPowerRpm: 9300,
+    referenceRpm: 10000, fuelCutRpm: 10500, rollingRadiusM: 0.299, dragAreaM2: 0.365, exhaustFrequencyHz: 142,
   }),
   defineMotorcycle({
     id: "suzuki-gsx250r", brand: "Suzuki", name: "GSX250R", version: "2026 日規", engine: "180° 並列雙缸",
@@ -53,10 +79,26 @@ export const suzukiVehicles = [
     referenceRpm: 14500, fuelCutRpm: 15000, rollingRadiusM: 0.311, dragAreaM2: 0.355, exhaustFrequencyHz: 172,
   }),
   defineMotorcycle({
+    id: "suzuki-gsx10r", brand: "Suzuki", name: "GSX-10R", version: "2027 歐規・上市前預覽", engine: "直列四缸",
+    source: "https://www.suzuki.nl/motoren/nieuws/suzuki-introduceert-gsx-10r-nieuwe-generatie-sportmotor/",
+    displacementCc: 999, boreMm: 73.4, strokeMm: 59, firingDegrees: inlineFourFiring, curbMassKg: 214,
+    gearRatios: gsxr1000Gears, primaryRatio: 1.553, finalDriveRatio: 2.588,
+    peakTorqueNm: 106, peakTorqueRpm: 9250, peakPowerPs: 152, peakPowerRpm: 11000,
+    referenceRpm: 11700, fuelCutRpm: 12200, rollingRadiusM: 0.309, dragAreaM2: 0.38, exhaustFrequencyHz: 129,
+  }),
+  defineMotorcycle({
+    id: "suzuki-gsxr1000", brand: "Suzuki", name: "GSX-R1000", version: "2027 美規・輸出近似", engine: "直列四缸・SR-VVT",
+    source: "https://suzukicycles.com/sportbike/2027/gsx-r1000",
+    displacementCc: 999.8, boreMm: 76, strokeMm: 55.1, firingDegrees: inlineFourFiring, curbMassKg: 203,
+    gearRatios: gsxr1000Gears, primaryRatio: 1.652, finalDriveRatio: 2.647,
+    peakTorqueNm: 110, peakTorqueRpm: 11000, peakPowerPs: 195, peakPowerRpm: 13200,
+    referenceRpm: 14300, fuelCutRpm: 14700, rollingRadiusM: 0.316, dragAreaM2: 0.37, exhaustFrequencyHz: 153,
+  }),
+  defineMotorcycle({
     id: "suzuki-gsxr1000r", brand: "Suzuki", name: "GSX-R1000R", version: "2027 日規", engine: "直列四缸・SR-VVT",
     source: "https://www1.suzuki.co.jp/motor/lineup/gsxr1000rrrm7/?page=style&type=gsxr1000rrrm7",
     displacementCc: 999, boreMm: 76, strokeMm: 55.1, firingDegrees: inlineFourFiring, curbMassKg: 203,
-    gearRatios: [2.562, 2.052, 1.714, 1.500, 1.360, 1.269], primaryRatio: 1.652, finalDriveRatio: 2.647,
+    gearRatios: gsxr1000Gears, primaryRatio: 1.652, finalDriveRatio: 2.647,
     peakTorqueNm: 108, peakTorqueRpm: 11000, peakPowerPs: 190, peakPowerRpm: 13200,
     referenceRpm: 14300, fuelCutRpm: 14700, rollingRadiusM: 0.316, dragAreaM2: 0.36, exhaustFrequencyHz: 141,
   }),

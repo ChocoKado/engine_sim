@@ -77,6 +77,10 @@ export function useSimulation(vehicle: Vehicle, onFrame: (state: SimulationState
     input.current = { ...input.current, shiftMode };
   }
 
+  function setRoadSpeedLimitDisabled(roadSpeedLimitDisabled: boolean) {
+    input.current = { ...input.current, roadSpeedLimitDisabled };
+  }
+
   function toggleEngine() {
     const current = input.current;
     input.current = { ...current, engineOn: !current.engineOn, throttle: 0, brake: 0 };
@@ -84,12 +88,13 @@ export function useSimulation(vehicle: Vehicle, onFrame: (state: SimulationState
   }
 
   function resetSimulation() {
-    const initial = createSimulationState(vehicle);
+    const { roadSpeedLimitDisabled } = input.current;
+    const initial = { ...createSimulationState(vehicle), roadSpeedLimitDisabled };
     state.current = initial;
-    input.current = INITIAL_SIMULATION_INPUT;
+    input.current = { ...INITIAL_SIMULATION_INPUT, roadSpeedLimitDisabled };
     setSnapshot(initial);
     setPedalReset((version) => version + 1);
   }
 
-  return { snapshot, readState, pedalReset, setPedal, shift, setShiftMode, toggleEngine, resetSimulation };
+  return { snapshot, readState, pedalReset, setPedal, shift, setShiftMode, setRoadSpeedLimitDisabled, toggleEngine, resetSimulation };
 }

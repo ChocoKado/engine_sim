@@ -1,11 +1,11 @@
-import { defineMotorcycle, inlineFourFiring, singleFiring, twin270Firing } from "./motorcycle.ts";
+import { defineMotorcycle, defineTrim, inlineFourFiring, singleFiring, twin270Firing } from "./motorcycle.ts";
 
 const twinPulse = [0, 90, 290, 380];
 const twinPulseByBank = [0, 290, 90, 380];
 const panigaleV4Gears = [36 / 15, 34 / 17, 33 / 19, 32 / 21, 30 / 22, 27 / 22];
 const bmwRrGears = [2.647, 2.091, 1.727, 1.500, 1.360, 1.261];
 
-export const apriliaVehicles = [
+const apriliaBase = [
   defineMotorcycle({
     id: "aprilia-rs125", brand: "Aprilia", name: "RS 125", version: "2025 歐規", engine: "單缸",
     source: "https://www.aprilia.com/en_EN/models/rs-125/rs-125-125-4s4v-2025/",
@@ -49,7 +49,30 @@ export const apriliaVehicles = [
   }),
 ];
 
-export const ducatiVehicles = [
+const [rs125, rs457, rs660, rsv4, mille] = apriliaBase;
+export const apriliaVehicles = [
+  rs125,
+  rs457,
+  defineTrim(rs457, {
+    id: "aprilia-rs457-gp-replica", name: "RS 457 GP Replica", version: "2026 歐規",
+    source: "https://wlassets.aprilia.com/wlassets/aprilia/master/tech_spec/2026/RS-457-Replica/RS-457-GP-Replica-technical-sheet-EN/original/RS-457-GP-Replica-technical-sheet-EN.pdf",
+    curbMassKg: 175,
+  }),
+  rs660,
+  defineTrim(rs660, {
+    id: "aprilia-rs660-factory", name: "RS 660 Factory", version: "2025 歐規",
+    source: rs660.source, curbMassKg: 183,
+  }),
+  rsv4,
+  defineTrim(rsv4, {
+    id: "aprilia-rsv4-factory", name: "RSV4 Factory", version: "2025 歐規",
+    source: "https://wlassets.aprilia.com/wlassets/aprilia/at/tech_spec/2025/RSV4_Factory_tech_spec_DE/original/RSV4_Factory_tech_spec_DE.pdf",
+    curbMassKg: 204,
+  }),
+  mille,
+];
+
+const ducatiBase = [
   defineMotorcycle({
     id: "ducati-panigale-v2", brand: "Ducati", name: "Panigale V2", version: "2025 印度版・890 cc", engine: "90° V2・IVT",
     source: "https://www.ducati.com/in/en/bikes/panigale/panigale-v2-2025/insights?tab=Electronics",
@@ -76,7 +99,7 @@ export const ducatiVehicles = [
     gearRatios: panigaleV4Gears, primaryRatio: 1.80, finalDriveRatio: 43 / 16,
     peakTorqueNm: 114.5, peakTorqueRpm: 12000, peakPowerPs: 218, peakPowerRpm: 15750,
     referenceRpm: 16000, fuelCutRpm: 16000, gearFuelCutRpm: { 6: 16500 },
-    rollingRadiusM: 0.328, dragAreaM2: 0.37, exhaustFrequencyHz: 155,
+    rollingRadiusM: 0.328, dragAreaM2: 0.3665, exhaustFrequencyHz: 155,
   }),
   defineMotorcycle({
     id: "ducati-916", brand: "Ducati", name: "916", version: "1994 歐規・經典", engine: "90° V2・Desmo",
@@ -86,6 +109,49 @@ export const ducatiVehicles = [
     peakTorqueNm: 90.5, peakTorqueRpm: 6900, peakPowerPs: 114, peakPowerRpm: 9000,
     referenceRpm: 10000, fuelCutRpm: 10400, rollingRadiusM: 0.313, dragAreaM2: 0.38, exhaustFrequencyHz: 91,
   }),
+];
+
+const [panigaleV2, panigaleV4, panigaleV4R, ducati916] = ducatiBase;
+const panigaleV4Lamborghini = defineMotorcycle({
+  id: "ducati-panigale-v4-lamborghini", brand: "Ducati", name: "Panigale V4 Lamborghini", version: "2026 歐規・限量",
+  engine: "90° V4・Twin Pulse", source: "https://www.ducati.com/ww/en/bikes/panigale/panigale-v4-lamborghini",
+  displacementCc: 1103, boreMm: 81, strokeMm: 53.5, firingDegrees: twinPulse,
+  bankAngleDegrees: 90, cylinderFiringDegrees: twinPulseByBank, curbMassKg: 198,
+  gearRatios: panigaleV4Gears, primaryRatio: 1.80, finalDriveRatio: 41 / 16,
+  peakTorqueNm: 122.1, peakTorqueRpm: 11250, peakPowerPs: 218.5, peakPowerRpm: 13500,
+  referenceRpm: 14400, fuelCutRpm: 14700, rollingRadiusM: 0.328, dragAreaM2: 0.36, exhaustFrequencyHz: 132,
+});
+
+export const ducatiVehicles = [
+  panigaleV2,
+  defineTrim(panigaleV2, {
+    id: "ducati-panigale-v2-s", name: "Panigale V2 S", version: "2025 歐規",
+    source: "https://www.ducati.com/gb/en/bikes/panigale/panigale-v2/insights?tab=Electronics", curbMassKg: 187,
+  }),
+  defineTrim(panigaleV2, {
+    id: "ducati-panigale-v2-sp", name: "Panigale V2 SP", version: "2027 歐規",
+    source: "https://www.ducati.com/ww/en/bikes/panigale/panigale-v2-sp/insights", curbMassKg: 187,
+  }),
+  defineTrim(panigaleV2, {
+    id: "ducati-panigale-v2-mm93", name: "Panigale V2 MM93", version: "2026 歐規・限量",
+    source: "https://www.ducati.com/gb/en/bikes/panigale/panigale-v2-mm93", curbMassKg: 187,
+  }),
+  defineTrim(panigaleV2, {
+    id: "ducati-panigale-v2-fb63", name: "Panigale V2 FB63", version: "2026 歐規・限量",
+    source: "https://www.ducati.com/gb/en/bikes/panigale/panigale-v2-fb63", curbMassKg: 187,
+  }),
+  panigaleV4,
+  defineTrim(panigaleV4, {
+    id: "ducati-panigale-v4-s", name: "Panigale V4 S", version: "2027 歐規",
+    source: panigaleV4.source, curbMassKg: 200,
+  }),
+  panigaleV4R,
+  panigaleV4Lamborghini,
+  defineTrim(panigaleV4Lamborghini, {
+    id: "ducati-panigale-v4-marquez", name: "Panigale V4 Márquez", version: "2026 歐規・冠軍紀念",
+    source: "https://www.ducati.com/gb/en/bikes/panigale/panigale-v4-marquez-2025-world-champion-replica", curbMassKg: 199,
+  }),
+  ducati916,
 ];
 
 export const bmwVehicles = [
@@ -98,12 +164,20 @@ export const bmwVehicles = [
     referenceRpm: 10500, fuelCutRpm: 10900, rollingRadiusM: 0.299, dragAreaM2: 0.38, exhaustFrequencyHz: 130,
   }),
   defineMotorcycle({
+    id: "bmw-f450rr", brand: "BMW", name: "F 450 RR", version: "2027 德規・上市前預覽", engine: "並列雙缸",
+    source: "https://www.bmw-motorrad.de/de/models/sport/f450rr/technicaldata.html",
+    displacementCc: 420, boreMm: 72, strokeMm: 51.6, firingDegrees: [0, 225], curbMassKg: 177,
+    gearRatios: [2.765, 2.062, 1.588, 1.286, 1.095, 0.955], primaryRatio: 2.025, finalDriveRatio: 47 / 15,
+    peakTorqueNm: 43, peakTorqueRpm: 6750, peakPowerPs: 48, peakPowerRpm: 8750,
+    referenceRpm: 9850, fuelCutRpm: 10300, rollingRadiusM: 0.299, dragAreaM2: 0.435, exhaustFrequencyHz: 137,
+  }),
+  defineMotorcycle({
     id: "bmw-s1000rr", brand: "BMW", name: "S 1000 RR", version: "2025 歐規", engine: "直列四缸・ShiftCam",
     source: "https://www.press.bmwgroup.com/switzerland/article/attachment/T0446040DE/624096",
     displacementCc: 999, boreMm: 80, strokeMm: 49.7, firingDegrees: inlineFourFiring, curbMassKg: 197,
     gearRatios: bmwRrGears, primaryRatio: 1.652, finalDriveRatio: 46 / 17,
     peakTorqueNm: 113, peakTorqueRpm: 11000, peakPowerPs: 210, peakPowerRpm: 13750,
-    referenceRpm: 14600, fuelCutRpm: 15000, rollingRadiusM: 0.317, dragAreaM2: 0.37, exhaustFrequencyHz: 150,
+    referenceRpm: 14600, fuelCutRpm: 15000, rollingRadiusM: 0.317, dragAreaM2: 0.404, exhaustFrequencyHz: 150,
   }),
   defineMotorcycle({
     id: "bmw-m1000rr", brand: "BMW", name: "M 1000 RR", version: "2025 歐規", engine: "直列四缸・ShiftCam",
@@ -111,7 +185,7 @@ export const bmwVehicles = [
     displacementCc: 999, boreMm: 80, strokeMm: 49.7, firingDegrees: inlineFourFiring, curbMassKg: 194,
     gearRatios: bmwRrGears, primaryRatio: 1.652, finalDriveRatio: 46 / 17,
     peakTorqueNm: 113, peakTorqueRpm: 11000, peakPowerPs: 218, peakPowerRpm: 14500,
-    referenceRpm: 15100, fuelCutRpm: 15400, rollingRadiusM: 0.327, dragAreaM2: 0.37, exhaustFrequencyHz: 166,
+    referenceRpm: 15100, fuelCutRpm: 15400, rollingRadiusM: 0.327, dragAreaM2: 0.383, exhaustFrequencyHz: 166,
   }),
   defineMotorcycle({
     id: "bmw-s1000rr-2009", brand: "BMW", name: "S 1000 RR ’09", version: "2009 歐規・初代", engine: "直列四缸",

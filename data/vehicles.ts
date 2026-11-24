@@ -2,6 +2,7 @@ import { apriliaVehicles, bmwVehicles, ducatiVehicles } from "./european-motorcy
 import { moreKawasakiVehicles, moreYamahaVehicles } from "./expanded-yamaha-kawasaki.ts";
 import { hondaVehicles } from "./honda.ts";
 import { kawasakiVehicles } from "./kawasaki.ts";
+import { defineTrim } from "./motorcycle.ts";
 import { suzukiVehicles } from "./suzuki.ts";
 
 export interface Vehicle {
@@ -71,7 +72,7 @@ export interface Vehicle {
 }
 
 // 車型規格、跨版本傳動比與近似值的證據分級見 docs/SOURCES.md。
-export const vehicles = [
+const yamahaBase = [
   {
     id: "yamaha-r15",
     brand: "Yamaha",
@@ -371,6 +372,35 @@ export const vehicles = [
       clutchDampingNmPerRadPerSecond: 1.4,
     },
   },
+] as const satisfies readonly Vehicle[];
+
+const [r15, r3, r6, r7, r9, r1] = yamahaBase;
+const r1Race = defineTrim(r1, {
+  id: "yamaha-r1-race", name: "YZF-R1 RACE", version: "2025 歐規・賽道",
+  source: "https://www.yamaha-motor.eu/gb/en/motorcycles/supersport/pdp/r1-race/", curbMassKg: 201,
+});
+
+export const vehicles = [
+  r15, r3,
+  defineTrim(r15, {
+    id: "yamaha-r15m", name: "YZF-R15M", version: "2026 台灣版",
+    source: r15.source, curbMassKg: 141,
+  }),
+  r6, r7, r9, r1,
+  defineTrim(r6, {
+    id: "yamaha-r6-gytr", name: "YZF-R6 GYTR", version: "2026 歐規・賽道",
+    source: "https://www.yamaha-motor.eu/content/dam/yme/language-masters/en/eicma-2025/digital-brochures/2026_EICMA_MC_BROCHURE_EN.pdf",
+    curbMassKg: 185,
+  }),
+  defineTrim(r1, {
+    id: "yamaha-r1m", name: "YZF-R1M", version: "2023 日規道路版",
+    source: "https://www.yamaha-motor.co.jp/mc/lineup/pdf/Catalog_yzf-r1_2023.pdf", curbMassKg: 202, rollingRadiusM: 0.322,
+  }),
+  r1Race,
+  defineTrim(r1Race, {
+    id: "yamaha-r1-gytr", name: "YZF-R1 GYTR", version: "2026 歐規・賽道",
+    source: "https://www.yamaha-motor.eu/is/en/motorcycles/supersport/pdp/r1-gytr/", curbMassKg: 201,
+  }),
   ...moreYamahaVehicles,
   ...kawasakiVehicles,
   ...moreKawasakiVehicles,

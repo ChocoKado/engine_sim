@@ -45,11 +45,11 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
   const [showEngine, setShowEngine] = useState(false);
   const [tuning, setTuning] = useState<TuningProfile>(tuningProfiles[0]);
   const { audioStatus, sendAudioState, toggleAudio, volume, changeVolume } = useEngineAudio(vehicle, tuning);
-  const { snapshot, readState, pedalReset, setPedal, shift, setShiftMode, toggleEngine, resetSimulation } = useSimulation(vehicle, sendAudioState);
-  const { engineAngularVelocity, vehicleSpeed, gear, engineOn, shiftMode, shift: pendingShift, lastShift, engineFailed } = snapshot;
+  const { snapshot, readState, pedalReset, setPedal, shift, setShiftMode, setRoadSpeedLimitDisabled, toggleEngine, resetSimulation } = useSimulation(vehicle, sendAudioState);
+  const { engineAngularVelocity, vehicleSpeed, gear, engineOn, shiftMode, shift: pendingShift, lastShift, engineFailed, roadSpeedLimitDisabled } = snapshot;
 
   return (
-    <div className="console-layout">
+    <div className="console-layout" onContextMenu={(event) => event.preventDefault()}>
       <section className="panel dashboard" aria-labelledby="dashboard-title">
         <div className="dashboard-heading">
           <h2 id="dashboard-title">{showEngine ? "引擎內構" : "儀表"}</h2>
@@ -74,14 +74,24 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
                 <output className="readout-value" aria-label="目前檔位">{gear || "N"}</output>
               </div>
             </div>
-            <ol className="gear-sequence" aria-label="六速檔位排列">
-              {gearSequence.map((position) => (
+            <ol className="gear-sequence" aria-label={`${vehicle.gears} 速檔位排列`}>
+              {gearSequence.filter((position) => position <= vehicle.gears).map((position) => (
                 <li key={position} aria-current={position === gear ? "true" : undefined}>
                   {position || "N"}
                 </li>
               ))}
             </ol>
             <p className="dashboard-note">傳動採近似模型，後輪假定純滾動，計入滾阻與風阻。聲浪為合成示意。</p>
+            {vehicle.physics.speedLimitKmh !== undefined && (
+              <label className="road-limiter">
+                <input
+                  type="checkbox"
+                  checked={roadSpeedLimitDisabled}
+                  onChange={(event) => setRoadSpeedLimitDisabled(event.currentTarget.checked)}
+                />
+                模擬解除 {vehicle.physics.speedLimitKmh} km/h 限速
+              </label>
+            )}
           </>
         )}
         <div className="dashboard-feedback">
@@ -128,6 +138,10 @@ export default function Home() {
   const activeVehicle = selectedVehicles[brand] ?? brandVehicles[0];
   const optionList = useRef<HTMLDivElement>(null);
 
+  function chooseVehicle(vehicle: Vehicle) {
+    setSelectedVehicles((previous) => ({ ...previous, [brand]: vehicle }));
+  }
+
   useEffect(() => {
     const list = optionList.current;
     const card = list?.querySelector("input:checked")?.closest(".vehicle-option");
@@ -169,6 +183,21 @@ export default function Home() {
           </select>
           <a href={activeVehicle.source}>原廠資料</a>
         </div>
+        {brandVehicles.length > 6 && (
+          <label className="vehicle-model-picker">
+            全部車款
+            <select
+              className="model-select"
+              value={activeVehicle.id}
+              onChange={(event) => {
+                const vehicle = brandVehicles.find(({ id }) => id === event.currentTarget.value);
+                if (vehicle) chooseVehicle(vehicle);
+              }}
+            >
+              {brandVehicles.map(({ id, name }) => <option key={id} value={id}>{name}</option>)}
+            </select>
+          </label>
+        )}
         <div
           key={brand}
           ref={optionList}
@@ -183,7 +212,7 @@ export default function Home() {
                 name="vehicle"
                 value={vehicle.id}
                 checked={activeVehicle.id === vehicle.id}
-                onChange={() => setSelectedVehicles((previous) => ({ ...previous, [brand]: vehicle }))}
+                onChange={() => chooseVehicle(vehicle)}
               />
               <span className="vehicle-card">
                 <strong>{vehicle.name}</strong>

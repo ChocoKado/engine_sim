@@ -1,6 +1,14 @@
-import { defineMotorcycle, inlineFourFiring, singleFiring, twin180Firing } from "./motorcycle.ts";
+import { defineMotorcycle, defineTrim, inlineFourFiring, singleFiring, twin180Firing } from "./motorcycle.ts";
 
 const cbrMidGears = [3.286, 2.105, 1.600, 1.300, 1.150, 1.043];
+const firebladeSp = defineMotorcycle({
+  id: "honda-cbr1000rr-r-sp", brand: "Honda", name: "CBR1000RR-R SP", version: "2024 日規・Fireblade", engine: "直列四缸",
+  source: "https://www.honda.co.jp/content/dam/site/www/CBR1000RRR/cq_img/pdf/CBR1000RRR_SPEC_SP.pdf",
+  displacementCc: 999, boreMm: 81, strokeMm: 48.5, firingDegrees: inlineFourFiring, curbMassKg: 201,
+  gearRatios: [2.461, 1.947, 1.650, 1.454, 1.291, 1.160], primaryRatio: 1.687, finalDriveRatio: 2.750,
+  peakTorqueNm: 113, peakTorqueRpm: 12000, peakPowerPs: 218, peakPowerRpm: 14000,
+  referenceRpm: 14500, fuelCutRpm: 15000, rollingRadiusM: 0.321, dragAreaM2: 0.36, exhaustFrequencyHz: 178,
+});
 
 export const hondaVehicles = [
   defineMotorcycle({
@@ -75,14 +83,11 @@ export const hondaVehicles = [
     peakTorqueNm: 114, peakTorqueRpm: 11000, peakPowerPs: 192, peakPowerRpm: 13000,
     referenceRpm: 13700, fuelCutRpm: 14200, rollingRadiusM: 0.31, dragAreaM2: 0.37, exhaustFrequencyHz: 158,
   }),
-  defineMotorcycle({
-    id: "honda-cbr1000rr-r-sp", brand: "Honda", name: "CBR1000RR-R SP", version: "2024 日規・Fireblade", engine: "直列四缸",
-    source: "https://www.honda.co.jp/content/dam/site/www/CBR1000RRR/cq_img/pdf/CBR1000RRR_SPEC_SP.pdf",
-    displacementCc: 999, boreMm: 81, strokeMm: 48.5, firingDegrees: inlineFourFiring, curbMassKg: 201,
-    gearRatios: [2.461, 1.947, 1.650, 1.454, 1.291, 1.160], primaryRatio: 1.687, finalDriveRatio: 2.750,
-    peakTorqueNm: 113, peakTorqueRpm: 12000, peakPowerPs: 218, peakPowerRpm: 14000,
-    referenceRpm: 14500, fuelCutRpm: 15000, rollingRadiusM: 0.321, dragAreaM2: 0.36, exhaustFrequencyHz: 178,
+  defineTrim(firebladeSp, {
+    id: "honda-cbr1000rr-r", name: "CBR1000RR-R", version: "2024 日規・Fireblade",
+    source: firebladeSp.source, curbMassKg: 200,
   }),
+  firebladeSp,
   defineMotorcycle({
     id: "honda-cbr250rr-mc22", brand: "Honda", name: "CBR250RR ’90", version: "1990 日規・MC22", engine: "高轉直列四缸",
     source: "https://www.honda.co.jp/factbook/motor/CBR250RR/19900300/011.html",

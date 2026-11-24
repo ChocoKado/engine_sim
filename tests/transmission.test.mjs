@@ -73,13 +73,14 @@ for (const vehicle of vehicles) {
   });
 
   test(`${vehicle.name}: rapid MT downshifts can back-drive above fuel cutoff`, () => {
-    const targetRpmRatio = vehicle.id === "kawasaki-zx25r" || vehicle.id === "aprilia-rs125" ? 1.28 : 1.23;
-    const speed = { "yamaha-r15": 45, "yamaha-r3": 55 }[vehicle.id]
-      ?? speedForRpm(vehicle, 3, targetRpmRatio * vehicle.physics.fuelCutRpm);
-    const initial = rolling(vehicle, 6, speed);
+    const targetRpmRatio = vehicle.id.startsWith("kawasaki-zx25r") || vehicle.id === "aprilia-rs125" ? 1.28 : 1.23;
+    const topGear = vehicle.gears;
+    const speed = { "yamaha-r15": 45, "yamaha-r15m": 45, "yamaha-r3": 55 }[vehicle.id]
+      ?? speedForRpm(vehicle, topGear - 3, targetRpmRatio * vehicle.physics.fuelCutRpm);
+    const initial = rolling(vehicle, topGear, speed);
     const requested = enqueueShift(enqueueShift(enqueueShift(initial, -1), -1), -1);
     const trace = run(vehicle, requested, mt, 220);
-    assert.deepEqual([...new Set(trace.map(({ gear }) => gear))], [6, 5, 4, 3]);
+    assert.deepEqual([...new Set(trace.map(({ gear }) => gear))], [topGear, topGear - 1, topGear - 2, topGear - 3]);
     const mechanicallyOverRevving = trace.filter((state) => state.mechanicalOverRev);
     assert.ok(mechanicallyOverRevving.some((state) => rpmFromRadiansPerSecond(state.engineAngularVelocity) > vehicle.physics.fuelCutRpm));
     assert.ok(mechanicallyOverRevving.some((state) => state.engineTorqueNm < 0 && state.drivetrainTorqueNm < 0));
@@ -87,13 +88,14 @@ for (const vehicle of vehicles) {
   });
 
   test(`${vehicle.name}: AT rejects an unsafe target even at low engine RPM`, () => {
-    const initial = { ...INITIAL_TRANSMISSION_STATE, gear: 6, shiftMode: "AT" };
+    const initial = { ...INITIAL_TRANSMISSION_STATE, gear: vehicle.gears, shiftMode: "AT" };
+    const lowerGear = vehicle.gears - 1;
     const step = (speed) => advanceTransmission(initial, {
       engineOn: true, shiftMode: "AT", throttle: 1, brake: 0,
       engineRpm: 2500, wheelAngularVelocity: speed / vehicle.physics.rollingRadiusM, vehicleSpeed: speed,
     }, vehicle, 1 / 120);
-    assert.equal(step(speedForRpm(vehicle, 5, vehicle.physics.referenceRpm)).transmission.shift, null);
-    assert.equal(step(15).transmission.shift?.targetGear, 5);
+    assert.equal(step(speedForRpm(vehicle, lowerGear, vehicle.physics.referenceRpm)).transmission.shift, null);
+    assert.equal(step(15).transmission.shift?.targetGear, lowerGear);
     const idle = run(vehicle, createSimulationState(vehicle), at, 250).at(-1);
     assert.equal(idle.gear, 0);
     const launches = run(vehicle, idle, { ...at, throttle: 1 }, 420);
