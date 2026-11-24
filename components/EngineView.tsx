@@ -11,10 +11,11 @@ const EngineScene = dynamic(() => import("./EngineScene"), {
   loading: () => <div className="engine-scene engine-scene-fallback" role="status">載入 3D 內構</div>,
 });
 
-export function EngineView({ vehicle, snapshot, readState }: {
+export function EngineView({ vehicle, snapshot, readState, readExhaustFlame }: {
   vehicle: Vehicle;
   snapshot: SimulationState;
   readState: () => SimulationState;
+  readExhaustFlame: () => number;
 }) {
   const [cutaway, setCutaway] = useState(true);
   const [paused, setPaused] = useState(false);
@@ -23,13 +24,14 @@ export function EngineView({ vehicle, snapshot, readState }: {
 
   return (
     <div className="engine-view">
-      <EngineScene vehicle={vehicle} readState={readState} cutaway={cutaway} paused={paused} />
+      <EngineScene vehicle={vehicle} readState={readState} readExhaustFlame={readExhaustFlame} cutaway={cutaway} paused={paused} />
       <div className="engine-view-tools">
         <div>
           <span className="engine-rpm">{rpm} RPM</span>
           {vehicle.supercharger && (
             <div>增壓葉輪 <span className="impeller-rpm">{impellerRpm.toLocaleString("zh-TW")} RPM</span></div>
           )}
+          {vehicle.turbocharger && <div>渦輪增壓 <span className="impeller-rpm">{snapshot.turboBoostBar.toFixed(2)} bar</span></div>}
         </div>
         <div className="engine-view-actions">
           <button type="button" className="mode-button cutaway-toggle" aria-pressed={cutaway} onClick={() => setCutaway(!cutaway)}>
@@ -45,6 +47,7 @@ export function EngineView({ vehicle, snapshot, readState }: {
         {vehicle.geometry.rotary ? "轉子、偏心軸與殼體為示意。" : "連桿尺寸、外殼與汽門正時為示意。"}
         {vehicle.geometry.vva && " VVA 切換點待驗。"}
         {vehicle.supercharger && " 增壓葉輪與殼體為示意。"}
+        {" 排氣管路為示意，回火時可在尾管看到火焰。"}
       </p>
     </div>
   );

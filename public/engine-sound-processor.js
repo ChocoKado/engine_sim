@@ -142,7 +142,8 @@ class SuperchargerWhine {
 }
 
 class ExhaustAfterfire {
-  constructor(exhaustFrequencyHz, reflectionMs) {
+  constructor(exhaustFrequencyHz, reflectionMs, onFire) {
+    this.onFire = onFire;
     this.shell = new ExhaustBodyMode(clamp(exhaustFrequencyHz * 1.45, 120, 410), 5.5);
     this.reflection = new Float32Array(Math.ceil(sampleRate * clamp(reflectionMs, 1.4, 6) / 1000));
     this.reflectionIndex = 0;
@@ -210,6 +211,7 @@ class ExhaustAfterfire {
     this.scatter += impulse * (this.armedFromUpshift ? 0.64 : 1);
     this.tailSamples = Math.ceil(sampleRate * 0.055);
     this.armedFromUpshift = false;
+    this.onFire(impulse);
     return impulse;
   }
 
@@ -229,13 +231,39 @@ class ExhaustAfterfire {
   }
 }
 
+class TurboRelease {
+  constructor(style) {
+    this.style = style;
+    this.gain = style === "subtle" ? 0.32 : style === "recirculating" ? 0.67 : 1.1;
+    this.envelope = 0;
+    this.phase = 0;
+    this.smoothing = smoothingFactor(0.008);
+    this.resonator = new DampedResonator(style === "flutter" ? 720 : 1400, 1.1);
+    this.previousLevel = 0;
+  }
+
+  render(level, noise, turbulence) {
+    if (level > this.previousLevel + 0.05) this.phase = 0;
+    this.previousLevel = level;
+    this.envelope += this.smoothing * (level - this.envelope);
+    if (this.envelope < 0.001) return 0;
+    const flutter = this.style === "flutter";
+    const rate = 9 + 10 * this.envelope;
+    this.phase = (this.phase + rate / sampleRate) % 1;
+    const bursts = flutter ? 0.12 + 0.88 * Math.max(0, Math.cos(REVOLUTION_RAD * this.phase)) ** 2 : 1;
+    const texture = flutter ? this.resonator.render(noise * 0.24) : 0;
+    return this.envelope ** (flutter ? 0.68 : 0.92) * bursts * this.gain * (texture + 1.5 * turbulence);
+  }
+}
+
 class EngineSoundProcessor extends AudioWorkletProcessor {
   constructor({ processorOptions }) {
     super();
 
     const {
       firingAnglesRad, exhaustBanks, exhaustFrequencyHz, pulseDecayMs,
-      exhaustOpeningRad = 0, exhaustReflectionMs, exhaustBody, brightnessStartRpm = 8000, brightnessMaxRpm, supercharger,
+      exhaustOpeningRad = 0, exhaustReflectionMs, exhaustBody, brightnessStartRpm = 8000, brightnessMaxRpm,
+      supercharger, turbocharger, rotaryIdleRpm,
     } = processorOptions;
     const exhaustOffset = Number.isFinite(exhaustOpeningRad) ? exhaustOpeningRad : 0;
     const events = firingAnglesRad.map((angle, index) => ({ angle: wrapAngle(angle + exhaustOffset), bank: exhaustBanks?.[index] ?? 0 }));
@@ -251,7 +279,13 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
       ? new ExhaustCollectorBody(exhaustBody, firingAnglesRad.length) : null;
     // A quarter-wave pipe's round-trip time is half a period of its fundamental.
     const reflectionMs = Number.isFinite(exhaustReflectionMs) ? exhaustReflectionMs : 500 / exhaustFrequencyHz;
-    this.afterfire = new ExhaustAfterfire(exhaustFrequencyHz, reflectionMs);
+    this.afterfire = new ExhaustAfterfire(exhaustFrequencyHz, reflectionMs, (strength) => {
+      this.port.postMessage?.({ type: "afterfire", strength });
+    });
+    this.turboRelease = turbocharger
+      ? new TurboRelease(turbocharger.releaseStyle ?? "recirculating") : null;
+    this.rotaryIdleRpm = Number.isFinite(rotaryIdleRpm) && rotaryIdleRpm > 0 ? rotaryIdleRpm : 0;
+    this.rotaryIdleBody = this.rotaryIdleRpm ? new DampedResonator(115, 12) : null;
     this.exhaustDelay = new Float32Array(Math.ceil(sampleRate * clamp(reflectionMs, 0.8, 8) / 1000));
     this.exhaustDelayIndex = 0;
     this.exhaustReflectionSmoothing = frequencyFactor(1700);
@@ -337,6 +371,7 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
         throttle: clamp(throttle, 0, 1), combustion: clamp(combustion, 0, 1), load: clamp(load, 0, 1),
         shiftCut: clamp(shiftCut, 0, 1), upshifting,
         superchargerAngularVelocity: data.superchargerAngularVelocity,
+        turboRelease: Number.isFinite(data.turboRelease) ? clamp(data.turboRelease, 0, 1) : 0,
       });
       if (queue.length > 32) this.previousTelemetry = queue.shift();
     };
@@ -389,6 +424,7 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
     const load = running ? telemetry.load : 0;
     const combustion = running ? Math.sqrt(telemetry.combustion) : 0;
     const shiftCut = running ? telemetry.shiftCut : 0;
+    const turboRelease = running ? telemetry.turboRelease : 0;
     if (running) {
       this.afterfire.update(telemetry, voicing.harmonics, output.length / sampleRate);
     } else {
@@ -457,7 +493,13 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
       const pumping = exhaustPulse ? 0.12 + 0.29 * pumpingLevel : 0;
       // Shifts soften the combustion pulse while the crank continues pumping air.
       const charge = exhaustPulse ? this.combustion * (0.41 + 0.12 * this.load) * (1 - 0.18 * this.shiftCut) : 0;
-      const pressure = pumping + charge;
+      const rotaryIdle = this.rotaryIdleBody
+        ? clamp((1.9 - rpm / this.rotaryIdleRpm) / 0.72, 0, 1) * clamp(1 - 3 * this.throttle, 0, 1)
+        : 0;
+      const rotaryStrongPulse = this.nextFiringIndex % 2 === 0;
+      // Group alternating rotor exhaust pulses near idle while keeping their timing tied to the shaft.
+      const pressure = (pumping + charge) * (1 + rotaryIdle * (rotaryStrongPulse ? 0.90 : -0.64));
+      const idleBody = this.rotaryIdleBody?.render(exhaustPulse && rotaryStrongPulse ? pressure * rotaryIdle : 0) ?? 0;
       const otherBankPulse = this.exhaustBanks && pressure
         && this.exhaustBanks[this.nextFiringIndex === 0 ? this.exhaustBanks.length - 1 : this.nextFiringIndex - 1] === 1;
       const body = this.exhaust.render(otherBankPulse ? 0 : pressure) + (this.otherBank?.render(otherBankPulse ? pressure : 0) ?? 0);
@@ -493,7 +535,8 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
       const closingThrottle = running ? Math.max(0, this.throttle - throttle) : 0;
       const whine = supercharger ? supercharger.render(shaftTarget + index * shaftIncrement, this.throttle, this.load, turbulence, closingThrottle) : 0;
       const afterfire = this.afterfire.render(turbulence);
-      const mix = 0.96 * exhaust - 0.12 * this.reflectedPressure * voicing.reflection + whine + afterfire;
+      const release = this.turboRelease?.render(turboRelease, noise, turbulence) ?? 0;
+      const mix = 0.96 * exhaust - 0.12 * this.reflectedPressure * voicing.reflection + whine + afterfire + release + 0.82 * idleBody;
       this.dcMean += this.dcSmoothing * (mix - this.dcMean);
       this.filteredOutput += this.outputSmoothing * (mix - this.dcMean - this.filteredOutput);
       let normalized = this.filteredOutput / (1 + Math.abs(this.filteredOutput));

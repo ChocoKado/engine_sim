@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { cars } from "../data/cars.ts";
+import { formulaOneCars } from "../data/formula-one.ts";
 import { vehicles } from "../data/vehicles.ts";
 import {
   advanceSimulation,
@@ -48,6 +49,69 @@ test("published turbo torque plateaus are used at both ends and in the middle", 
       assert.ok(Math.abs(loaded.engineTorqueNm - peakTorqueNm) < 1e-9, car.name);
     }
   }
+});
+
+test("F1 road physics reaches each era's RPM range and uses the configured gears", () => {
+  for (const car of formulaOneCars) {
+    const floor = { ...running, throttle: 1 };
+    const neutral = simulate(car, floor, 340);
+    assert.equal(neutral.vehicleSpeed, 0);
+    assert.equal(neutral.hybridPowerKw, 0);
+    assert.equal(car.gears, car.physics.gearRatios.length);
+    assert.ok(rpmFromRadiansPerSecond(neutral.engineAngularVelocity) > 0.88 * car.physics.referenceRpm, car.name);
+    const fast = simulate(car, { ...floor, shiftMode: "AT" }, 120 * 32);
+    assert.ok(fast.vehicleSpeed > 68 && fast.gear >= car.gears - 1, car.name);
+    assert.ok(rpmFromRadiansPerSecond(fast.engineAngularVelocity) <= car.physics.fuelCutRpm, car.name);
+    const braked = simulate(car, { ...running, brake: 1 }, 85, fast);
+    assert.ok(fast.vehicleSpeed - braked.vehicleSpeed > 12, car.name);
+  }
+});
+
+test("F1 ERS spends charge when applying torque and recovers it from existing brake force", () => {
+  const car = formulaOneCars.find(({ id }) => id === "ferrari-sf-26");
+  const hybrid = car.physics.hybridAssist;
+  const rolling = (speedKmh, gear) => {
+    const vehicleSpeed = speedKmh / 3.6;
+    const wheelAngularVelocity = vehicleSpeed / car.physics.rollingRadiusM;
+    return { ...createSimulationState(car), ...running, gear, vehicleSpeed, wheelAngularVelocity,
+      engineAngularVelocity: wheelAngularVelocity * getOverallRatio(car, gear) };
+  };
+  const atSpeed = rolling(205, 5);
+  const full = { ...running, throttle: 1 };
+  const boost = stepSimulation(atSpeed, full, car);
+  const empty = stepSimulation({ ...atSpeed, hybridEnergyKj: 0 }, full, car);
+  assert.ok(boost.hybridPowerKw > 150 && boost.hybridPowerKw <= hybrid.peakPowerKw);
+  assert.equal(boost.hybridEnergyKj, hybrid.capacityKj - boost.hybridPowerKw * FIXED_STEP_SECONDS);
+  assert.equal(boost.combustionTorqueNm, empty.combustionTorqueNm);
+  assert.ok(boost.vehicleSpeed > empty.vehicleSpeed);
+  assert.equal(empty.hybridPowerKw, 0);
+  assert.equal(stepSimulation(rolling(hybrid.taperEndKmh + 5, 8), full, car).hybridPowerKw, 0);
+  const recovered = stepSimulation(empty, { ...running, brake: 1 }, car);
+  const saturated = stepSimulation({ ...empty, hybridEnergyKj: hybrid.capacityKj }, { ...running, brake: 1 }, car);
+  assert.ok(recovered.hybridPowerKw < -150 && recovered.hybridEnergyKj > 0);
+  assert.equal(saturated.hybridEnergyKj, hybrid.capacityKj);
+  assert.equal(recovered.vehicleSpeed, saturated.vehicleSpeed);
+});
+
+test("turbo pressure takes time to build and release needs pressure and a throttle drop", () => {
+  const car = cars.find(({ id }) => id === "toyota-gr-supra");
+  const rpm = 4300;
+  const gear = 3;
+  const wheelAngularVelocity = rpm * Math.PI / 30 / getOverallRatio(car, gear);
+  const start = { ...createSimulationState(car), ...running, gear, engineAngularVelocity: rpm * Math.PI / 30,
+    wheelAngularVelocity, vehicleSpeed: wheelAngularVelocity * car.physics.rollingRadiusM };
+  const wideOpen = { ...running, throttle: 1 };
+  const coldLift = stepSimulation(stepSimulation(start, wideOpen, car), running, car);
+  const boosted = simulate(car, wideOpen, 90, start);
+  assert.equal(coldLift.turboRelease, 0);
+  assert.ok(boosted.turboBoostBar > 0.9 * car.turbocharger.maxBoostBar);
+  assert.equal(boosted.turboRelease, 0);
+  const vent = stepSimulation(boosted, running, car);
+  assert.ok(vent.turboRelease > 0.9 && vent.turboBoostBar < boosted.turboBoostBar);
+  const coast = simulate(car, running, 60, vent);
+  assert.ok(coast.turboRelease < 0.004 && coast.turboBoostBar < 0.004);
+  const naturallyAspirated = cars.find(({ id }) => id === "toyota-gr86");
+  assert.equal(stepSimulation(boosted, running, naturallyAspirated).turboRelease, 0);
 });
 
 function rollingInSecond(vehicle) {

@@ -328,6 +328,47 @@ R1／R6 GYTR 的可調傳動與 ECU 曲線 `unknown`，以對應平台的基準�
 
 回火音色改用陡峭壓力前緣、短反向回彈、耗散噪聲與排氣管初次反射。升檔的前緣較銳利，收油的氣流尾聲稍重。係數屬 D 級原創合成，對比方向取自排氣有限振幅壓力波研究。 [SAE 異常排氣噪聲研究](https://saemobilus.sae.org/papers/study-generation-mechanism-abnormal-exhaust-noise-871924) · [排氣聲輻射實驗](https://www.sciencedirect.com/science/article/pii/S0022460X7080044X)
 
+## M14 公路車、F1 與排氣
+
+2026-11-25。表中速度為標準設定平路、全油門、虛擬 AT 的定時模擬結果。廠商公開的功率、扭矩、齒比、限制和幾何標為 A 級；未公開的扭矩曲線、慣量、有效滾動半徑和道路負載是 C／D 級近似。回火與洩壓為原創合成音訊。
+
+| 新增公路車 | 版本 | 75 秒 km/h | 規格與版本 |
+|---|---|---:|---|
+| Nissan Skyline GT-R R34 | 2000 日規 V·spec II・6MT | 255.7 | Nissan V·spec II 廠方版本。滾動半徑、增壓響應與斷油採近似。 [規格來源](https://global.nissannews.com/en/releases/skyline-and-skyline-gt-r-undergo-minor-model-change) |
+| Mazda RX-7 Spirit R | 2002 日規 Type A・5MT | 271.5 | Mazda Spirit R Type A 的 5MT。型錄及 Mazda 技報提供齒比與 13B-REW 資料。 [規格來源](https://newsroom.mazda.com/en/publicity/release/2002/200203/0325e.html) |
+| Honda NSX NA2 | 1997 日規 NSX 3.2・6MT | 273.9 | Honda 3.2 NA2 與 6MT 的日本規格。 [規格來源](https://www.honda.co.jp/factbook/auto/NSX/19970206/ns97-011.html) |
+| Honda S2000 AP1 | 1999 日規標準版・6MT | 256.8 | Honda F20C 與 6MT 規格。齒比計入一組中間減速。 [規格來源](https://www.honda.co.jp/auto-archive/s2000/2001/shogen.html) |
+| Toyota GR Yaris | 2024 日規 RZ High Performance・6MT | 261.4 | 日規 304 PS。五、六檔採另一組終傳；日本道路限速的精確門檻待查。 [規格來源](https://toyotagazooracing.com/pressrelease/2024/0321-01/) |
+| Subaru Impreza WRX STI | 2005 加規 GDB・6MT | 257.2 | 加拿大規格的 EJ257、6MT。歧管不等長的脈衝反射為音色近似。 [規格來源](https://www.subaru.ca/Content/7907/media/en-ca/download/2005ImprezaWRXSTi.pdf) |
+| Audi TT RS Coupé 8J | 2010 歐規 quattro・6MT | 249.6 | Audi SSP 451 使用含終傳的有效齒比；250 km/h 為對應版本限速。 [規格來源](https://www.vag-technique.fr/ext_files/ssp/vw/SSP_451_Audi_TT_RS_avec_moteur_TFSI_R5_de_2-5_L.pdf) |
+| BMW M3 E92 Coupé | 2007 歐規・6MT | 249.7 | BMW S65 與 6MT。250 km/h 為標準電子上限。 [規格來源](https://www.press.bmwgroup.com/deutschland/article/attachment/T0082243DE/125133) |
+| Porsche 911 GT3 (992.2) | 2025 歐規・6MT | 308.4 | 原廠 6MT、有效風阻面積 0.72 m²，額定最高速 313 km/h。 [規格來源](https://pnr-prd2-pub2.newsroom.porsche.com/dam/jcr%3A46cb0e24-ad5a-489c-a404-52c678071d03/pag-911-gt3-mt-en.pdf) |
+| Chevrolet Corvette Stingray C8 | 2022 歐規 Z51 Coupé・8DCT | 285.2 | 歐規 Z51 的 8DCT。原廠行駛重量按規格扣除已含的 75 kg 駕駛。 [規格來源](https://media.chevrolet.com/content/dam/Media/documents/INTL/chevrolet/tech-data/corvette-stingray/Chevrolet-Corvette-Stingray-TechSpecs_EN.pdf) |
+| Dodge Viper SRT | 2017 美規標準版・6MT | 334.2 | Dodge 基本型 Viper 的 645 hp 與 6MT。每循環有 90°／54° 相間的脈衝。 [規格來源](https://s3.amazonaws.com/chryslermedia.iconicweb.com/mediasite/specs/2017_DG_Viper_SPfla4qp9pu01chim5ofhl9bmqdd.pdf) |
+| Mercedes-AMG SLS AMG Coupé | 2010 C197・7DCT | 316.6 | Mercedes-Benz 發布資料收錄的 M159 與七速雙離合。上限採 317 km/h。 [規格來源](https://www.ausmotive.com/downloads/Mercedes-Benz/SLS-AMG-Press-kit-July2010.pdf) |
+| Lamborghini Gallardo LP 560-4 | 2009 Coupé・6MT | 320.2 | Lamborghini 560 PS 與 6MT。路況重量以乾重估計。 [規格來源](https://www.lamborghini.com/en-en/history/gallardo-lp-560-4-coupe) |
+| Ferrari 812 Superfast | 2017 歐規・7DCT | 360.1 | Ferrari 800 cv 與七速雙離合。原廠列高於 340 km/h。 [規格來源](https://cdn.ferrari.com/cms/network/media/pdf/cs_ferrari_812_superfast_gbr.pdf) |
+
+RX-7 的轉子、動力與序列雙渦輪資料另見 [Mazda 技報](https://www.mazda.com/content/dam/mazda/corporate/mazda-com/en/pdf/innovation/monozukuri/technology/tech-review/2003/2003_no002.pdf) 與 [Mazda 日本型錄存檔](https://images.jdm-catalogues.com/mazda/rx-7/fd/type_6/mazda_rx7_fd_type_6_spirit_r/catalogue.pdf)。
+
+F1 的輪胎抓地隨速度平方的近似下壓力增加。齒比分配、翼角、扭矩曲線和燃油重量是代表設定。ERS 的電池窗口與功率依年代取近似，使用直線煞車回收及全油門輔助，輪胎已達抓地上限時減少輸出。賽道部署區、燃油策略、主動空力、MGU-H 與實際賽事尾速需另外量測或建模。 [Honda RA168E 研究報告](https://www.jstage.jst.go.jp/article/hondatechnicalreview/1/0/1_1989_1_1/_pdf/-char/en) · [2025 FIA 技術規則](https://api.fia.com/sites/default/files/documents/fia_2025_formula_1_technical_regulations_-_issue_03_-_2025-04-07.pdf) · [2026 FIA 技術規則](https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_c_technical_-_iss_15_-_2025-12-10_0.pdf) · [2026 FIA 修訂](https://api.fia.com/news/refinements-2026-fia-formula-1-regulations-agreed-all-stakeholders)
+
+| F1 | 版本 | 32 秒 km/h | 規格與版本 |
+|---|---|---:|---|
+| Ferrari 312 T | 1975 賽季 | 286.4 | Ferrari 180° V12、五速。歷史檔案的乾重仍需加駕駛。 [規格來源](https://www.ferrari.com/en-CA/formula1/312-t) |
+| McLaren MP4/4 | 1988 賽季 | 317.9 | Honda RA168E 研究報告的最大功率 685 PS。絕對壓力規則上限 2.5 bar，換算表壓約 1.5 bar。 [規格來源](https://global.honda/en/F1/machine/1988_McLarenHondaMP44/) |
+| McLaren MP4/6 | 1991 賽季 | 311.8 | Honda RA121E 與六速，模擬取 1991 年風格。 [規格來源](https://global.honda/en/F1/machine/1991_McLarenHondaMP46/) |
+| Williams FW14B | 1992 賽季 | 322.0 | Williams／Renault V10、六速。依賽季引擎發展資料選近似額定點。 [規格來源](https://www.williamsf1.com/articles/22794892-7962-4c82-b00b-90aac32870b8/nigel-mansell-and-the-fw14b-an-iconic-duo) |
+| Ferrari F2004 | 2004 賽季 | 337.6 | Ferrari Tipo 053 V10、七速。額定點取 Ferrari 歷史規格。 [規格來源](https://www.ferrari.com/en-EN/formula1/f2004) |
+| Brawn GP BGP 001 | 2009 賽季 | 320.8 | 原賽車拍賣檔記錄 2.4 L Mercedes V8、七速及 18,000 RPM 上限。 [規格來源](https://images2.bonhams.com/original?src=Images%2Flive%2F2025-04%2F14%2FS-30996-0-1.pdf) |
+| Mercedes-AMG F1 W11 | 2020 EQ Performance | 341.8 | Mercedes 車隊 M11 規格，套用該世代 120 kW ERS 上限。 [規格來源](https://media.mercedes-benz.com/en/article/95002cb8-fdee-4190-82fb-c2b00feaf8db) |
+| Red Bull Racing RB19 | 2023 賽季 | 349.9 | Honda RBPTH001 與八速，套用該世代 120 kW ERS 上限。 [規格來源](https://global.honda/en/F1/machine/2023_RedBullRB19/) |
+| Ferrari SF-26 | 2026 賽季 | 310.8 | Ferrari 技術表與 FIA 350 kW 上限。直線助力於 290–345 km/h 逐步退場。 [規格來源](https://www.ansa.it/documents/1769167532298_SF26.pdf) |
+
+渦輪表壓以油門、轉速與是否掛檔推估。收油前有表壓才有洩壓，帶油換檔的模擬斷扭也會降壓。GR Supra 的漸慢多段聲採改裝進氣顫振音色，輪軸與扭矩仍用原設定。近代油電 F1 的洩壓採低音量氣流示意，實車資料待查。 [Garrett 洩壓原理](https://www.garrettmotion.com/racing-and-performance/choosing-a-turbocharger/turbo-system-optimization/) · [Garrett 壓縮機顫振](https://www.garrettmotion.com/wp-content/uploads/2019/10/GAM_Turbo-Tech-103_Expert-1.pdf)
+
+RX-7、RX-8 的改裝風格怠速加強交替的排氣脈衝，隨轉速及油門增大逐漸退出，偏心軸和轉子的相位維持原模型。3D 歧管、集管、渦輪和尾管描繪路徑拓撲，管路尺寸及火焰色形為示意。AudioWorklet 每次合成回火時同步發送火焰事件，3D 模式靜音後仍可顯示。 [Mazda 轉子技報](https://www.mazda.com/content/dam/mazda/corporate/mazda-com/en/pdf/innovation/monozukuri/technology/tech-review/2003/2003_no002.pdf) · [Racing Beat 汽口型式](https://www.racingbeat.com/manuals/rb-rotary-catalog.2016.pdf)
+
 ## 4. 開發者引用習慣
 
 每新增或修改一筆真實規格，請保存來源 URL、核對日、年式/地區/型號、原始值、單位、證據等級（A/B/C/D），以及對應的設定檔/測試；找不到資料就填 `unknown` 而不是猜。

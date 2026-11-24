@@ -6,6 +6,7 @@ import type { CSSProperties } from "react";
 import { EngineView } from "../components/EngineView";
 import { RidingControls, ShiftModeControls } from "../components/RidingControls";
 import { cars } from "../data/cars";
+import { formulaOneCars } from "../data/formula-one";
 import { tuningProfiles } from "../data/tuning";
 import type { TuningProfile } from "../data/tuning";
 import { vehicles } from "../data/vehicles";
@@ -18,13 +19,14 @@ const motorcycleGearSequence = [1, 0, 2, 3, 4, 5, 6];
 const simulationModes = {
   motorcycle: { label: "機車", heading: "騎乘控制台" },
   car: { label: "汽車", heading: "駕駛控制台" },
+  formula1: { label: "F1", heading: "F1 引擎控制台" },
   aircraft: { label: "飛機", heading: "飛機引擎控制台" },
   space: { label: "航天", heading: "航天引擎控制台" },
 } as const;
 type SimulationMode = keyof typeof simulationModes;
-type RoadMode = "motorcycle" | "car";
+type RoadMode = "motorcycle" | "car" | "formula1";
 const modeOptions = Object.keys(simulationModes) as SimulationMode[];
-const roadCatalogs: Record<RoadMode, readonly Vehicle[]> = { motorcycle: vehicles, car: cars };
+const roadCatalogs: Record<RoadMode, readonly Vehicle[]> = { motorcycle: vehicles, car: cars, formula1: formulaOneCars };
 const AerospaceConsole = dynamic(() => import("../components/AerospaceConsole").then((module) => module.AerospaceConsole), {
   loading: () => <p className="panel" role="status">載入引擎控制台</p>,
 });
@@ -58,12 +60,24 @@ function Tachometer({ rpm, referenceRpm, isCar }: { rpm: number; referenceRpm: n
 function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
   const [showEngine, setShowEngine] = useState(false);
   const [tuning, setTuning] = useState<TuningProfile>(tuningProfiles[0]);
-  const { audioStatus, sendAudioState, toggleAudio, volume, changeVolume } = useEngineAudio(vehicle, tuning);
+  const { audioStatus, sendAudioState, toggleAudio, volume, changeVolume, prepareAudio, readExhaustFlame } = useEngineAudio(vehicle, tuning, showEngine);
   const { snapshot, readState, pedalReset, setPedal, shift, setShiftMode, setRoadSpeedLimitDisabled, toggleEngine, resetSimulation } = useSimulation(vehicle, sendAudioState);
-  const { engineAngularVelocity, vehicleSpeed, gear, engineOn, shiftMode, shift: pendingShift, lastShift, engineFailed, roadSpeedLimitDisabled } = snapshot;
+  const { engineAngularVelocity, vehicleSpeed, gear, engineOn, shiftMode, shift: pendingShift, lastShift, engineFailed,
+    roadSpeedLimitDisabled, hybridEnergyKj, hybridPowerKw, turboBoostBar } = snapshot;
   const isCar = vehicle.kind === "car";
-  const gears = isCar ? Array.from({ length: vehicle.gears + 1 }, (_, index) => index)
+  const hybrid = vehicle.physics.hybridAssist;
+  const gears = vehicle.kind ? Array.from({ length: vehicle.gears + 1 }, (_, index) => index)
     : motorcycleGearSequence.filter((position) => position <= vehicle.gears);
+
+  function toggleIgnition() {
+    if (!engineOn && showEngine) prepareAudio();
+    toggleEngine();
+  }
+
+  function toggleEngineView() {
+    if (!showEngine && engineOn) prepareAudio();
+    setShowEngine(!showEngine);
+  }
 
   return (
     <div className="console-layout" onContextMenu={(event) => event.preventDefault()}>
@@ -72,12 +86,12 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
           <h2 id="dashboard-title">{showEngine ? "引擎內構" : "儀表"}</h2>
           <div className="dashboard-actions">
             {!showEngine && <ShiftModeControls mode={shiftMode} onModeChange={setShiftMode} />}
-            <button type="button" className="mode-button engine-view-toggle" onClick={() => setShowEngine(!showEngine)}>
+            <button type="button" className="mode-button engine-view-toggle" onClick={toggleEngineView}>
               {showEngine ? "返回儀表" : "3D 內構"}
             </button>
           </div>
         </div>
-        {showEngine ? <EngineView vehicle={vehicle} snapshot={snapshot} readState={readState} /> : (
+        {showEngine ? <EngineView vehicle={vehicle} snapshot={snapshot} readState={readState} readExhaustFlame={readExhaustFlame} /> : (
           <>
             <div className="readouts">
               <Tachometer rpm={rpmFromRadiansPerSecond(engineAngularVelocity)} referenceRpm={vehicle.physics.referenceRpm} isCar={isCar} />
@@ -98,7 +112,22 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
                 </li>
               ))}
             </ol>
-            <p className="dashboard-note">傳動採近似模型，{isCar ? "輪胎" : "後輪"}假定純滾動，計入滾阻與風阻。聲浪為合成示意。</p>
+            {(hybrid || vehicle.turbocharger) && (
+              <dl className="drive-readout">
+                {vehicle.turbocharger && <div><dt>增壓</dt><dd>{turboBoostBar.toFixed(2)} bar</dd></div>}
+                {hybrid && <>
+                  <div><dt>ERS 電量</dt><dd>{Math.round(100 * hybridEnergyKj / hybrid.capacityKj)}%</dd></div>
+                  <div><dt>{hybridPowerKw < -0.5 ? "ERS 回收" : "ERS 輔助"}</dt><dd>{Math.round(Math.abs(hybridPowerKw))} kW</dd></div>
+                </>}
+              </dl>
+            )}
+            <p className="dashboard-note">傳動採近似模型，{vehicle.kind ? "輪胎" : "後輪"}假定純滾動，計入滾阻與風阻。聲浪為合成示意。</p>
+            {(vehicle.turbocharger?.releaseStyle === "flutter" || vehicle.geometry.rotary) && (
+              <p className="dashboard-note audio-voicing-note">
+                {vehicle.turbocharger?.releaseStyle === "flutter" && "收油顫振採改裝進氣音色。"}
+                {vehicle.geometry.rotary && "轉子怠速採改裝排氣埠的脈衝音色。"}
+              </p>
+            )}
             {vehicle.physics.speedLimitKmh !== undefined && (
               <label className="road-limiter">
                 <input
@@ -129,11 +158,11 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
       </section>
 
       <RidingControls
-        title={isCar ? "駕駛控制" : "騎乘控制"}
+        title={vehicle.kind === "formula1" ? "賽車控制" : isCar ? "駕駛控制" : "騎乘控制"}
         engineOn={engineOn}
         engineFailed={engineFailed}
         shiftMode={shiftMode}
-        onToggleEngine={toggleEngine}
+        onToggleEngine={toggleIgnition}
         onReset={resetSimulation}
         audioStatus={audioStatus}
         onToggleAudio={toggleAudio}
@@ -151,19 +180,25 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
 
 export default function Home() {
   const [mode, setMode] = useState<SimulationMode>("motorcycle");
-  const [brands, setBrands] = useState<Record<RoadMode, Vehicle["brand"]>>({ motorcycle: vehicles[0].brand, car: cars[0].brand });
+  const [brands, setBrands] = useState<Record<RoadMode, Vehicle["brand"]>>({
+    motorcycle: vehicles[0].brand,
+    car: cars[0].brand,
+    formula1: formulaOneCars[0].brand,
+  });
   const [selectedVehicles, setSelectedVehicles] = useState<Partial<Record<string, Vehicle>>>({});
-  const roadMode = mode === "car" ? "car" : "motorcycle";
+  const roadMode = mode === "car" || mode === "formula1" ? mode : "motorcycle";
   const brand = brands[roadMode];
   const catalog = roadCatalogs[roadMode];
   const vehicleBrands = [...new Set(catalog.map((vehicle) => vehicle.brand))];
   const brandVehicles = catalog.filter((vehicle) => vehicle.brand === brand);
   const selectionKey = `${roadMode}/${brand}`;
   const activeVehicle = selectedVehicles[selectionKey] ?? brandVehicles[0];
+  const modelOptions = roadMode === "motorcycle" ? brandVehicles : catalog;
   const optionList = useRef<HTMLDivElement>(null);
 
   function chooseVehicle(vehicle: Vehicle) {
-    setSelectedVehicles((previous) => ({ ...previous, [selectionKey]: vehicle }));
+    if (vehicle.brand !== brand) setBrands((previous) => ({ ...previous, [roadMode]: vehicle.brand }));
+    setSelectedVehicles((previous) => ({ ...previous, [`${roadMode}/${vehicle.brand}`]: vehicle }));
   }
 
   useEffect(() => {
@@ -217,21 +252,23 @@ export default function Home() {
               </select>
               <a href={activeVehicle.source}>原廠資料</a>
             </div>
-            {brandVehicles.length > 6 && (
+            {roadMode !== "motorcycle" || brandVehicles.length > 6 ? (
               <label className="vehicle-model-picker">
                 全部車款
                 <select
                   className="model-select"
                   value={activeVehicle.id}
                   onChange={(event) => {
-                    const vehicle = brandVehicles.find(({ id }) => id === event.currentTarget.value);
+                    const vehicle = modelOptions.find(({ id }) => id === event.currentTarget.value);
                     if (vehicle) chooseVehicle(vehicle);
                   }}
                 >
-                  {brandVehicles.map(({ id, name }) => <option key={id} value={id}>{name}</option>)}
+                  {modelOptions.map(({ id, brand, name }) => (
+                    <option key={id} value={id}>{roadMode === "motorcycle" ? name : `${brand} · ${name}`}</option>
+                  ))}
                 </select>
               </label>
-            )}
+            ) : null}
             <div
               key={selectionKey}
               ref={optionList}

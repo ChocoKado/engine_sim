@@ -10,7 +10,6 @@ const GRAVITY_MPS2 = 9.80665;
 const OPERATOR_MASS_KG = 75;
 const ROLLING_RESISTANCE = 0.015;
 const AIR_DENSITY_KG_M3 = 1.225;
-const MAX_BRAKE_DECELERATION_MPS2 = 0.72 * GRAVITY_MPS2;
 const WATTS_PER_METRIC_HP = 735.49875;
 const FUEL_CUT_WINDOW_RPM = 220;
 const SPEED_LIMIT_WINDOW_KMH = 0.5;
@@ -31,6 +30,10 @@ export interface SimulationState extends SimulationInput, TransmissionState {
   readonly crankAngleRad: number;
   readonly superchargerAngularVelocity: number;
   readonly superchargerAngleRad: number;
+  readonly turboBoostBar: number;
+  readonly turboRelease: number;
+  readonly hybridEnergyKj: number;
+  readonly hybridPowerKw: number;
   readonly engineTorqueNm: number;
   readonly combustionTorqueNm: number;
   readonly shiftCut: number;
@@ -62,6 +65,10 @@ export function createSimulationState(vehicle: Vehicle): SimulationState {
     crankAngleRad: 0,
     superchargerAngularVelocity: 0,
     superchargerAngleRad: 0,
+    turboBoostBar: 0,
+    turboRelease: 0,
+    hybridEnergyKj: vehicle.physics.hybridAssist?.capacityKj ?? 0,
+    hybridPowerKw: 0,
     engineTorqueNm: 0,
     combustionTorqueNm: 0,
     shiftCut: 0,
@@ -85,6 +92,27 @@ function radiansPerSecondFromRpm(rpm: number): number {
 
 function unitInterval(value: number): number {
   return Math.min(1, Math.max(0, value));
+}
+
+function advanceTurbo(
+  state: SimulationState, vehicle: Vehicle, rpm: number, throttle: number, shiftCut: number, inGear: boolean,
+) {
+  const turbo = vehicle.turbocharger;
+  if (!turbo) return { turboBoostBar: 0, turboRelease: 0 };
+  const spoolStartRpm = turbo.spoolStartRpm ?? vehicle.physics.idleRpm + 500;
+  const fullBoostRpm = Math.max(spoolStartRpm + 850, vehicle.physics.peakTorqueRpm);
+  const flow = unitInterval((rpm - spoolStartRpm) / (fullBoostRpm - spoolStartRpm));
+  const opening = throttle * (1 - shiftCut);
+  const target = turbo.maxBoostBar * flow * opening ** 1.4 * (inGear ? 1 : 0.24);
+  const pressure = state.turboBoostBar;
+  const releaseStarts = state.throttle * (1 - state.shiftCut) >= 0.48 && opening < 0.48 && pressure >= 0.12;
+  const decay = target > pressure ? 0.24 : opening < 0.45 ? 0.070 : 0.18;
+  return {
+    turboBoostBar: pressure + (target - pressure) * (1 - Math.exp(-FIXED_STEP_SECONDS / decay)),
+    turboRelease: releaseStarts
+      ? Math.min(1, pressure / 0.8)
+      : state.turboRelease * Math.exp(-FIXED_STEP_SECONDS / 0.082),
+  };
 }
 
 function fullThrottleTorqueNm(rpm: number, physics: Vehicle["physics"]): number {
@@ -133,6 +161,10 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
   const ratio = getOverallRatio(vehicle, gear);
   const mass = physics.curbMassKg + OPERATOR_MASS_KG;
   const efficiency = physics.drivelineEfficiency ?? 1;
+  const airflowPressure = 0.5 * AIR_DENSITY_KG_M3 * roadSpeed ** 2;
+  const weight = mass * GRAVITY_MPS2;
+  const normalForce = weight + airflowPressure * (physics.downforceAreaM2 ?? 0);
+  const brakeForce = brake * (physics.maxBrakeAccelerationG ?? 0.72) * normalForce;
 
   const friction = physics.frictionNm + physics.frictionNmPerRadPerSecond * engineSpeed;
   const closedThrottle = 1 - throttle;
@@ -151,13 +183,30 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
   const matchingCharge = unitInterval((revMatchRpm - rpm) / 1400);
   const matchingCombustion = availableCombustion * matchingCharge;
   const driveTorqueLimit = ratio && physics.maxDriveAccelerationG !== undefined
-    ? physics.maxDriveAccelerationG * GRAVITY_MPS2 * mass * radius / (ratio * efficiency)
+    ? physics.maxDriveAccelerationG * normalForce * radius / (ratio * efficiency)
     : Infinity;
   const throttleCombustion = Math.min(throttle * availableCombustion * combustionScale, driveTorqueLimit + engineLoss);
   const combustion = engineOn
     ? Math.max(throttleCombustion, idleCombustion * combustionScale, matchingCombustion)
     : 0;
-  const engineTorque = combustion - engineLoss;
+  const hybrid = physics.hybridAssist;
+  let assistTorque = 0;
+  let hybridPowerKw = 0;
+  if (hybrid && engineOn && gear > 0 && roadSpeed > 3) {
+    if (brake > 0) {
+      hybridPowerKw = -Math.min(hybrid.regenPowerKw, 0.82 * brakeForce * roadSpeed / 1000,
+        (hybrid.capacityKj - state.hybridEnergyKj) / dt);
+    } else if (throttle > 0.55 && engineSpeed > idleSpeed && clutchScale >= 0.95) {
+      const taper = hybrid.taperStartKmh !== undefined && hybrid.taperEndKmh !== undefined
+        ? unitInterval((hybrid.taperEndKmh - 3.6 * roadSpeed) / (hybrid.taperEndKmh - hybrid.taperStartKmh))
+        : 1;
+      const requestedKw = hybrid.peakPowerKw * taper * throttle * combustionScale * Math.min(revFuel, roadFuel);
+      const remainingKw = Math.min(requestedKw, state.hybridEnergyKj / dt);
+      assistTorque = Math.min(remainingKw * 1000 / engineSpeed, Math.max(0, driveTorqueLimit - combustion + engineLoss));
+      hybridPowerKw = assistTorque * engineSpeed / 1000;
+    }
+  }
+  const engineTorque = combustion + assistTorque - engineLoss;
 
   const matchedEngineSpeed = wheelSpeed * ratio;
   const slip = engineSpeed - matchedEngineSpeed;
@@ -165,8 +214,8 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
   const rollingEngagement = unitInterval((matchedEngineSpeed - idleSpeed * 0.8) / (0.5 * idleSpeed));
   // Pure rolling reflects the vehicle and operator mass at the wheel.
   const effectiveWheelInertia = physics.wheelInertiaKgM2 + mass * radius ** 2;
-  const brakingAndRollingForce = mass * (brake * MAX_BRAKE_DECELERATION_MPS2 + GRAVITY_MPS2 * ROLLING_RESISTANCE);
-  const dragForce = 0.5 * AIR_DENSITY_KG_M3 * physics.dragAreaM2 * roadSpeed ** 2;
+  const brakingAndRollingForce = brakeForce + weight * ROLLING_RESISTANCE;
+  const dragForce = airflowPressure * physics.dragAreaM2;
   const freelyBrakedWheelSpeed = wheelSpeed - dt * (brakingAndRollingForce + dragForce) * radius / effectiveWheelInertia;
   const freeEngineSpeed = engineSpeed + dt * engineTorque / physics.engineInertiaKgM2;
 
@@ -215,6 +264,10 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
     crankAngleRad: (state.crankAngleRad + crankAdvance) % RAD_PER_ENGINE_CYCLE,
     superchargerAngularVelocity: nextEngineSpeed * superchargerRatio,
     superchargerAngleRad: (state.superchargerAngleRad + crankAdvance * superchargerRatio) % RAD_PER_REVOLUTION,
+    ...(engineOn && !engineFailed ? advanceTurbo(state, vehicle, rpm, throttle, shiftCut, gear > 0)
+      : { turboBoostBar: 0, turboRelease: 0 }),
+    hybridEnergyKj: Math.max(0, Math.min(hybrid?.capacityKj ?? 0, state.hybridEnergyKj - hybridPowerKw * dt)),
+    hybridPowerKw: engineFailed ? 0 : hybridPowerKw,
     engineTorqueNm: engineTorque,
     combustionTorqueNm: combustion,
     shiftCut,

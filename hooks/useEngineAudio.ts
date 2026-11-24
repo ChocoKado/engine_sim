@@ -24,19 +24,31 @@ function fade({ context, gain }: AudioGraph, target: number) {
   gain.gain.setTargetAtTime(target, now, 0.035);
 }
 
-export function useEngineAudio(vehicle: Vehicle, tuning: TuningProfile) {
+export function useEngineAudio(vehicle: Vehicle, tuning: TuningProfile, showExhaust: boolean) {
   const [audioStatus, setAudioStatus] = useState<AudioStatus>("muted");
   const [volume, setVolume] = useState(DEFAULT_VOLUME);
   const graph = useRef<AudioGraph | null>(null);
   const requested = useRef(false);
   const volumeRef = useRef(DEFAULT_VOLUME);
   const latestState = useRef<{ state: SimulationState; timestampMs: number } | null>(null);
+  const lastFlame = useRef({ timestampMs: -Infinity, strength: 0 });
+  const showExhaustRef = useRef(showExhaust);
   const latestVoicing = useRef(tuning.voicing);
+  const readExhaustFlame = useCallback(() => {
+    const elapsedMs = performance.now() - lastFlame.current.timestampMs;
+    return latestState.current?.state.engineOn && elapsedMs < 150
+      ? Math.min(1, lastFlame.current.strength * 1.85) * (1 - elapsedMs / 150) ** 1.5
+      : 0;
+  }, []);
 
   useEffect(() => {
     latestVoicing.current = tuning.voicing;
     graph.current?.node?.port.postMessage({ type: "tuning", voicing: tuning.voicing });
   }, [tuning]);
+
+  useEffect(() => {
+    showExhaustRef.current = showExhaust;
+  }, [showExhaust]);
 
   const applyVolume = useCallback((nextVolume: number) => {
     if (!Number.isFinite(nextVolume)) return;
@@ -68,7 +80,7 @@ export function useEngineAudio(vehicle: Vehicle, tuning: TuningProfile) {
   const sendAudioState = useCallback((state: SimulationState, timestampMs = performance.now()) => {
     latestState.current = { state, timestampMs };
     const audio = graph.current;
-    if (!requested.current || !audio?.node || audio.context.state !== "running") return;
+    if ((!requested.current && !showExhaustRef.current) || !audio?.node || audio.context.state !== "running") return;
 
     const observedOffset = audio.context.currentTime - performance.now() / 1000;
     const previousOffset = audio.clockOffsetSeconds ?? observedOffset;
@@ -82,6 +94,7 @@ export function useEngineAudio(vehicle: Vehicle, tuning: TuningProfile) {
       angleRad: state.crankAngleRad,
       angularVelocity: state.engineAngularVelocity,
       superchargerAngularVelocity: state.superchargerAngularVelocity,
+      turboRelease: state.turboRelease,
       throttle: state.throttle,
       combustion: Math.min(1, state.combustionTorqueNm / peakTorqueNm),
       shiftCut: state.shiftCut,
@@ -114,17 +127,25 @@ export function useEngineAudio(vehicle: Vehicle, tuning: TuningProfile) {
     };
   }, []);
 
-  async function toggleAudio() {
-    let audio = graph.current;
+  function toggleAudio() {
+    const audio = graph.current;
     if (requested.current) {
       requested.current = false;
       if (audio) fade(audio, 0);
       setAudioStatus("muted");
       return;
     }
-
     requested.current = true;
     setAudioStatus("starting");
+    void activateAudio();
+  }
+
+  function prepareAudio() {
+    if (!graph.current || graph.current.context.state !== "running") void activateAudio();
+  }
+
+  async function activateAudio() {
+    let audio = graph.current;
     let timeout: ReturnType<typeof setTimeout> | undefined;
     try {
       if (!audio) {
@@ -147,6 +168,8 @@ export function useEngineAudio(vehicle: Vehicle, tuning: TuningProfile) {
               exhaustOpeningRad: vehicle.audio.exhaustOpeningRad
                 ?? (vehicle.geometry.rotary ? 130 : VALVE_EVENTS.exhaust.opensDegrees) * Math.PI / 180,
               supercharger: vehicle.supercharger,
+              turbocharger: vehicle.turbocharger,
+              rotaryIdleRpm: vehicle.geometry.rotary ? vehicle.physics.idleRpm : undefined,
             },
           });
           node.connect(gain);
@@ -165,31 +188,41 @@ export function useEngineAudio(vehicle: Vehicle, tuning: TuningProfile) {
       }
 
       // Call resume on the same user activation, before awaiting the module or any other work.
+      const wasSuspended = audio.context.state !== "running";
       const ready = Promise.all([audio.ready, audio.context.resume()]);
       const timeoutReached = new Promise<never>((_, reject) => {
         timeout = setTimeout(() => reject(new Error("Audio activation timed out")), 2500);
       });
       const [node] = await Promise.race([ready, timeoutReached]);
-      if (graph.current !== audio || !requested.current) return;
+      if (graph.current !== audio) return;
 
       const activated = audio;
-      activated.node = node;
-      activated.clockOffsetSeconds = undefined;
-      node.port.postMessage({ type: "reset-clock" });
-      node.port.postMessage({ type: "tuning", voicing: latestVoicing.current });
-      node.onprocessorerror = () => {
-        if (graph.current !== activated) return;
-        requested.current = false;
-        graph.current = null;
-        void activated.context.close().catch(() => {});
-        setAudioStatus("unavailable");
-      };
+      if (wasSuspended) {
+        activated.clockOffsetSeconds = undefined;
+        node.port.postMessage({ type: "reset-clock" });
+      }
+      if (!activated.node) {
+        activated.node = node;
+        node.port.onmessage = ({ data }) => {
+          if (data?.type === "afterfire" && Number.isFinite(data.strength)) {
+            lastFlame.current = { timestampMs: performance.now(), strength: Math.max(0, data.strength) };
+          }
+        };
+        node.port.postMessage({ type: "tuning", voicing: latestVoicing.current });
+        node.onprocessorerror = () => {
+          if (graph.current !== activated) return;
+          requested.current = false;
+          graph.current = null;
+          void activated.context.close().catch(() => {});
+          setAudioStatus("unavailable");
+        };
+      }
       const latest = latestState.current;
       if (latest && performance.now() - latest.timestampMs < 80) sendAudioState(latest.state, latest.timestampMs);
-      fade(activated, volumeRef.current / 100);
-      setAudioStatus("enabled");
+      fade(activated, requested.current ? volumeRef.current / 100 : 0);
+      if (requested.current) setAudioStatus("enabled");
     } catch {
-      if (graph.current !== audio || !requested.current) return;
+      if (graph.current !== audio || (audio?.node && audio.context.state === "running")) return;
       requested.current = false;
       graph.current = null;
       if (audio) void audio.context.close().catch(() => {});
@@ -199,5 +232,5 @@ export function useEngineAudio(vehicle: Vehicle, tuning: TuningProfile) {
     }
   }
 
-  return { audioStatus, volume, changeVolume, sendAudioState, toggleAudio };
+  return { audioStatus, volume, changeVolume, sendAudioState, toggleAudio, prepareAudio, readExhaustFlame };
 }

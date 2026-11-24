@@ -1,4 +1,6 @@
 import type { Vehicle } from "./vehicles.ts";
+import { defineCar } from "./car-model.ts";
+import { expandedRoadCars } from "./road-cars.ts";
 
 const poundsToKg = 0.45359237;
 const poundFeetToNm = 1.3558179483;
@@ -6,74 +8,6 @@ const hpToPs = 745.6998716 / 735.49875;
 const kilowattsToPs = 1000 / 735.49875;
 const evenFour = [0, 180, 360, 540] as const;
 const evenSix = [0, 120, 240, 360, 480, 600] as const;
-const radians = (degrees: number) => degrees * Math.PI / 180;
-
-type PublishedAndCalibratedPhysics = Omit<Vehicle["physics"],
-  "primaryRatio" | "frictionNm" | "frictionNmPerRadPerSecond" | "pumpingNmPerRadPerSecond" |
-  "clutchCapacityNm" | "slipperCapacityNm" | "clutchDampingNmPerRadPerSecond">;
-
-interface CarSpec extends Pick<Vehicle, "id" | "brand" | "name" | "version" | "source" | "engine" | "displacementCc"> {
-  readonly cylinderDimensionsMm?: readonly [bore: number, stroke: number, rodLength: number];
-  readonly cylinderFiringDegrees?: readonly number[];
-  readonly firingDegrees: readonly number[];
-  readonly bankAngleDegrees?: number;
-  readonly exhaustBanks?: readonly number[];
-  readonly rotary?: Vehicle["geometry"]["rotary"];
-  readonly exhaustFrequencyHz: number;
-  readonly pulseDecayMs: number;
-  readonly physics: PublishedAndCalibratedPhysics;
-}
-
-// Each preset uses published anchors; geometry beyond bore/stroke, loss, sound and grip are approximations.
-function defineCar(spec: CarSpec): Vehicle {
-  const { id, brand, name, version, source, engine, displacementCc, physics } = spec;
-  const [boreMm, strokeMm, rodMm] = spec.cylinderDimensionsMm ?? [0, 0, 0];
-  const { exhaustFrequencyHz, pulseDecayMs, exhaustBanks } = spec;
-  const boreM = boreMm / 1000;
-  const torque = physics.peakTorqueNm;
-  return {
-    id, brand, name, version, source, engine, displacementCc,
-    kind: "car",
-    gears: physics.gearRatios.length,
-    geometry: {
-      boreM,
-      strokeM: strokeMm / 1000,
-      rodLengthM: rodMm / 1000,
-      cylinderSpacingM: boreM + 0.012,
-      intakeLiftM: boreM * 0.12,
-      exhaustLiftM: boreM * 0.10,
-      cylinderFiringAnglesRad: (spec.cylinderFiringDegrees ?? spec.firingDegrees).map(radians),
-      bankAngleRad: spec.bankAngleDegrees === undefined ? undefined : radians(spec.bankAngleDegrees),
-      rotary: spec.rotary,
-    },
-    audio: {
-      firingAnglesRad: spec.firingDegrees.map(radians),
-      exhaustBanks,
-      exhaustFrequencyHz,
-      pulseDecayMs,
-      exhaustReflectionMs: 610 / exhaustFrequencyHz,
-      exhaustBody: {
-        frequencyHz: Math.round(exhaustFrequencyHz * 1.28),
-        decayMs: pulseDecayMs * 1.35,
-        gain: 0.86,
-        runnerImbalance: spec.rotary ? 0 : 0.13,
-      },
-      brightnessStartRpm: physics.referenceRpm * 0.42,
-      brightnessMaxRpm: physics.peakPowerRpm,
-    },
-    physics: {
-      ...physics,
-      primaryRatio: 1,
-      drivelineEfficiency: brand === "Honda" ? 0.92 : 0.88,
-      frictionNm: 1.8 + displacementCc * 0.0017,
-      frictionNmPerRadPerSecond: 0.006 + displacementCc * 0.0000024,
-      pumpingNmPerRadPerSecond: 0.016 + displacementCc * 0.000007,
-      clutchCapacityNm: torque * 1.55,
-      slipperCapacityNm: torque * 1.20,
-      clutchDampingNmPerRadPerSecond: 1.1 + torque * 0.012,
-    },
-  };
-}
 
 export const cars: readonly Vehicle[] = [
   defineCar({
@@ -93,6 +27,7 @@ export const cars: readonly Vehicle[] = [
   defineCar({
     id: "honda-civic-type-r", brand: "Honda", name: "Civic Type R", version: "2027 美規 FL5・6MT",
     engine: "K20C1 渦輪直列四缸", displacementCc: 1996,
+    turbocharger: { maxBoostBar: 1.6, spoolStartRpm: 1500 },
     source: "https://automobiles.honda.com/civic-type-r/specs-features-trim-comparison",
     cylinderDimensionsMm: [86, 85.9, 139], firingDegrees: evenFour, cylinderFiringDegrees: [0, 540, 180, 360],
     exhaustFrequencyHz: 154, pulseDecayMs: 5.8,
@@ -106,6 +41,8 @@ export const cars: readonly Vehicle[] = [
   defineCar({
     id: "toyota-gr-supra", brand: "Toyota", name: "GR Supra", version: "2025 北美 3.0・6MT",
     engine: "B58 渦輪直列六缸", displacementCc: 2998,
+    // Modified-intake acoustic voicing. The power, ratios and road limiter remain the 3.0 6MT preset.
+    turbocharger: { maxBoostBar: 1.05, spoolStartRpm: 1100, releaseStyle: "flutter" },
     source: "https://www.toyota.com/content/dam/toyota/brochures/pdf/2025/grsupra_ebrochure.pdf",
     cylinderDimensionsMm: [82, 94.6, 148], firingDegrees: evenSix, cylinderFiringDegrees: [0, 480, 240, 600, 120, 360],
     exhaustFrequencyHz: 108, pulseDecayMs: 7.8,
@@ -120,6 +57,7 @@ export const cars: readonly Vehicle[] = [
   defineCar({
     id: "nissan-z", brand: "Nissan", name: "Z", version: "2024 澳規・6MT",
     engine: "VR30DDTT 雙渦輪 V6", displacementCc: 2997,
+    turbocharger: { maxBoostBar: 1.05, spoolStartRpm: 1050, turbineCount: 2 },
     source: "https://www.nissan.com.au/content/dam/Nissan/AU/Files/Brochures/Models/Specsheet/Nissan_Z_Key-Visual_Collateral_SpecSheet_eSpec_v2.pdf",
     cylinderDimensionsMm: [86, 86, 143], firingDegrees: evenSix,
     bankAngleDegrees: 60, cylinderFiringDegrees: [0, 240, 480, 120, 360, 600], exhaustBanks: [0, 1, 0, 1, 0, 1],
@@ -160,4 +98,5 @@ export const cars: readonly Vehicle[] = [
       engineInertiaKgM2: 0.145, wheelInertiaKgM2: 4.3, rollingRadiusM: 0.322, dragAreaM2: 0.68, maxDriveAccelerationG: 0.67,
     },
   }),
+  ...expandedRoadCars,
 ];

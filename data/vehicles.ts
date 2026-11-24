@@ -6,10 +6,9 @@ import { defineTrim } from "./motorcycle.ts";
 import { suzukiVehicles } from "./suzuki.ts";
 
 export interface Vehicle {
-  readonly kind?: "car";
+  readonly kind?: "car" | "formula1";
   readonly id: string;
-  readonly brand: "Yamaha" | "Kawasaki" | "Aprilia" | "Ducati" | "Suzuki" | "Honda" | "BMW"
-    | "Toyota" | "Ford" | "Mazda" | "Nissan";
+  readonly brand: string;
   readonly name: string;
   readonly version: string;
   readonly displacementCc: number;
@@ -19,6 +18,12 @@ export interface Vehicle {
   readonly supercharger?: {
     readonly driveRatio: number;
     readonly audioGain: number;
+  };
+  readonly turbocharger?: {
+    readonly maxBoostBar: number;
+    readonly spoolStartRpm?: number;
+    readonly turbineCount?: 1 | 2;
+    readonly releaseStyle?: "recirculating" | "external" | "flutter" | "subtle";
   };
   readonly geometry: {
     readonly boreM: number;
@@ -75,6 +80,15 @@ export interface Vehicle {
     readonly wheelInertiaKgM2: number;
     readonly rollingRadiusM: number;
     readonly dragAreaM2: number;
+    readonly downforceAreaM2?: number;
+    readonly maxBrakeAccelerationG?: number;
+    readonly hybridAssist?: {
+      readonly peakPowerKw: number;
+      readonly capacityKj: number;
+      readonly regenPowerKw: number;
+      readonly taperStartKmh?: number;
+      readonly taperEndKmh?: number;
+    };
     readonly frictionNm: number;
     readonly frictionNmPerRadPerSecond: number;
     readonly pumpingNmPerRadPerSecond: number;

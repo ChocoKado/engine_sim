@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { buildExhaust } from "./EngineExhaust";
 import type { Vehicle } from "../data/vehicles";
 import { getEnginePose, getRotaryPose, getTrochoidPoint, VALVE_EVENTS } from "../lib/kinematics";
 import type { RotaryGeometry } from "../lib/kinematics";
@@ -12,6 +14,7 @@ import type { SimulationState } from "../lib/simulation";
 interface EngineSceneProps {
   vehicle: Vehicle;
   readState: () => SimulationState;
+  readExhaustFlame: () => number;
   cutaway: boolean;
   paused: boolean;
 }
@@ -55,7 +58,7 @@ function impellerVanes(radius: number) {
   return geometry;
 }
 
-function buildRotaryEngine(geometry: RotaryGeometry) {
+function buildRotaryEngine(vehicle: Vehicle, geometry: RotaryGeometry) {
   const group = new THREE.Group();
   const stack = new THREE.Group();
   const cover = new THREE.Group();
@@ -149,6 +152,13 @@ function buildRotaryEngine(geometry: RotaryGeometry) {
     return { eccentric, rotor: makeRotor(z) };
   });
   axle(stack, radius * 0.08, stackLength + width * 0.68, 0, shaftMetal);
+  const port = getTrochoidPoint(-Math.PI / 6, caseRadius, eccentricity);
+  const exhaust = buildExhaust(vehicle, [rotors.map(({ eccentric }) => ({
+    point: new THREE.Vector3(eccentric.position.z, port.y, -port.x),
+    outward: new THREE.Vector3(0, -0.50, -0.866),
+  }))], radius);
+  exhaust.group.rotation.y = -Math.PI / 2;
+  group.add(exhaust.group);
 
   function applyPose(state: SimulationState) {
     const pose = getRotaryPose(geometry, state.crankAngleRad);
@@ -160,12 +170,11 @@ function buildRotaryEngine(geometry: RotaryGeometry) {
     }
   }
 
-  const diameter = 2 * (caseRadius + eccentricity);
-  return { group, cover, applyPose, height: diameter, width: stackLength + width * 0.68, depth: diameter, layout: "rotary" as const };
+  return { group, cover, applyPose, applyFlame: exhaust.applyFlame, layout: "rotary" as const };
 }
 
 function buildEngine(vehicle: Vehicle) {
-  if (vehicle.geometry.rotary) return buildRotaryEngine(vehicle.geometry.rotary);
+  if (vehicle.geometry.rotary) return buildRotaryEngine(vehicle, vehicle.geometry.rotary);
 
   const group = new THREE.Group();
   const cover = new THREE.Group();
@@ -331,13 +340,22 @@ function buildEngine(vehicle: Vehicle) {
     box(bankCover, bankWidth * 1.04, bore * 0.24, bore * 1.12, frame, 0, seatY + bore * 0.22, 0);
     const bankFiringAngles = firingAngles.slice(index * bankSize, (index + 1) * bankSize);
     const crankSides = isVEngine ? [side] : [-1, 1];
+    const exhaustSide = isVEngine ? side : 1;
+    const exhaustPorts = bankFiringAngles.map((_, localIndex) => ({
+      point: bank.localToWorld(new THREE.Vector3((localIndex - (bankSize - 1) / 2) * spacing,
+        seatY - bore * 0.08, exhaustSide * bore * 0.48)),
+      outward: new THREE.Vector3(0, 0, exhaustSide).applyQuaternion(bank.quaternion),
+    }));
     return {
+      exhaustPorts,
       cams: camTracks.map((z) => makeCam(bank, bankFiringAngles, z)),
       cylinders: bankFiringAngles.map((_, localIndex) => makeCylinder(bank, bankCover, localIndex, crankSides)),
     };
   });
   const cams = banks.flatMap((bank) => bank.cams);
   const cylinders = banks.flatMap((bank) => bank.cylinders);
+  const exhaust = buildExhaust(vehicle, banks.map(({ exhaustPorts }) => exhaustPorts), bore);
+  group.add(exhaust.group);
 
   function addSupercharger() {
     // Scale reference: Kawasaki 2015 Ninja H2 press kit, p. 4. Housing and vane shape are schematic.
@@ -390,20 +408,18 @@ function buildEngine(vehicle: Vehicle) {
     }
   }
 
-  const height = isBoxer ? bore * 1.3 : (camY + bore * 0.2) * Math.cos(halfBankAngle) + throwRadius;
-  const depth = isVEngine ? (camY * Math.sin(halfBankAngle) + bore * 0.6) * 2 : 0;
   const layout = isBoxer ? "boxer" : isVEngine ? "v" : "inline";
-  return { group, cover, applyPose, height, width, depth, layout };
+  return { group, cover, applyPose, applyFlame: exhaust.applyFlame, layout };
 }
 
-export default function EngineScene({ vehicle, readState, cutaway, paused }: EngineSceneProps) {
+export default function EngineScene({ vehicle, readState, readExhaustFlame, cutaway, paused }: EngineSceneProps) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const options = useRef({ readState, cutaway, paused });
+  const options = useRef({ readState, readExhaustFlame, cutaway, paused });
   const [unavailable, setUnavailable] = useState(false);
 
   useEffect(() => {
-    options.current = { readState, cutaway, paused };
-  }, [readState, cutaway, paused]);
+    options.current = { readState, readExhaustFlame, cutaway, paused };
+  }, [readState, readExhaustFlame, cutaway, paused]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -423,30 +439,41 @@ export default function EngineScene({ vehicle, readState, cutaway, paused }: Eng
     canvas.setAttribute("role", "img");
     const subject = vehicle.geometry.rotary ? "轉子引擎內構"
       : vehicle.supercharger ? "引擎與機械增壓器內構" : "引擎內構";
-    canvas.setAttribute("aria-label", `${vehicle.name} ${subject}示意，可旋轉及縮放`);
+    canvas.setAttribute("aria-label", `${vehicle.name} ${subject}與排氣管示意，可旋轉及縮放`);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
     host.appendChild(canvas);
 
     const scene = new THREE.Scene();
-    scene.add(new THREE.HemisphereLight(0xe6f3ff, 0x405165, 2));
-    const key = new THREE.DirectionalLight(0xe8f5ff, 2.5);
+    const studio = new RoomEnvironment();
+    const generator = new THREE.PMREMGenerator(renderer);
+    const environment = generator.fromScene(studio, 0.04, 0.1, 20, { size: 64 });
+    studio.dispose();
+    generator.dispose();
+    scene.environment = environment.texture;
+    scene.environmentIntensity = 0.64;
+    scene.add(new THREE.HemisphereLight(0xe6f3ff, 0x405165, 1.45));
+    const key = new THREE.DirectionalLight(0xe8f5ff, 2.1);
     key.position.set(2.7, 3.5, 3);
     scene.add(key);
-    const edge = new THREE.DirectionalLight(0x78f7d6, 1.1);
+    const edge = new THREE.DirectionalLight(0xffd3a3, 1.1);
     edge.position.set(-2.5, 1.6, -2);
     scene.add(edge);
 
     const engine = buildEngine(vehicle);
+    let previousState = options.current.readState();
+    engine.applyPose(previousState);
     scene.add(engine.group);
     const camera = new THREE.PerspectiveCamera(37, 1, 0.05, 50);
     const controls = new OrbitControls(camera, canvas);
-    const size = Math.max(engine.height, engine.width, engine.depth);
-    const centerY = engine.layout === "boxer" || engine.layout === "rotary" ? 0 : engine.height * 0.34;
-    if (engine.layout === "rotary") camera.position.set(size * 1.30, size * 0.54, size * 1.25);
-    else if (engine.layout === "boxer") camera.position.set(size * 1.55, size * 0.72, size * 0.48);
-    else if (engine.layout === "v") camera.position.set(size * 1.68, centerY + size * 0.32, size * 0.55);
-    else camera.position.set(size * 0.57, centerY + size * 0.24, size * 1.73);
-    controls.target.set(0, centerY, 0);
+    const bounds = new THREE.Box3().setFromObject(engine.group);
+    const size = Math.max(...bounds.getSize(new THREE.Vector3()).toArray());
+    bounds.getCenter(controls.target);
+    const offset = engine.layout === "rotary" ? new THREE.Vector3(1.17, 0.45, 1.02)
+      : engine.layout === "boxer" ? new THREE.Vector3(1.37, 0.70, 0.58)
+      : engine.layout === "v" ? new THREE.Vector3(1.14, 0.57, 0.93)
+      : new THREE.Vector3(0.64, 0.45, 1.21);
+    camera.position.copy(controls.target).addScaledVector(offset, size);
     controls.enablePan = false;
     controls.enableDamping = true;
     controls.dampingFactor = 0.1;
@@ -457,13 +484,12 @@ export default function EngineScene({ vehicle, readState, cutaway, paused }: Eng
     let frame = 0;
     let lost = false;
     let dirty = true;
-    let previousState = options.current.readState();
-    engine.applyPose(previousState);
+    let lastFlame = 0;
     engine.cover.visible = !options.current.cutaway;
 
     function onOrbit() { dirty = true; }
 
-    function draw() {
+    function draw(timestamp: number) {
       frame = 0;
       if (lost || document.hidden) return;
       const current = options.current;
@@ -477,6 +503,12 @@ export default function EngineScene({ vehicle, readState, cutaway, paused }: Eng
           dirty = true;
         }
       }
+      const flame = current.paused ? 0 : current.readExhaustFlame();
+      if (flame > 0 || lastFlame > 0) {
+        engine.applyFlame(flame, timestamp / 1000);
+        dirty = true;
+      }
+      lastFlame = flame;
       if (engine.cover.visible === current.cutaway) {
         engine.cover.visible = !current.cutaway;
         dirty = true;
@@ -554,13 +586,16 @@ export default function EngineScene({ vehicle, readState, cutaway, paused }: Eng
       controls.removeEventListener("change", onOrbit);
       controls.dispose();
       const materials = new Set<THREE.Material>();
+      const geometries = new Set<THREE.BufferGeometry>();
       engine.group.traverse((part) => {
         if (part instanceof THREE.Mesh) {
-          part.geometry.dispose();
+          geometries.add(part.geometry);
           materials.add(part.material);
         }
       });
+      for (const geometry of geometries) geometry.dispose();
       for (const material of materials) material.dispose();
+      environment.dispose();
       renderer.dispose();
       renderer.forceContextLoss();
       canvas.remove();

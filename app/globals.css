@@ -77,12 +77,23 @@ button { font: inherit; }
 
 .simulation-modes {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: .4rem;
   margin-block: .75rem;
 }
 
-.simulation-modes .mode-button { touch-action: manipulation; }
+.simulation-modes .mode-button { padding-inline: .15rem; touch-action: manipulation; }
+
+.drive-readout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem 1rem;
+  margin: .65rem 0;
+  font-size: .8125rem;
+}
+.drive-readout div { display: flex; align-items: baseline; gap: .35rem; }
+.drive-readout dt { color: var(--muted); }
+.drive-readout dd { margin: 0; font: 700 .82rem var(--mono); font-variant-numeric: tabular-nums; }
 
 .section-heading {
   display: flex;

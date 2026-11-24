@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import { cars } from "../data/cars.ts";
+import { formulaOneCars } from "../data/formula-one.ts";
 import { vehicles } from "../data/vehicles.ts";
 import { tuningProfiles } from "../data/tuning.ts";
 import { VALVE_EVENTS } from "../lib/kinematics.ts";
@@ -19,11 +20,12 @@ const script = readFileSync(new URL("../public/engine-sound-processor.js", impor
 
 function captureAudio(vehicle, audioOptions = {}, trackPitch = false, random = () => 1) {
   let Processor;
+  const emittedAfterfires = [];
   const context = vm.createContext({
     sampleRate: rate,
     currentTime: 0,
     Math: Object.assign(Object.create(Math), { random }),
-    AudioWorkletProcessor: class { port = {}; },
+    AudioWorkletProcessor: class { port = { postMessage: (event) => emittedAfterfires.push(event) }; },
     registerProcessor(name, processor) {
       assert.equal(name, "engine-sound");
       Processor = processor;
@@ -35,6 +37,8 @@ function captureAudio(vehicle, audioOptions = {}, trackPitch = false, random = (
       ...vehicle.audio,
       exhaustOpeningRad: vehicle.audio.exhaustOpeningRad ?? (vehicle.geometry.rotary ? 130 * Math.PI / 180 : exhaustOpeningRad),
       supercharger: vehicle.supercharger,
+      turbocharger: vehicle.turbocharger,
+      rotaryIdleRpm: vehicle.geometry.rotary ? vehicle.physics.idleRpm : undefined,
       ...audioOptions,
     },
   });
@@ -89,7 +93,7 @@ function captureAudio(vehicle, audioOptions = {}, trackPitch = false, random = (
   }
 
   return {
-    blocks, pulses, pitch, afterfires,
+    blocks, pulses, pitch, afterfires, emittedAfterfires,
     setTuning: (voicing) => processor.port.onmessage({ data: { type: "tuning", voicing } }),
   };
 }
@@ -119,6 +123,15 @@ test("hot throttle lifts can produce different afterfire delays and counts witho
   const addedBurst = burst.signal.slice(start, start + 0.024 * rate).map((sample, index) => sample - silent.signal[start + index]);
   assertPressureCrack(addedBurst);
   assertBounded(burst.signal);
+});
+
+test("each rendered afterfire sends one flame cue with matching onset and positive intensity", () => {
+  const audio = captureAudio(cars.find(({ id }) => id === "toyota-gr-supra"), {}, false, () => 0.08);
+  audio.blocks(200, { rpm: 6500, throttle: 1 });
+  audio.blocks(195, { rpm: 6200, throttle: 0 });
+  assert.ok(audio.afterfires.length > 0);
+  assert.equal(audio.emittedAfterfires.length, audio.afterfires.length);
+  assert.ok(audio.emittedAfterfires.every(({ type, strength }) => type === "afterfire" && strength > 0 && strength < 1));
 });
 
 test("afterfire is cancelled by opening the throttle or stopping the engine before the pop", () => {
@@ -503,6 +516,53 @@ function frequencyAmplitude(signal, frequency) {
   }
   return 2 * Math.hypot(cosine, sine) / signal.length;
 }
+
+test("Supra pressure release has several separated flutter bursts over the continuous exhaust note", () => {
+  const supra = cars.find(({ id }) => id === "toyota-gr-supra");
+  const base = captureAudio(supra);
+  const voiced = captureAudio(supra);
+  const setup = { rpm: 4650, throttle: 0, combustion: 0.05, load: 0.18 };
+  const silent = base.blocks(220, setup);
+  const flutter = voiced.blocks(220, (time) => ({ ...setup, turboRelease: time < 0.15 ? 0 : Math.exp(-(time - 0.15) / 0.082) }));
+  const difference = flutter.map((sample, index) => sample - silent[index]);
+  const levelAt = (start, duration = 0.018) => rms(difference.slice(Math.floor(start * rate), Math.floor((start + duration) * rate)));
+  assert.deepEqual(base.pulses, voiced.pulses);
+  assert.equal(levelAt(0.12), 0);
+  assert.ok(levelAt(0.193) > 0.012);
+  assert.ok(levelAt(0.245) > levelAt(0.217) * 2);
+  assert.ok(levelAt(0.327) > levelAt(0.278) * 1.5);
+  assert.ok(levelAt(0.52) < levelAt(0.193) * 0.16);
+  assertBounded(flutter);
+});
+
+test("rotary idle voicing accents alternating exhaust pulses and fades outside the idle band", () => {
+  for (const car of cars.filter(({ geometry }) => geometry.rotary)) {
+    const rpm = car.physics.idleRpm;
+    const controls = { rpm, throttle: 0, combustion: 0.2, load: 0 };
+    const standard = captureAudio(car, { rotaryIdleRpm: 0 });
+    const brap = captureAudio(car);
+    const baseline = standard.blocks(300, controls).slice(-19200);
+    const idle = brap.blocks(300, controls).slice(-19200);
+    assert.deepEqual(brap.pulses, standard.pulses);
+    const brapEnergy = frequencyAmplitude(idle, rpm / 60);
+    assert.ok(brapEnergy > frequencyAmplitude(baseline, rpm / 60) * 3, car.name);
+    const onThrottle = { rpm: 4800, throttle: 0.9, combustion: 0.8, load: 0.8 };
+    assert.deepEqual(captureAudio(car).blocks(100, onThrottle), captureAudio(car, { rotaryIdleRpm: 0 }).blocks(100, onThrottle));
+    assertBounded(idle);
+  }
+});
+
+test("F1 V10 and V12 audio follows the number of cylinders at high RPM without clipping", () => {
+  for (const car of formulaOneCars.filter(({ id }) => id === "ferrari-f2004" || id === "mclaren-mp4-6")) {
+    const audio = captureAudio(car);
+    const rpm = car.physics.peakPowerRpm;
+    const signal = audio.blocks(138, { rpm, throttle: 1, combustion: 0.9, load: 0.9 });
+    const period = rate * 120 / (rpm * car.audio.firingAnglesRad.length);
+    assert.ok(audio.pulses.length > 150, car.name);
+    assert.ok(audio.pulses.slice(2).every((sample, index) => Math.abs(sample - audio.pulses[index + 1] - period) <= 1.5));
+    assertBounded(signal);
+  }
+});
 
 test("mechanical supercharger follows the supplied shaft speed and still spins under fuel cut", () => {
   const vehicle = vehicles.find(({ id }) => id === "yamaha-r6");
