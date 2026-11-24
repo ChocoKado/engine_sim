@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { KeyboardEvent, PointerEvent, ReactNode } from "react";
+import type { CSSProperties, KeyboardEvent, PointerEvent, ReactNode } from "react";
 import type { TuningProfile } from "../data/tuning";
 import type { AudioStatus } from "../hooks/useEngineAudio";
 import type { SimulationInput } from "../lib/simulation";
@@ -25,7 +25,7 @@ interface RidingControlsProps {
   availableTunings: readonly TuningProfile[];
   onToggleAudio: () => void;
   onShift: (direction: -1 | 1) => void;
-  onPedalChange: (pedal: Pedal, pressed: boolean) => void;
+  onPedalChange: (pedal: Pedal, opening: number) => void;
   resetKey: number;
 }
 
@@ -87,19 +87,27 @@ function ShiftButton({ direction, onShift, disabled }: Pick<RidingControlsProps,
   );
 }
 
+function pedalPercent({ clientY, currentTarget }: PointerEvent<HTMLButtonElement>) {
+  const { top, height } = currentTarget.getBoundingClientRect();
+  // Use the center of the pad for fine control and leave room to reach either limit with a thumb.
+  const position = (clientY - top) / Math.max(1, height);
+  const opening = Math.min(1, Math.max(0, (0.92 - position) / 0.84));
+  return Math.round(opening * 100);
+}
+
 function PedalButton({ pedal, label, onPedalChange }: Pick<RidingControlsProps, "onPedalChange"> & {
   pedal: Pedal;
   label: string;
 }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const pointers = useRef(new Set<number>());
+  const pointers = useRef(new Map<number, number>());
   const keys = useRef(new Set<string>());
-  const [pressed, setPressed] = useState(false);
+  const [opening, setOpening] = useState(0);
 
-  function updatePressed() {
-    const held = pointers.current.size > 0 || keys.current.size > 0;
-    setPressed(held);
-    onPedalChange(pedal, held);
+  function updateOpening() {
+    const percent = keys.current.size > 0 ? 100 : Math.max(0, ...pointers.current.values());
+    setOpening(percent);
+    onPedalChange(pedal, percent / 100);
   }
 
   useEffect(() => {
@@ -109,7 +117,7 @@ function PedalButton({ pedal, label, onPedalChange }: Pick<RidingControlsProps, 
     const orientation = window.matchMedia("(orientation: portrait)");
 
     function releaseInputs() {
-      for (const pointerId of activePointers) {
+      for (const pointerId of activePointers.keys()) {
         activePointers.delete(pointerId);
         if (button?.hasPointerCapture(pointerId)) {
           button.releasePointerCapture(pointerId);
@@ -120,8 +128,8 @@ function PedalButton({ pedal, label, onPedalChange }: Pick<RidingControlsProps, 
 
     function reset() {
       releaseInputs();
-      setPressed(false);
-      onPedalChange(pedal, false);
+      setOpening(0);
+      onPedalChange(pedal, 0);
     }
 
     function resetWhenHidden() {
@@ -139,6 +147,7 @@ function PedalButton({ pedal, label, onPedalChange }: Pick<RidingControlsProps, 
       orientation.removeEventListener("change", reset);
       document.removeEventListener("visibilitychange", resetWhenHidden);
       releaseInputs();
+      onPedalChange(pedal, 0);
     };
   }, [onPedalChange, pedal]);
 
@@ -147,8 +156,8 @@ function PedalButton({ pedal, label, onPedalChange }: Pick<RidingControlsProps, 
 
     if (event.pointerType === "touch") event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
-    pointers.current.add(event.pointerId);
-    updatePressed();
+    pointers.current.set(event.pointerId, pedalPercent(event));
+    updateOpening();
   }
 
   function releasePointer(event: PointerEvent<HTMLButtonElement>) {
@@ -158,13 +167,17 @@ function PedalButton({ pedal, label, onPedalChange }: Pick<RidingControlsProps, 
     if (currentTarget.hasPointerCapture(pointerId)) {
       currentTarget.releasePointerCapture(pointerId);
     }
-    updatePressed();
+    updateOpening();
   }
 
-  function releaseOutside(event: PointerEvent<HTMLButtonElement>) {
-    if (pointers.current.has(event.pointerId) && !isInsideButton(event)) {
-      releasePointer(event);
-    }
+  function dragPointer(event: PointerEvent<HTMLButtonElement>) {
+    const { pointerId } = event;
+    const previous = pointers.current.get(pointerId);
+    if (previous === undefined) return;
+    const next = pedalPercent(event);
+    if (next === previous) return;
+    pointers.current.set(pointerId, next);
+    updateOpening();
   }
 
   function handleKey(event: KeyboardEvent<HTMLButtonElement>) {
@@ -176,17 +189,19 @@ function PedalButton({ pedal, label, onPedalChange }: Pick<RidingControlsProps, 
     } else if (!event.repeat) {
       keys.current.add(event.key);
     }
-    updatePressed();
+    updateOpening();
   }
 
   return (
     <button
       type="button"
       className={`pedal-button ${pedal}-button`}
-      aria-pressed={pressed}
-      aria-describedby="pedal-instruction"
+      style={{ "--pedal-opening": `${opening}%` } as CSSProperties}
+      aria-pressed={opening > 0}
+      aria-label={label}
+      aria-describedby={`pedal-instruction ${pedal}-opening`}
       onPointerDown={pressPointer}
-      onPointerMove={releaseOutside}
+      onPointerMove={dragPointer}
       onPointerUp={releasePointer}
       onPointerCancel={releasePointer}
       onLostPointerCapture={releasePointer}
@@ -194,11 +209,11 @@ function PedalButton({ pedal, label, onPedalChange }: Pick<RidingControlsProps, 
       onKeyUp={handleKey}
       onBlur={() => {
         keys.current.clear();
-        updatePressed();
+        updateOpening();
       }}
     >
       <span className="pedal-label">{label}</span>
-      <span className="pedal-status" aria-hidden="true">{pressed ? "啟用" : "按住"}</span>
+      <span className="pedal-status" id={`${pedal}-opening`}>{opening}%</span>
     </button>
   );
 }
@@ -236,7 +251,7 @@ export function RidingControls({
       <div className="control-heading">
         <div>
           <h2 id="controls-title">{title}</h2>
-          <p id="pedal-instruction">長按操作，放手回彈。</p>
+          <p id="pedal-instruction">按住上下滑，上方開度較大，放手歸零。</p>
         </div>
         <div className="control-actions">
           <button

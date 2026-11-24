@@ -64,8 +64,8 @@ export function useSimulation(vehicle: Vehicle, onFrame: (state: SimulationState
     };
   }, [vehicle, onFrame]);
 
-  const setPedal = useCallback((pedal: "brake" | "throttle", pressed: boolean) => {
-    const value = pressed ? 1 : 0;
+  const setPedal = useCallback((pedal: "brake" | "throttle", opening: number) => {
+    const value = Number.isFinite(opening) ? Math.min(1, Math.max(0, opening)) : 0;
     if (input.current[pedal] !== value) input.current = { ...input.current, [pedal]: value };
   }, []);
 

@@ -474,6 +474,7 @@ button { font: inherit; }
   --pedal-color: var(--accent);
   --pedal-edge: #987739;
   --pedal-surface: #45361c;
+  position: relative;
   display: grid;
   gap: .12rem;
   place-content: center;
@@ -481,7 +482,9 @@ button { font: inherit; }
   padding: .4rem;
   border-color: var(--pedal-edge);
   border-bottom-width: .25rem;
-  background: linear-gradient(155deg, var(--pedal-surface), #23221c);
+  background:
+    linear-gradient(to top, #ffffff14 var(--pedal-opening), transparent var(--pedal-opening)),
+    linear-gradient(155deg, var(--pedal-surface), #23221c);
   box-shadow: inset 0 1px #fff1;
   color: var(--pedal-color);
 }
@@ -492,9 +495,18 @@ button { font: inherit; }
   --pedal-surface: #462d27;
 }
 
-.pedal-button[aria-pressed="true"] { border-color: var(--pedal-color); background: var(--pedal-color); color: #241e19; }
+.pedal-button::before {
+  content: "";
+  position: absolute;
+  inset: .55rem auto .55rem .65rem;
+  width: .25rem;
+  border-radius: 1rem;
+  background: linear-gradient(to top, var(--pedal-color) var(--pedal-opening), #ffffff27 var(--pedal-opening));
+  pointer-events: none;
+}
+.pedal-button[aria-pressed="true"] { border-color: var(--pedal-color); }
 .pedal-label { font-size: 1.15rem; font-weight: 800; }
-.pedal-status { font-size: .8125rem; }
+.pedal-status { color: var(--text); font: 700 .8125rem/1.25 var(--mono); font-variant-numeric: tabular-nums; }
 
 .volume-controls {
   display: grid;

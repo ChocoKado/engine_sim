@@ -27,6 +27,24 @@ function warmRunningState(vehicle, rpm = vehicle.physics.idleRpm) {
     engineWarmth: 1, runningSeconds: 3, engineAngularVelocity: rpm * Math.PI / 30 };
 }
 
+test("partial throttle increases torque while partial brakes progressively slow the coupled wheel", () => {
+  const vehicle = vehicles.find(({ id }) => id === "yamaha-r3");
+  const gear = 3;
+  const engine = warmRunningState(vehicle, 6500);
+  const wheelAngularVelocity = engine.engineAngularVelocity / getOverallRatio(vehicle, gear);
+  const rolling = { ...engine, gear, wheelAngularVelocity, vehicleSpeed: wheelAngularVelocity * vehicle.physics.rollingRadiusM };
+  const openings = [0, 0.25, 0.5, 1];
+  const throttleStates = openings.map((throttle) => stepSimulation(rolling, { ...running, throttle }, vehicle));
+  const brakeStates = openings.map((brake) => stepSimulation(rolling, { ...running, brake }, vehicle));
+  for (let index = 1; index < openings.length; index += 1) {
+    assert.equal(throttleStates[index].throttle, openings[index]);
+    assert.equal(brakeStates[index].brake, openings[index]);
+    assert.ok(throttleStates[index].combustionTorqueNm > throttleStates[index - 1].combustionTorqueNm);
+    assert.ok(brakeStates[index].vehicleSpeed < brakeStates[index - 1].vehicleSpeed);
+    assert.ok(brakeStates[index].engineAngularVelocity < brakeStates[index - 1].engineAngularVelocity);
+  }
+});
+
 test("cold ignition spins the crank before combustion, then settles from fast idle and restarts warm", () => {
   for (const vehicle of [vehicles[1], cars.find(({ id }) => id === "toyota-gr-supra"), cars.find(({ id }) => id === "mazda-rx8")]) {
     const starting = simulate(vehicle, running, 26);
