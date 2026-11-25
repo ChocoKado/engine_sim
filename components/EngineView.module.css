@@ -1,0 +1,50 @@
+.speedControl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  gap: .65rem;
+  margin-top: .55rem;
+  color: var(--muted);
+  font-size: .825rem;
+}
+
+.speedControl select {
+  width: 100%;
+  min-height: 44px;
+  padding-inline: .55rem;
+  border: 1px solid var(--line);
+  border-radius: .4rem;
+  background: var(--surface);
+  color: var(--text);
+  font: 1rem var(--mono);
+}
+
+.legend {
+  display: flex;
+  gap: .35rem;
+  padding: 0;
+  margin: .55rem 0 0;
+  list-style: none;
+}
+
+.legend li {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: .13rem;
+  padding: .35rem;
+  border-radius: .32rem;
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--phase-color);
+  background: var(--surface);
+  color: var(--phase-color);
+  text-align: center;
+  font-size: .75rem;
+}
+
+.cylinders {
+  min-block-size: 2em;
+  overflow-wrap: anywhere;
+  font: 650 .75rem/1 var(--mono);
+  color: var(--text);
+}

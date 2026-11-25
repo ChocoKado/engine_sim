@@ -44,6 +44,7 @@ export const expandedRoadCars = [
   defineCar({
     id: "honda-nsx-na2", brand: "Honda", name: "NSX NA2", version: "1997 日規 NSX 3.2・6MT",
     engine: "C32B 自然進氣 V6・VTEC", displacementCc: 3179,
+    vtecSwitchRpm: 5700,
     source: "https://www.honda.co.jp/factbook/auto/NSX/19970206/ns97-011.html",
     cylinderDimensionsMm: [93, 78, 149], bankAngleDegrees: 90, firingDegrees: evenSix,
     cylinderFiringDegrees: [0, 240, 480, 120, 360, 600], exhaustBanks: alternatingSix,
@@ -58,6 +59,7 @@ export const expandedRoadCars = [
   defineCar({
     id: "honda-s2000-ap1", brand: "Honda", name: "S2000 AP1", version: "1999 日規標準版・6MT",
     engine: "F20C 自然進氣直列四缸・VTEC", displacementCc: 1997,
+    vtecSwitchRpm: 6000,
     source: "https://www.honda.co.jp/auto-archive/s2000/2001/shogen.html",
     cylinderDimensionsMm: [87, 84, 153], firingDegrees: evenFour, cylinderFiringDegrees: [0, 540, 180, 360],
     exhaustFrequencyHz: 168, pulseDecayMs: 5.9,

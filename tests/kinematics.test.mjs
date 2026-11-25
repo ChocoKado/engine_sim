@@ -38,6 +38,29 @@ test("720-degree cycle, cylinder offset and indicative valves use the firing pha
   assert.equal(getEnginePose(r3, 2.5 * Math.PI).vvaMode, null);
 });
 
+test("the cutaway spark cue follows each cylinder's firing TDC", () => {
+  const [, r3] = vehicles;
+  const atSecondFire = getEnginePose(r3, Math.PI).cylinders;
+  assert.equal(atSecondFire[0].ignitionGlow, 0);
+  assert.equal(atSecondFire[1].ignitionGlow, 1);
+  assert.equal(atSecondFire[1].stroke, "power");
+  assert.ok(getEnginePose(r3, Math.PI + Math.PI / 16).cylinders[1].ignitionGlow > 0);
+  assert.equal(getEnginePose(r3, Math.PI + Math.PI / 4).cylinders[1].ignitionGlow, 0);
+});
+
+test("the VTEC lift in the cutaway follows the supplied engagement", () => {
+  const [vehicle] = vehicles;
+  const { geometry } = vehicle;
+  const example = { ...vehicle, geometry: { ...geometry, vtec: {
+    switchRpm: 5500, highIntakeLiftM: geometry.intakeLiftM * 1.4, highExhaustLiftM: geometry.exhaustLiftM * 1.3,
+  } } };
+  for (const [angle, lift] of [[Math.PI * 2.5, "intakeLiftM"], [Math.PI * 1.5, "exhaustLiftM"]]) {
+    const values = [0, 0.5, 1].map((engagement) => getEnginePose(example, angle, 6500, engagement).cylinders[0][lift]);
+    assert.ok(values[0] < values[1] && values[1] < values[2]);
+    assert.ok(Math.abs((values[0] + values[2]) / 2 - values[1]) < 1e-12);
+  }
+});
+
 const renesisGeometry = { rotors: 2, eccentricityM: 0.015, rotorRadiusM: 0.105, rotorWidthM: 0.080 };
 
 test("RENESIS rotor centers orbit opposite one another and turn at one third of shaft speed", () => {

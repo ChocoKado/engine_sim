@@ -9,10 +9,12 @@ import {
   createSimulationState,
   FIXED_STEP_SECONDS,
   INITIAL_SIMULATION_INPUT,
+  PIT_ENTRY_LENGTH_M,
+  PIT_SPEED_LIMIT_KMH,
   rpmFromRadiansPerSecond,
   stepSimulation,
 } from "../lib/simulation.ts";
-import { getOverallRatio } from "../lib/transmission.ts";
+import { enqueueShift, getOverallRatio } from "../lib/transmission.ts";
 
 const running = { ...INITIAL_SIMULATION_INPUT, engineOn: true };
 
@@ -67,7 +69,7 @@ test("cold ignition spins the crank before combustion, then settles from fast id
 });
 
 test("LMDh drives electrically from the pits before starting the engine and coupling the gearbox", () => {
-  for (const car of enduranceCars) {
+  for (const car of enduranceCars.filter(({ physics }) => physics.electricDrive && physics.electricDrive.regenPowerKw !== 0)) {
     const control = { ...running, shiftMode: "AT" };
     const { electricDrive } = car.physics;
     const ready = simulate(car, control, 240);
@@ -86,13 +88,109 @@ test("LMDh drives electrically from the pits before starting the engine and coup
     assert.equal(state.enginePhase, "cranking", car.name);
     assert.ok(state.vehicleSpeed * 3.6 >= electricDrive.engineStartKmh);
     assert.equal(state.combustionTorqueNm, 0);
-    const runningCar = simulate(car, floor, 140, state);
+    let runningCar = state;
+    let peakCombustion = 0;
+    for (let tick = 0; tick < 140; tick += 1) {
+      runningCar = stepSimulation(runningCar, floor, car);
+      peakCombustion = Math.max(peakCombustion, runningCar.combustionTorqueNm);
+    }
     assert.equal(runningCar.enginePhase, "running");
-    assert.ok(runningCar.vehicleSpeed > state.vehicleSpeed && runningCar.combustionTorqueNm > 0);
+    assert.ok(runningCar.vehicleSpeed > state.vehicleSpeed && peakCombustion > 0);
     assert.equal(runningCar.electricPowerKw, 0);
     const braking = stepSimulation(runningCar, { ...control, brake: 1 }, car);
     assert.ok(braking.electricPowerKw < 0 && braking.electricEnergyKj > runningCar.electricEnergyKj);
   }
+});
+
+test("an endurance car can leave the pit limiter, return and restart with its electrical and thermal state retained", () => {
+  const car = enduranceCars.find(({ id }) => id === "cadillac-v-series-r");
+  const at = { ...running, shiftMode: "AT" };
+  const drive = { ...at, throttle: 1 };
+  let state = createSimulationState(car);
+  assert.equal(state.pitZone, "box");
+  let exitTopKmh = 0;
+  for (let tick = 0; tick < 2400 && state.pitZone !== "track"; tick += 1) {
+    state = stepSimulation(state, drive, car);
+    exitTopKmh = Math.max(exitTopKmh, state.vehicleSpeed * 3.6);
+  }
+  assert.equal(state.pitZone, "track");
+  assert.ok(exitTopKmh > 58 && exitTopKmh < PIT_SPEED_LIMIT_KMH + 1);
+  const fast = simulate(car, drive, 1200, state);
+  assert.ok(fast.vehicleSpeed * 3.6 > 140);
+  assert.equal(stepSimulation(fast, { ...at, pitReturn: true }, car).pitZone, "track");
+  state = fast;
+  for (let tick = 0; tick < 1000 && state.vehicleSpeed * 3.6 > 57; tick += 1) state = stepSimulation(state, { ...at, brake: 1 }, car);
+  state = stepSimulation(state, { ...at, pitReturn: true }, car);
+  assert.equal(state.pitZone, "entry");
+  for (let tick = 0; tick < 1800 && state.pitDistanceM < PIT_ENTRY_LENGTH_M; tick += 1) state = stepSimulation(state, drive, car);
+  assert.equal(state.pitDistanceM, PIT_ENTRY_LENGTH_M);
+  for (let tick = 0; tick < 900 && state.pitZone !== "box"; tick += 1) state = stepSimulation(state, { ...at, brake: 1 }, car);
+  assert.equal(state.pitZone, "box");
+  assert.equal(state.gear, 0);
+  assert.equal(state.powerOn, false);
+  assert.equal(stepSimulation(state, drive, car).pitZone, "box");
+  const resting = simulate(car, { ...INITIAL_SIMULATION_INPUT, shiftMode: "AT" }, 120, state);
+  const next = stepSimulation(resting, at, car);
+  assert.equal(next.pitZone, "exit");
+  assert.equal(next.enginePhase, "electric");
+  assert.ok(next.engineWarmth > 0.15);
+  assert.equal(next.electricEnergyKj, state.electricEnergyKj);
+});
+
+test("Le Mans hybrid assist respects the track deployment speed and replaces combustion torque", () => {
+  for (const car of enduranceCars.filter(({ physics }) => physics.hybridAssist)) {
+    const { hybridAssist, rollingRadiusM } = car.physics;
+    const drive = { ...running, throttle: 1 };
+    const stateAt = (kmh) => {
+      const gear = 5;
+      const wheelAngularVelocity = kmh / 3.6 / rollingRadiusM;
+      const rpm = rpmFromRadiansPerSecond(wheelAngularVelocity * getOverallRatio(car, gear));
+      return { ...warmRunningState(car, rpm), pitZone: "track", wheelAngularVelocity, vehicleSpeed: kmh / 3.6, gear };
+    };
+    const below = stepSimulation(stateAt(185), drive, car);
+    const above = stateAt(224);
+    const assisted = stepSimulation(above, drive, car);
+    const empty = stepSimulation({ ...above, hybridEnergyKj: 0 }, drive, car);
+    assert.equal(below.hybridPowerKw, 0, car.name);
+    assert.ok(assisted.hybridPowerKw > 0 && assisted.hybridPowerKw <= hybridAssist.peakPowerKw, car.name);
+    assert.ok(assisted.combustionTorqueNm < empty.combustionTorqueNm, car.name);
+    assert.ok(Math.abs(assisted.engineTorqueNm - empty.engineTorqueNm) < 1e-8, car.name);
+  }
+});
+
+test("manual paddles blip on downshift and couple a neutral rev into first gradually", () => {
+  const vehicle = vehicles.find(({ id }) => id === "yamaha-r3");
+  const engine = warmRunningState(vehicle, 5300);
+  const wheelAngularVelocity = engine.engineAngularVelocity / getOverallRatio(vehicle, 4);
+  let state = enqueueShift({ ...engine, gear: 4, wheelAngularVelocity,
+    vehicleSpeed: wheelAngularVelocity * vehicle.physics.rollingRadiusM }, -1);
+  let maxBlip = 0;
+  for (let tick = 0; tick < 40; tick += 1) {
+    state = stepSimulation(state, running, vehicle);
+    maxBlip = Math.max(maxBlip, state.revMatchThrottle);
+  }
+  assert.equal(state.gear, 3);
+  assert.ok(maxBlip > 0.35 && state.engineAngularVelocity > engine.engineAngularVelocity);
+  const launch = enqueueShift(warmRunningState(vehicle, 7200), 1);
+  const coupling = simulate(vehicle, running, 22, launch);
+  assert.equal(coupling.gear, 1);
+  assert.equal(coupling.shift?.phase, "recouple");
+  assert.ok(coupling.vehicleSpeed > 0);
+  assert.equal(simulate(vehicle, running, 64, coupling).shift, null);
+});
+
+test("cold idle target holds before dropping and warm S2000 activates high cam under load", () => {
+  const car = cars.find(({ id }) => id === "honda-s2000-ap1");
+  const first = simulate(car, running, 120 * 5);
+  const second = simulate(car, running, 120 * 2, first);
+  const warmer = simulate(car, running, 120 * 8, second);
+  assert.equal(first.idleTargetRpm, second.idleTargetRpm);
+  assert.ok(warmer.idleTargetRpm < second.idleTargetRpm - 80);
+  const highRpm = car.geometry.vtec.switchRpm + 200;
+  const full = { ...running, throttle: 0.8 };
+  assert.equal(stepSimulation(warmRunningState(car, highRpm - 400), full, car).vtecEngagement, 0);
+  assert.equal(stepSimulation(warmRunningState(car, highRpm), full, car).vtecEngagement, 1);
+  assert.equal(stepSimulation(warmRunningState(car, highRpm), running, car).vtecEngagement, 0);
 });
 
 test("sports cars rev independently in neutral, accelerate through gears and brake while coupled", () => {

@@ -162,6 +162,9 @@ export function advanceTransmission(
   const elapsedSeconds = shift.elapsedSeconds + stepSeconds;
   let { targetGear } = shift;
   const positiveUpshift = targetGear > shift.fromGear && shift.fromGear > 0;
+  const standingLaunch = input.engineOn && input.shiftMode === "MT" && shift.fromGear === 0 && targetGear === 1
+    && shift.startRpm >= vehicle.physics.referenceRpm * 0.36
+    && (shift.phase === "recouple" || input.vehicleSpeed < NEUTRAL_MAX_SPEED_MPS);
   const ratioChangeAt = positiveUpshift ? UPSHIFT_RATIO_CHANGE_SECONDS : RATIO_CHANGE_SECONDS;
   let targetRpm = matchedRpm(vehicle, targetGear, input.wheelAngularVelocity);
   const phase = elapsedSeconds < UNLOAD_SECONDS ? "unload" : elapsedSeconds < ratioChangeAt ? "disengage" : "recouple";
@@ -176,7 +179,8 @@ export function advanceTransmission(
     gear = targetGear;
   }
 
-  const recoupleDuration = positiveUpshift ? UPSHIFT_CLUTCH_ENGAGEMENT_SECONDS : SHIFT_END_SECONDS - ratioChangeAt;
+  const recoupleDuration = positiveUpshift ? UPSHIFT_CLUTCH_ENGAGEMENT_SECONDS
+    : standingLaunch ? 0.29 : SHIFT_END_SECONDS - ratioChangeAt;
   const clutchScale = phase === "unload" ? 1 - smoothProgress(elapsedSeconds / UNLOAD_SECONDS)
     : smoothProgress((elapsedSeconds - ratioChangeAt) / recoupleDuration);
   let { powerRecoveryStartedAtSeconds } = shift;
@@ -189,7 +193,7 @@ export function advanceTransmission(
   const upshiftRecovery = powerRecoveryStartedAtSeconds === null ? 0
     : smoothProgress((elapsedSeconds - powerRecoveryStartedAtSeconds) / UPSHIFT_POWER_RECOVERY_SECONDS);
   const recovery = positiveUpshift ? upshiftRecovery : clutchScale;
-  const complete = positiveUpshift ? upshiftRecovery === 1 : elapsedSeconds >= SHIFT_END_SECONDS;
+  const complete = positiveUpshift ? upshiftRecovery === 1 : elapsedSeconds >= ratioChangeAt + recoupleDuration;
   if (complete) {
     const lastShift = input.engineOn && shift.fromGear > 0 && gear > 0 && gear !== shift.fromGear
       ? { fromGear: shift.fromGear, targetGear: gear, startRpm: shift.startRpm, endRpm: input.engineRpm }
@@ -198,9 +202,10 @@ export function advanceTransmission(
     return { transmission, clutchScale: 1, combustionScale: 1, revMatchRpm: 0 };
   }
 
-  const combustionScale = MIN_COMBUSTION_SCALE + (1 - MIN_COMBUSTION_SCALE) * recovery;
-  const revMatchRpm = input.shiftMode === "AT" && phase !== "unload" && targetGear > 0 && targetGear < shift.fromGear
-    && withinAutomaticRpmLimit(targetRpm, vehicle) ? targetRpm : 0;
+  const combustionScale = standingLaunch ? 1 : MIN_COMBUSTION_SCALE + (1 - MIN_COMBUSTION_SCALE) * recovery;
+  const revMatchRpm = input.engineOn && phase !== "unload" && targetGear > 0 && targetGear < shift.fromGear
+    && (input.shiftMode === "MT" || withinAutomaticRpmLimit(targetRpm, vehicle))
+    ? Math.min(targetRpm, vehicle.physics.referenceRpm * 0.97) : 0;
 
   transmission = { ...transmission, gear, shift: { ...shift, phase, targetGear, elapsedSeconds, targetRpm, powerRecoveryStartedAtSeconds } };
   return { transmission, clutchScale, combustionScale, revMatchRpm };

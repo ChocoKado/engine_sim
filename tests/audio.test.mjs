@@ -131,7 +131,8 @@ test("each rendered afterfire sends one flame cue with matching onset and positi
   audio.blocks(195, { rpm: 6200, throttle: 0 });
   assert.ok(audio.afterfires.length > 0);
   assert.equal(audio.emittedAfterfires.length, audio.afterfires.length);
-  assert.ok(audio.emittedAfterfires.every(({ type, strength }) => type === "afterfire" && strength > 0 && strength < 1));
+  assert.ok(audio.emittedAfterfires.every(({ type, strength, durationMs }) => type === "afterfire"
+    && strength > 0 && strength < 1 && durationMs >= 46 && durationMs <= 68));
 });
 
 test("afterfire is cancelled by opening the throttle or stopping the engine before the pop", () => {
@@ -154,6 +155,23 @@ test("shift afterfire requires a powered upshift at mid to high RPM", () => {
     audio.blocks(100, { rpm, throttle, upshifting, shiftCut: 0.85 });
     assert.deepEqual(audio.afterfires, []);
   }
+});
+
+test("afterfire waits for the actual power cut and rejects a virtual downshift blip", () => {
+  const vehicle = vehicles.find(({ id }) => id === "yamaha-r9");
+  const rpm = 7600;
+  const upshift = captureAudio(vehicle, {}, false, () => 0.08);
+  upshift.blocks(190, { rpm, throttle: 0.9 });
+  upshift.blocks(10, { rpm, throttle: 0.9, upshifting: true, shiftCut: 0.2 });
+  upshift.blocks(55, { rpm, throttle: 0.9, upshifting: true, shiftCut: 0.9 });
+  assert.equal(upshift.afterfires.length, 1);
+  assert.ok(upshift.emittedAfterfires[0].durationMs > 31 && upshift.emittedAfterfires[0].durationMs < 53);
+
+  const downshift = captureAudio(vehicle, {}, false, () => 0.08);
+  downshift.blocks(190, { rpm, throttle: 0.9 });
+  downshift.blocks(32, { rpm, throttle: 0, revMatchThrottle: 0.7 });
+  downshift.blocks(120, { rpm, throttle: 0 });
+  assert.deepEqual(downshift.afterfires, []);
 });
 
 function rms(signal) {
@@ -516,6 +534,35 @@ function frequencyAmplitude(signal, frequency) {
   }
   return 2 * Math.hypot(cosine, sine) / signal.length;
 }
+
+test("turbo spool follows a separate pressure-dependent pitch without changing exhaust cadence", () => {
+  const car = cars.find(({ id }) => id === "toyota-gr-supra");
+  const rpm = 5200;
+  const throttle = 0.9;
+  const level = 0.59;
+  const base = captureAudio(car);
+  const boosted = captureAudio(car);
+  const baseline = base.blocks(360, { rpm, throttle }).slice(-9600);
+  const boostedSignal = boosted.blocks(360, { rpm, throttle, turboBoostBar: level * car.turbocharger.maxBoostBar }).slice(-9600);
+  const added = boostedSignal.map((sample, index) => sample - baseline[index]);
+  const pitch = 510 + 1410 * Math.sqrt(level) + 0.021 * rpm;
+  assert.ok(frequencyAmplitude(added, pitch) > 0.007);
+  assert.ok(frequencyAmplitude(added, pitch) > frequencyAmplitude(added, pitch * 0.9) * 5);
+  assert.deepEqual(base.pulses, boosted.pulses);
+  assertBounded(boostedSignal);
+});
+
+test("VTEC uptake brightens a loaded note without altering exhaust timing", () => {
+  const vehicle = cars.find(({ id }) => id === "honda-s2000-ap1");
+  const lowCam = captureAudio(vehicle);
+  const highCam = captureAudio(vehicle);
+  const controls = { rpm: 6700, throttle: 0.95, combustion: 0.85, load: 0.8 };
+  const before = lowCam.blocks(210, controls).slice(-9600);
+  const after = highCam.blocks(210, { ...controls, vtecEngagement: 1 }).slice(-9600);
+  assert.ok(upperBandShare(after) > upperBandShare(before) * 1.04);
+  assert.deepEqual(lowCam.pulses, highCam.pulses);
+  assertBounded(after);
+});
 
 test("Supra tuned pressure release has distinct fading bursts over continuous exhaust", () => {
   const supra = cars.find(({ id }) => id === "toyota-gr-supra");

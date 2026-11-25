@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { AudioStatus } from "../hooks/useEngineAudio";
 import { aerospaceEngines } from "../data/aerospace";
 import type { AerospaceCategory, AerospaceEngine, AerospaceKind } from "../data/aerospace";
-import { advanceAerospace, INITIAL_AEROSPACE_INPUT, INITIAL_AEROSPACE_STATE } from "../lib/aerospace";
+import { advanceAerospace, aerospaceStageLabels, INITIAL_AEROSPACE_INPUT, INITIAL_AEROSPACE_STATE } from "../lib/aerospace";
 import type { AerospaceInput, AerospaceState } from "../lib/aerospace";
 import styles from "./AerospaceConsole.module.css";
 
@@ -26,7 +26,7 @@ function fadeAudio({ gain, context }: BenchAudio, value: number) {
   gain.gain.setTargetAtTime(value, context.currentTime, 0.04);
 }
 
-function useBenchAudio(kind: AerospaceKind) {
+function useBenchAudio(kind: AerospaceKind, propellerBlades?: number) {
   const [status, setStatus] = useState<AudioStatus>("muted");
   const [volume, setVolume] = useState(65);
   const graph = useRef<BenchAudio | null>(null);
@@ -85,7 +85,7 @@ function useBenchAudio(kind: AerospaceKind) {
         gain.connect(context.destination);
         const ready = context.audioWorklet.addModule("/aerospace-sound-processor.js").then(() => {
           const node = new AudioWorkletNode(context, "aerospace-sound", {
-            numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [1], processorOptions: { kind },
+            numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [1], processorOptions: { kind, propellerBlades },
           });
           node.connect(gain);
           return node;
@@ -140,7 +140,10 @@ function Bench({ engine }: { engine: AerospaceEngine }) {
   const liveState = useRef(INITIAL_AEROSPACE_STATE);
   const [state, setState] = useState(INITIAL_AEROSPACE_STATE);
   const [showScene, setShowScene] = useState(false);
-  const { status, volume, changeVolume, toggle, send } = useBenchAudio(engine.kind);
+  const [cutaway, setCutaway] = useState(true);
+  const [sceneSpeed, setSceneSpeed] = useState(1);
+  const propeller = engine.kind === "piston" || engine.kind === "turboprop";
+  const { status, volume, changeVolume, toggle, send } = useBenchAudio(engine.kind, propeller ? engine.propellerBlades : undefined);
   const readState = useCallback(() => liveState.current, []);
 
   function change(next: Partial<AerospaceInput>) {
@@ -181,11 +184,11 @@ function Bench({ engine }: { engine: AerospaceEngine }) {
     };
   }, [engine, send]);
 
-  const piston = engine.kind === "piston";
-  const rocket = engine.kind === "rocket";
-  const outputLabel = piston ? "軸功率" : "靜態推力";
-  const outputUnit = piston ? "kW" : "kN";
-  const value = piston ? state.powerKw : state.thrustKn;
+  const staged = engine.kind === "staged-rocket";
+  const rocket = staged || engine.kind === "rocket";
+  const outputLabel = propeller ? "軸功率" : "靜態推力";
+  const outputUnit = propeller ? "kW" : "kN";
+  const value = propeller ? state.powerKw : state.thrustKn;
 
   return <div className="console-layout">
     <section className="panel dashboard" aria-label="推進儀表">
@@ -199,10 +202,15 @@ function Bench({ engine }: { engine: AerospaceEngine }) {
           <output className="readout-value" aria-label={outputLabel}>{value.toFixed(1)}</output>
           <span className="speed-unit">{outputUnit}</span>
         </div>
-        {piston ? (
-          <div className={styles.metric}><span className="readout-label">螺旋槳轉速</span><output aria-label="螺旋槳轉速">{Math.round(state.shaftRpm)} RPM</output></div>
+        {propeller ? (
+          <div className={styles.spools}>
+            <div className={styles.metric}><span className="readout-label">螺旋槳轉速</span><output aria-label="螺旋槳轉速">{Math.round(state.shaftRpm)} RPM</output></div>
+            {engine.kind === "turboprop" && <div className={styles.metric}><span className="readout-label">氣體產生器</span><output aria-label="氣體產生器">{Math.round(state.secondary * 100)}%</output></div>}
+          </div>
         ) : rocket ? (
-          <div className={styles.metric}><span className="readout-label">推力基準</span><output>{state.vacuum ? "真空" : "海平面"}</output></div>
+          <div className={styles.metric}><span className="readout-label">{staged ? "分級狀態" : "推力基準"}</span><output>
+            {staged ? aerospaceStageLabels[state.stage] : state.vacuum ? "真空" : "海平面"}
+          </output></div>
         ) : (
           <div className={styles.spools}>
             <div className={styles.metric}><span className="readout-label">低壓軸 N1</span><output aria-label="N1">{(state.primary * 100).toFixed(0)}%</output></div>
@@ -211,8 +219,25 @@ function Bench({ engine }: { engine: AerospaceEngine }) {
         )}
         <progress aria-label={`${outputLabel}比例`} className={styles.progress} max={1} value={state.outputLevel} />
       </div>
-      {showScene && <Scene kind={engine.kind} readState={readState} />}
-      <p className="dashboard-note">定點台架近似，聲浪與內構為合成示意。{rocket && state.vacuum && " 真空模式不播放外部聲音。"}</p>
+      {showScene && <>
+        <Scene engine={engine} readState={readState} cutaway={cutaway} speed={sceneSpeed} />
+        <div className={styles.sceneTools}>
+          <button type="button" className="mode-button" aria-pressed={cutaway} onClick={() => setCutaway(!cutaway)}>剖面</button>
+          <label>動畫速度
+            <select value={sceneSpeed} onChange={(event) => setSceneSpeed(Number(event.currentTarget.value))}>
+              <option value={1}>1×</option>
+              <option value={0.2}>1/5×</option>
+              <option value={0.05}>1/20×</option>
+              <option value={0}>暫停</option>
+            </select>
+          </label>
+        </div>
+      </>}
+      <p className="dashboard-note">
+        {staged ? "縮時分級示意，機身比例近似。一級先點火，關機分離後，由二級引擎接續推進。"
+          : "定點台架近似，聲浪與內構為合成示意。"}
+        {rocket && state.vacuum && " 真空模式不播放外部聲音。"}
+      </p>
     </section>
 
     <section className="panel controls-panel" aria-labelledby="bench-control-title">
@@ -221,20 +246,20 @@ function Bench({ engine }: { engine: AerospaceEngine }) {
         <div className="control-actions">
           <button type="button" className="audio-toggle" disabled={status === "starting"} onClick={() => void toggle()}>{audioLabel[status]}</button>
           <button type="button" className={`engine-toggle${controls.enabled ? " engine-running" : ""}`} onClick={() => change({ enabled: !controls.enabled })}>
-            {controls.enabled ? "停止" : "啟動"}
+            {controls.enabled ? "停止" : staged ? "啟動分級" : "啟動"}
           </button>
         </div>
       </div>
-      <label className={styles.command}>
+      {!staged && <label className={styles.command}>
         <span>{rocket ? "推力指令" : "油門指令"}</span><span>{Math.round(controls.command * 100)}%</span>
         <input type="range" min={0} max={100} className="volume-slider" aria-label={rocket ? "推力指令" : "油門指令"}
           value={Math.round(controls.command * 100)} onChange={(event) => change({ command: Number(event.currentTarget.value) / 100 })} />
-      </label>
-      {piston && <div className={styles.profile} role="group" aria-label="螺旋槳負載">
+      </label>}
+      {propeller && <div className={styles.profile} role="group" aria-label="螺旋槳負載">
         <button type="button" className="mode-button" aria-pressed={!controls.heavyPropLoad} onClick={() => change({ heavyPropLoad: false })}>參考負載</button>
         <button type="button" className="mode-button" aria-pressed={controls.heavyPropLoad} onClick={() => change({ heavyPropLoad: true })}>較重負載</button>
       </div>}
-      {rocket && <div className={styles.profile} role="group" aria-label="推力環境">
+      {engine.kind === "rocket" && engine.seaLevelThrustKn !== null && <div className={styles.profile} role="group" aria-label="推力環境">
         <button type="button" className="mode-button" aria-pressed={!controls.vacuum} onClick={() => change({ vacuum: false })}>海平面</button>
         <button type="button" className="mode-button" aria-pressed={controls.vacuum} onClick={() => change({ vacuum: true })}>真空</button>
       </div>}
@@ -247,7 +272,7 @@ function Bench({ engine }: { engine: AerospaceEngine }) {
 }
 
 export function AerospaceConsole({ category }: { category: AerospaceCategory }) {
-  const available = aerospaceEngines.filter((engine) => category === "space" ? engine.kind === "rocket" : engine.kind !== "rocket");
+  const available = aerospaceEngines.filter((engine) => (category === "space") === (engine.kind === "rocket" || engine.kind === "staged-rocket"));
   const [selection, setSelection] = useState<string>(available[0].id);
   const engine = available.find((option) => option.id === selection) ?? available[0];
 

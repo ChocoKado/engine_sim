@@ -15,6 +15,7 @@ export interface CarSpec extends Pick<Vehicle, "id" | "brand" | "name" | "versio
   readonly bankAngleDegrees?: number;
   readonly exhaustBanks?: readonly number[];
   readonly rotary?: Vehicle["geometry"]["rotary"];
+  readonly vtecSwitchRpm?: number;
   readonly exhaustFrequencyHz: number;
   readonly pulseDecayMs: number;
   readonly runnerImbalance?: number;
@@ -46,6 +47,11 @@ export function defineCar(spec: CarSpec): Vehicle {
       cylinderFiringAnglesRad: cylinderFiringDegrees.map(radians),
       bankAngleRad: spec.bankAngleDegrees === undefined ? undefined : radians(spec.bankAngleDegrees),
       rotary: spec.rotary,
+      vtec: spec.vtecSwitchRpm === undefined ? undefined : {
+        switchRpm: spec.vtecSwitchRpm,
+        highIntakeLiftM: boreM * 0.15,
+        highExhaustLiftM: boreM * 0.125,
+      },
     },
     audio: {
       firingAnglesRad: spec.firingDegrees.map(radians),

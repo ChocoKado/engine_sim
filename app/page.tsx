@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { EngineView } from "../components/EngineView";
+import { RecordingComparison } from "../components/RecordingComparison";
 import { RidingControls, ShiftModeControls } from "../components/RidingControls";
 import { cars } from "../data/cars";
 import { enduranceCars } from "../data/endurance-cars";
@@ -14,7 +15,7 @@ import { vehicles } from "../data/vehicles";
 import type { Vehicle } from "../data/vehicles";
 import { useEngineAudio } from "../hooks/useEngineAudio";
 import { useSimulation } from "../hooks/useSimulation";
-import { rpmFromRadiansPerSecond } from "../lib/simulation";
+import { PIT_ENTRY_LENGTH_M, PIT_EXIT_LENGTH_M, PIT_SPEED_LIMIT_KMH, rpmFromRadiansPerSecond } from "../lib/simulation";
 
 const motorcycleGearSequence = [1, 0, 2, 3, 4, 5, 6];
 const simulationModes = {
@@ -65,14 +66,21 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
   const [showEngine, setShowEngine] = useState(false);
   const [tuning, setTuning] = useState<TuningProfile>(tuningProfiles[0]);
   const ignitionPending = useRef(false);
-  const { audioStatus, sendAudioState, toggleAudio, startIgnitionAudio, volume, changeVolume, prepareAudio, readExhaustFlame } =
-    useEngineAudio(vehicle, tuning, showEngine);
-  const { snapshot, readState, pedalReset, setPedal, shift, setShiftMode, setRoadSpeedLimitDisabled, toggleEngine, resetSimulation } = useSimulation(vehicle, sendAudioState);
+  const {
+    audioStatus, sendAudioState, toggleAudio, startIgnitionAudio, volume, changeVolume, prepareAudio, readExhaustFlame,
+    recordedKind, selectRecording, loadRecording, removeRecording,
+  } = useEngineAudio(vehicle, tuning, showEngine);
+  const {
+    snapshot, readState, pedalReset, setPedal, shift, setShiftMode, setRoadSpeedLimitDisabled,
+    toggleEngine, requestPitReturn, resetSimulation,
+  } = useSimulation(vehicle, sendAudioState);
   const { engineAngularVelocity, vehicleSpeed, gear, powerOn, enginePhase, engineWarmth, shiftMode, shift: pendingShift, lastShift, engineFailed,
     roadSpeedLimitDisabled, hybridEnergyKj, hybridPowerKw, electricEnergyKj, electricPowerKw, turboBoostBar } = snapshot;
   const isRace = vehicle.kind === "formula1" || vehicle.kind === "endurance";
   const hybrid = vehicle.physics.hybridAssist;
   const electric = vehicle.physics.electricDrive;
+  const speedKmh = vehicleSpeed * 3.6;
+  const { pitZone, pitDistanceM, vtecEngagement } = snapshot;
   const availableTunings = vehicle.geometry.rotary ? [...tuningProfiles, rotaryPortTuning]
     : vehicle.turbocharger && vehicle.kind === "car" ? [...tuningProfiles, turboFlutterTuning] : tuningProfiles;
   const ignitionLabel = enginePhase === "electric" ? (vehicleSpeed > 0.3 ? "電力出站" : "電力待命")
@@ -116,7 +124,7 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
                 isCar={vehicle.kind === "car" || vehicle.kind === "endurance"} />
               <div className="speed-readout">
                 <span className="readout-label">車速</span>
-                <span className="readout-value">{Math.round(vehicleSpeed * 3.6)}</span>
+                <span className="readout-value">{Math.round(speedKmh)}</span>
                 <span className="speed-unit">km/h</span>
               </div>
               <div className="gear-readout" data-neutral={gear === 0}>
@@ -131,8 +139,9 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
                 </li>
               ))}
             </ol>
-            {(electric || hybrid || vehicle.turbocharger) && (
+            {(electric || hybrid || vehicle.turbocharger || vehicle.geometry.vtec) && (
               <dl className="drive-readout">
+                {vehicle.geometry.vtec && <div><dt>VTEC</dt><dd>{vtecEngagement >= 0.6 ? "高角度凸輪" : "低角度凸輪"}</dd></div>}
                 {vehicle.turbocharger && <div><dt>增壓</dt><dd>{turboBoostBar.toFixed(2)} bar</dd></div>}
                 {hybrid && <>
                   <div><dt>ERS 電量</dt><dd>{Math.round(100 * hybridEnergyKj / hybrid.capacityKj)}%</dd></div>
@@ -163,12 +172,25 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
           </>
         )}
         <p className="ignition-readout" data-phase={enginePhase}><span aria-hidden="true" />{ignitionLabel}</p>
+        {pitZone && (
+          <div className="pit-readout" data-zone={pitZone}>
+            {pitZone === "box" && <p>維修區停車位</p>}
+            {pitZone === "exit" && <p>出站限速 {PIT_SPEED_LIMIT_KMH} km/h・剩餘 {Math.ceil(PIT_EXIT_LENGTH_M - pitDistanceM)} m</p>}
+            {pitZone === "entry" && <p>進站限速 {PIT_SPEED_LIMIT_KMH} km/h・{pitDistanceM < PIT_ENTRY_LENGTH_M
+              ? `剩餘 ${Math.ceil(PIT_ENTRY_LENGTH_M - pitDistanceM)} m` : "請煞停入位"}</p>}
+            {pitZone === "track" && <>
+              <p>{speedKmh > PIT_SPEED_LIMIT_KMH ? `賽道・減速至 ${PIT_SPEED_LIMIT_KMH} km/h 可進站` : "賽道・限速解除"}</p>
+              <button type="button" className="mode-button" disabled={speedKmh > PIT_SPEED_LIMIT_KMH} onClick={requestPitReturn}>進站</button>
+            </>}
+          </div>
+        )}
         <div className="dashboard-feedback">
           {engineFailed && <p className="engine-fault-status" role="alert">引擎示意故障。按「重設」可重新操作。</p>}
           {!engineFailed && pendingShift && (
             <p className="shift-status">
-              換檔中 <strong>{pendingShift.targetGear || "N"}</strong>
-              {pendingShift.targetGear > 0 && `・預估接合 ${Math.round(pendingShift.targetRpm)} RPM`}
+              {pendingShift.fromGear === 0 ? "起步接合中 " : snapshot.revMatchThrottle > 0.05 ? "退檔補油 " : "換檔中 "}
+              <strong>{pendingShift.targetGear || "N"}</strong>
+              {pendingShift.fromGear > 0 && pendingShift.targetGear > 0 && `・預估接合 ${Math.round(pendingShift.targetRpm)} RPM`}
             </p>
           )}
           {!engineFailed && !pendingShift && lastShift && (
@@ -183,7 +205,7 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
       <RidingControls
         title={isRace ? "賽車控制" : vehicle.kind === "car" ? "駕駛控制" : "騎乘控制"}
         powerOn={powerOn}
-        electricLaunch={Boolean(electric)}
+        pitControls={pitZone !== null}
         engineFailed={engineFailed}
         shiftMode={shiftMode}
         onToggleEngine={toggleIgnition}
@@ -198,6 +220,8 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
         onShift={shift}
         onPedalChange={setPedal}
         resetKey={pedalReset}
+        recordingComparison={<RecordingComparison vehicleId={vehicle.id} idleRpm={vehicle.physics.idleRpm}
+          recordedKind={recordedKind} onSelect={selectRecording} onLoad={loadRecording} onRemove={removeRecording} />}
       />
     </div>
   );
@@ -219,11 +243,9 @@ export default function Home() {
   const brandVehicles = catalog.filter((vehicle) => vehicle.brand === brand);
   const selectionKey = `${roadMode}/${brand}`;
   const activeVehicle = selectedVehicles[selectionKey] ?? brandVehicles[0];
-  const modelOptions = roadMode === "motorcycle" ? brandVehicles : catalog;
   const optionList = useRef<HTMLDivElement>(null);
 
   function chooseVehicle(vehicle: Vehicle) {
-    if (vehicle.brand !== brand) setBrands((previous) => ({ ...previous, [roadMode]: vehicle.brand }));
     setSelectedVehicles((previous) => ({ ...previous, [`${roadMode}/${vehicle.brand}`]: vehicle }));
   }
 
@@ -285,12 +307,12 @@ export default function Home() {
                   className="model-select"
                   value={activeVehicle.id}
                   onChange={(event) => {
-                    const vehicle = modelOptions.find(({ id }) => id === event.currentTarget.value);
+                    const vehicle = brandVehicles.find(({ id }) => id === event.currentTarget.value);
                     if (vehicle) chooseVehicle(vehicle);
                   }}
                 >
-                  {modelOptions.map(({ id, brand, name }) => (
-                    <option key={id} value={id}>{roadMode === "motorcycle" ? name : `${brand} · ${name}`}</option>
+                  {brandVehicles.map(({ id, name }) => (
+                    <option key={id} value={id}>{name}</option>
                   ))}
                 </select>
               </label>

@@ -12,7 +12,7 @@ type ShiftMode = SimulationInput["shiftMode"];
 interface RidingControlsProps {
   title: string;
   powerOn: boolean;
-  electricLaunch: boolean;
+  pitControls: boolean;
   engineFailed: boolean;
   shiftMode: ShiftMode;
   onToggleEngine: () => void;
@@ -27,6 +27,7 @@ interface RidingControlsProps {
   onShift: (direction: -1 | 1) => void;
   onPedalChange: (pedal: Pedal, opening: number) => void;
   resetKey: number;
+  recordingComparison?: ReactNode;
 }
 
 function isInsideButton({ clientX, clientY, currentTarget }: PointerEvent<HTMLButtonElement>) {
@@ -243,8 +244,8 @@ const audioLabels: Record<AudioStatus, string> = {
 };
 
 export function RidingControls({
-  title, powerOn, electricLaunch, engineFailed, shiftMode, onToggleEngine, onReset, audioStatus, onToggleAudio,
-  volume, onVolumeChange, tuning, onTuningChange, availableTunings, onShift, onPedalChange, resetKey,
+  title, powerOn, pitControls, engineFailed, shiftMode, onToggleEngine, onReset, audioStatus, onToggleAudio,
+  volume, onVolumeChange, tuning, onTuningChange, availableTunings, onShift, onPedalChange, resetKey, recordingComparison,
 }: RidingControlsProps) {
   return (
     <section className="panel controls-panel" aria-labelledby="controls-title">
@@ -266,7 +267,7 @@ export function RidingControls({
             className={`engine-toggle${powerOn || engineFailed ? " engine-running" : ""}`}
             onActivate={engineFailed ? onReset : onToggleEngine}
           >
-            {engineFailed ? "重設" : powerOn ? (electricLaunch ? "關閉動力" : "熄火") : electricLaunch ? "出站待命" : "啟動"}
+            {engineFailed ? "重設" : powerOn ? (pitControls ? "關閉動力" : "熄火") : pitControls ? "出站待命" : "啟動"}
           </PointerActionButton>
         </div>
       </div>
@@ -312,6 +313,7 @@ export function RidingControls({
           </select>
         </div>
       </div>
+      {recordingComparison}
     </section>
   );
 }

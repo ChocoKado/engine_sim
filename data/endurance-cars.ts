@@ -1,4 +1,5 @@
 import { defineCar } from "./car-model.ts";
+import { leMansHypercars } from "./lemans-hypercars.ts";
 import type { Vehicle } from "./vehicles.ts";
 
 const bhpToPs = 745.6998716 / 735.49875;
@@ -8,6 +9,7 @@ const lmdhMotor = { motorPowerKw: 50, batteryCapacityKwh: 1.35 };
 
 // BoP and homologated setups vary by event. Gear and aero coefficients,
 // unpublished engine dimensions and curves, and the pit handoff are estimates.
+// Cadillac, Porsche and BMW long gearing and drag are referenced to 2025 Le Mans speed traps.
 export const enduranceCars: readonly Vehicle[] = [
   defineCar({
     kind: "endurance", id: "cadillac-v-series-r", brand: "Cadillac", name: "V-Series.R", version: "2023 Le Mans・LMDh",
@@ -17,10 +19,10 @@ export const enduranceCars: readonly Vehicle[] = [
     exhaustBanks: [0, 1, 0, 1, 1, 0, 1, 0], exhaustFrequencyHz: 82, pulseDecayMs: 9.5, runnerImbalance: 0.28,
     physics: {
       // ACO 2023 Le Mans entry dossier: 680 PS at 8,600 RPM, 1,046 kg.
-      curbMassKg: 1046, gearRatios: [3.21, 2.33, 1.83, 1.50, 1.26, 1.08, 0.94], finalDriveRatio: 3.59,
+      curbMassKg: 1046, gearRatios: [3.21, 2.33, 1.83, 1.50, 1.26, 1.08, 0.903], finalDriveRatio: 3.59,
       peakTorqueNm: 630, peakTorqueRpm: 6600, peakPowerPs: 680, peakPowerRpm: 8600,
       idleRpm: 1700, referenceRpm: 8650, fuelCutRpm: 8800, lowRpmTorqueRatio: 0.38,
-      engineInertiaKgM2: 0.205, wheelInertiaKgM2: 6.2, rollingRadiusM: 0.347, dragAreaM2: 0.90,
+      engineInertiaKgM2: 0.205, wheelInertiaKgM2: 6.2, rollingRadiusM: 0.347, dragAreaM2: 0.84,
       downforceAreaM2: 2.85, maxDriveAccelerationG: 1.19, maxBrakeAccelerationG: 1.44, drivelineEfficiency: 0.93,
       electricDrive: { ...lmdhMotor, launchTorqueNm: 1820, engineStartKmh: 34 },
     },
@@ -35,10 +37,10 @@ export const enduranceCars: readonly Vehicle[] = [
     exhaustBanks: [0, 1, 0, 1, 0, 1, 0, 1], exhaustFrequencyHz: 112, pulseDecayMs: 6.6,
     turbocharger: { maxBoostBar: 0.95, spoolStartRpm: 3200, turbineCount: 2, releaseStyle: "subtle" },
     physics: {
-      curbMassKg: 1030, gearRatios: [3.24, 2.32, 1.82, 1.50, 1.25, 1.07, 0.93], finalDriveRatio: 3.54,
+      curbMassKg: 1030, gearRatios: [3.24, 2.32, 1.82, 1.50, 1.25, 1.07, 0.895], finalDriveRatio: 3.54,
       peakTorqueNm: 650, peakTorqueRpm: 5200, peakPowerPs: 685, peakPowerRpm: 7900,
       idleRpm: 1600, referenceRpm: 8300, fuelCutRpm: 8500, lowRpmTorqueRatio: 0.28,
-      engineInertiaKgM2: 0.175, wheelInertiaKgM2: 6.1, rollingRadiusM: 0.346, dragAreaM2: 0.87,
+      engineInertiaKgM2: 0.175, wheelInertiaKgM2: 6.1, rollingRadiusM: 0.346, dragAreaM2: 0.78,
       downforceAreaM2: 2.96, maxDriveAccelerationG: 1.18, maxBrakeAccelerationG: 1.47, drivelineEfficiency: 0.93,
       electricDrive: { ...lmdhMotor, launchTorqueNm: 1650, engineStartKmh: 32 },
     },
@@ -51,10 +53,10 @@ export const enduranceCars: readonly Vehicle[] = [
     exhaustBanks: [0, 1, 0, 1, 0, 1, 0, 1], exhaustFrequencyHz: 127, pulseDecayMs: 5.8,
     turbocharger: { maxBoostBar: 1.20, spoolStartRpm: 2850, turbineCount: 2, releaseStyle: "subtle" },
     physics: {
-      curbMassKg: 1030, gearRatios: [3.25, 2.34, 1.83, 1.52, 1.26, 1.08, 0.95], finalDriveRatio: 3.45,
+      curbMassKg: 1030, gearRatios: [3.25, 2.34, 1.83, 1.52, 1.26, 1.08, 0.84], finalDriveRatio: 3.45,
       peakTorqueNm: 650, peakTorqueRpm: 5250, peakPowerPs: 640 * bhpToPs, peakPowerRpm: 7600,
       idleRpm: 1650, referenceRpm: 8100, fuelCutRpm: 8200, lowRpmTorqueRatio: 0.31,
-      engineInertiaKgM2: 0.157, wheelInertiaKgM2: 6.3, rollingRadiusM: 0.343, dragAreaM2: 0.92,
+      engineInertiaKgM2: 0.157, wheelInertiaKgM2: 6.3, rollingRadiusM: 0.343, dragAreaM2: 0.795,
       downforceAreaM2: 3.02, maxDriveAccelerationG: 1.20, maxBrakeAccelerationG: 1.45, drivelineEfficiency: 0.93,
       electricDrive: { ...lmdhMotor, launchTorqueNm: 1740, engineStartKmh: 34 },
     },
@@ -75,4 +77,5 @@ export const enduranceCars: readonly Vehicle[] = [
       electricDrive: { ...lmdhMotor, launchTorqueNm: 1640, engineStartKmh: 37 },
     },
   }),
+  ...leMansHypercars,
 ];

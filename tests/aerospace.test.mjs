@@ -5,7 +5,7 @@ import vm from "node:vm";
 import { aerospaceEngines } from "../data/aerospace.ts";
 import { advanceAerospace, INITIAL_AEROSPACE_INPUT, INITIAL_AEROSPACE_STATE, stepAerospace } from "../lib/aerospace.ts";
 
-const [piston, turbofan, turbojet, rocket] = aerospaceEngines;
+const [piston, turbofan, turbojet, rocket, turboprop, largeFan, upperEngine, staged] = aerospaceEngines;
 const full = { ...INITIAL_AEROSPACE_INPUT, enabled: true, command: 1 };
 
 function run(engine, input, frames, initial = INITIAL_AEROSPACE_STATE) {
@@ -26,7 +26,7 @@ test("piston bench reaches its reference at full power and slows under higher pr
 });
 
 test("turbofan and turbojet spool progressively and settle to their individual rating", () => {
-  for (const engine of [turbofan, turbojet]) {
+  for (const engine of [turbofan, turbojet, largeFan]) {
     const early = run(engine, full, 48);
     const nominal = run(engine, full, 2400);
     const decay = run(engine, INITIAL_AEROSPACE_INPUT, 60, nominal);
@@ -49,6 +49,31 @@ test("rocket bench uses the selected static thrust anchor and caps a tab suspens
   assert.deepEqual(advanceAerospace(INITIAL_AEROSPACE_STATE, full, rocket, 45), advanceAerospace(INITIAL_AEROSPACE_STATE, full, rocket, 0.10));
 });
 
+test("free-turbine load slows the propeller without coupling its rotational rate to the core", () => {
+  const nominal = run(turboprop, full, 2400);
+  const loaded = run(turboprop, { ...full, heavyPropLoad: true }, 2400);
+  assert.ok(Math.abs(nominal.shaftRpm - 1700) < .01);
+  assert.ok(Math.abs(nominal.powerKw - 895) < .01);
+  assert.ok(loaded.shaftRpm < nominal.shaftRpm);
+  assert.equal(loaded.coreRpm, nominal.coreRpm);
+});
+
+test("the Falcon demonstration ignites a separate upper stage after the booster cutoff", () => {
+  const first = run(staged, full, 240);
+  const separated = run(staged, full, 530);
+  const upper = run(staged, full, 1700);
+  assert.equal(first.stage, "booster");
+  assert.ok(first.primary > .95 && first.secondary === 0 && !first.vacuum);
+  assert.equal(separated.stage, "separation");
+  assert.equal(separated.thrustKn, 0);
+  assert.equal(upper.stage, "upper");
+  assert.ok(upper.primary === 0 && upper.secondary > .99 && upper.vacuum);
+  assert.ok(Math.abs(upper.thrustKn - staged.upperThrustKn) < .01);
+  assert.equal(run(staged, INITIAL_AEROSPACE_INPUT, 1, upper).stage, "ready");
+  const centaur = run(upperEngine, full, 1400);
+  assert.ok(centaur.vacuum && Math.abs(centaur.thrustKn - 101.9) < .01);
+});
+
 test("aerospace audio stays under its ceiling and fades without fresh telemetry or in vacuum", () => {
   const rate = 48000;
   const source = readFileSync(new URL("../public/aerospace-sound-processor.js", import.meta.url), "utf8");
@@ -60,7 +85,7 @@ test("aerospace audio stays under its ceiling and fades without fresh telemetry 
     });
     vm.runInContext(source, context);
     const processor = new Processor({ processorOptions: { kind: engine.kind } });
-    const state = run(engine, full, 2000);
+    const state = run(engine, full, engine.kind === "staged-rocket" ? 240 : 2000);
     const signal = new Float32Array(128);
     function render(blocks, freshFrame) {
       for (let block = 0; block < blocks; block += 1) {
@@ -71,8 +96,9 @@ test("aerospace audio stays under its ceiling and fades without fresh telemetry 
       }
       return Math.max(...signal.map(Math.abs));
     }
-    assert.ok(render(60, state) > 0.02, engine.name);
-    if (engine.kind === "rocket") assert.ok(render(180, { ...state, vacuum: true }) < 1e-4);
+    const peak = render(60, state);
+    assert.ok(state.vacuum ? peak < 1e-4 : peak > 0.02, engine.name);
+    if (engine.kind === "rocket" || engine.kind === "staged-rocket") assert.ok(render(180, { ...state, vacuum: true }) < 1e-4);
     assert.ok(render(250) < 1e-4);
   }
 });

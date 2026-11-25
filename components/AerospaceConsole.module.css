@@ -12,6 +12,60 @@
 .command input { grid-column: 1 / -1; }
 .profile { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
 
+.sceneTools { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: .5rem; }
+.sceneTools label { display: flex; align-items: center; gap: .4rem; font-size: .8rem; color: var(--muted); }
+.sceneTools select {
+  min-height: 2.75rem;
+  padding: .35rem;
+  border: 1px solid var(--line);
+  border-radius: .45rem;
+  background: var(--surface);
+  color: var(--text);
+  font: 1rem var(--mono);
+}
+.partList { display: flex; flex-wrap: wrap; gap: .25rem; margin-top: -.15rem; }
+.partList button {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  min-height: 2.75rem;
+  padding: .25rem .4rem;
+  border: 1px solid transparent;
+  border-radius: .4rem;
+  background: transparent;
+  color: var(--muted);
+  font-size: .78rem;
+  cursor: pointer;
+}
+.partList button[aria-pressed="true"] { border-color: var(--line); background: var(--surface); color: var(--text); }
+.partList button span { width: .43rem; height: .43rem; border-radius: 50%; }
+.partMarker {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: .65rem;
+  height: .65rem;
+  transform: translate(-50%, -50%);
+  border: 1px solid #fff;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 .4rem currentColor;
+  pointer-events: none;
+}
+.cycleLegend { display: flex; flex-wrap: wrap; gap: .2rem .65rem; color: var(--muted); font-size: .75rem; }
+.cycleLegend span::before {
+  content: "";
+  display: inline-block;
+  width: .48rem;
+  height: .48rem;
+  margin-right: .25rem;
+  border-radius: 50%;
+  background: #4d95ba;
+}
+.cycleLegend span:nth-child(2)::before { background: #a0a9a4; }
+.cycleLegend span:nth-child(3)::before { background: #e88b3f; }
+.cycleLegend span:nth-child(4)::before { background: #ad6554; }
+
 @media (max-width: 390px) {
   .options:not(:has(label:only-child)) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

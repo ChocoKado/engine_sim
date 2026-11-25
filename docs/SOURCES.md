@@ -384,6 +384,43 @@ RX-7、RX-8 的改裝風格怠速加強交替的排氣脈衝，隨轉速及油�
 
 GR Supra 車型基準採較柔和的卸壓聲。選「進氣・渦輪顫振」可聽到增壓退掉後逐次減弱、變低且間隔加長的氣流脈衝。 RX-7／RX-8 基準維持平穩點火，橋式汽口改裝音色才加入較不規則的低轉脈衝。原廠和改裝比較用於辨別聲音現象，網站使用合成聲音。[Mishimoto Supra 進氣 A/B](https://www.youtube.com/watch?v=HV5-HZ4GTio) · [Garrett 壓縮機顫振](https://www.garrettmotion.com/wp-content/uploads/2019/10/GAM_Turbo-Tech-103_Expert-1.pdf) · [Mazda RENESIS 技報](https://www.mazda.com/content/dam/mazda/corporate/mazda-com/en/pdf/innovation/monozukuri/technology/tech-review/2003/2003_no002.pdf) · [Racing Beat 轉子汽口資料](https://www.racingbeat.com/manuals/rb-rotary-catalog.2016.pdf)
 
+## M17 聲源比較與錄音授權
+
+網站內的 Supra 參考錄音來自 editboy23，發布為 **CC0 1.0**。取原預覽前 12 秒，轉成單聲道，調整音量並淡入淡出。作者標示 Toyota Supra 與測功機工況，世代及當時轉速未公開，因此作為獨立試聽，實錄同步需匯入有參考轉速的檔案。 [原錄音與授權](https://freesound.org/people/editboy23/sounds/496171/) · [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)
+
+目前 RX-7 FD 和 Cadillac V-Series.R 的實車原聲供外部參考，公開再發布與改作授權待核對。這些車款可匯入使用者有權使用的錄音，檔案在分頁內解碼。怠速／帶負載錄音依對應 RPM 淡入，超出範圍淡回合成，啟動與收油由共享模擬事件觸發。 [AutoExe RX-7 FD 音色對照](https://www.autoexe.co.jp/?page_id=30712) · [ACO Cadillac 車載原聲](https://www.24h-lemans.com/en/news/enjoy-a-lap-of-the-circuit-des-24-heures-du-mans-on-board-the-cadillac-v-series-r-57781)
+
+## M18 耐力賽進出站
+
+維修區採 FIA WEC 60 km/h 限速。模擬使用限扭而非直接改寫輪速，出站 110 m、入站 55 m 為示範距離。回站先減速，滑行至停車位並煞停，重置動力命令並保留暖度與電量。 [FIA WEC 運動規則第 12.1.4 條](https://www.fia.com/system/files/documents/2026_fia_world_endurance_championship_sporting_regulations_clean_v1.2wmsc.pdf)
+
+## M19 車款擴充
+
+| 車型 | 基準及起步策略 |
+|---|---|
+| Ferrari 499P | 2025 勒芒 1042 kg、515 kW BoP。2,992 cc 120° V6 雙渦輪、七速。採有車手紀錄的先點火再出站。 [ACO 規格](https://www.24h-lemans.com/en/news/24-hours-of-le-mans-ferrari-unveils-the-499p-hypercar-56769) · [ACO 點火紀錄](https://www.24h-lemans.com/en/news/how-a-12-volt-battery-almost-put-a-stick-in-ferraris-centenary-spokes-58138) |
+| Toyota GR010 Hybrid | 2025 勒芒 1053 kg、520 kW BoP。3.5 L 雙渦輪 V6、七速。實車電推離站程序待查，預設採燃燒起步。 [Toyota 2025 車型](https://toyotagazooracing.com/wec/cars/2025/) |
+| Aston Martin Valkyrie AMR-LMH | 6.5 L 自然進氣 V12、七速。採維修區電動起步器，馬達功率與切換速度為近似，賽道為燃燒驅動。 [Aston Martin 賽車資料](https://media.astonmartin.com/valkyrie-takes-the-ultimate-hypercar-from-the-road-to-the-track-as-new-quest-for-le-mans-glory-begins/?lang=eng) · [起步器規格](https://www.astonmartin.com/en-gb/models/valkyrie-lm) |
+| Toyota Supra A80 | 1993 日規 RZ 6MT，2JZ-GTE 2,997 cc、280 PS／5,600 RPM、431.5 Nm／3,600 RPM。有效滾動半徑與雙渦輪銜接近似。參考日規 180 km/h 道路限速，提供解除模擬。 [Toyota 車系史](https://www.toyota.co.jp/jpn/company/history/75years/vehicle_lineage/car/id60006850/) · [Toyota 型錄](https://toyota.jp/ucar/catalog/brand-TOYOTA/car-SUPRA/199305/1000910/) |
+
+499P 和 GR010 的前軸 ERS 以 200 kW 為上限，使用 2025 勒芒在賽道的 190 km/h 門檻。共享輪速模型以馬達扭矩替代部分燃燒扭矩，總輸出受 BoP 總功率限制。三款 LMH 的最高檔及有效風阻以同場測速點校準為近似。前後軸抓地、可用電量、分段功率和實際賽事控制仍待進一步量測。 [FIA 勒芒 BoP 決議](https://www.fia.com/sites/default/files/wec_2025_d29_hypercar_bop_03062025.pdf) · [ACO 2023 技術資料](https://assets.lemans.org/explorer/pdf/courses/2023/24-heures-du-mans/infos-course/liste-engages-24h-infos-course.pdf) · [Toyota 混合動力說明](https://toyotagazooracing.com/release/2021/wec/0115-01/)
+
+## M20 聲浪與車速複核
+
+冷車啟動先帶轉、點火，短暫維持高怠速後隨暖度下降。各車 ECU 的目標轉速與時間依溫度及控制而異，模擬曲線為共用近似。S2000 的 Honda 技術資料描述約 6,000 RPM 附近切高角度凸輪。NSX 的切換區、兩款模型的汽門升程、負載、暖度與聲音增量均標近似。虛擬手動退檔依目標轉速補油，高轉空檔進一檔則漸進接合。 [Toyota 冷車高怠速](https://pressroom.toyota.com/why-is-my-car-doing-this/) · [DENSO 起動器](https://assets.denso-am.eu/production/attachments/Starter-Alternator-Manual-English.pdf) · [Honda 補油對轉](https://global.honda/en/tech/Rev_Match_Control_System/) · [S2000 動力](https://hondanews.com/en-US/releases/release-5cf69ff7f30a01d81cc648004c34c870-honda-s2000-powertrain)
+
+合成渦輪有隨增壓變動的起壓聲，機械增壓以實際模型軸速出聲。高負載升檔與高轉收油會偶發回火，升檔較短銳、收油帶更長衰減。轉子較強的喘振節奏放在橋式汽口音色。時間、聲壓和頻譜是合成調整，有權使用的同車錄音可在聲源 A/B 匯入。 [Garrett](https://www.garrettmotion.com/wp-content/uploads/2019/10/GAM_Turbo-Tech-103_Expert-1.pdf) · [Kawasaki H2](https://www.kawasaki.com/en-us/motorcycle/ninja/hypersport/ninja-h2) · [排氣瞬變研究](https://saemobilus.sae.org/papers/study-generation-mechanism-abnormal-exhaust-noise-871924)
+
+121 款陸上車型的 75 秒平路全油門模擬列於 [車速核對表](../data/SPEED_AUDIT.csv)，可用 `node scripts/speed-audit.mjs` 重跑。表內分開標示模式限速、模擬末速、原廠聲稱、不同版本測試及賽道測速點。Cadillac、Porsche、BMW 的有效風阻和最高檔以 2025 勒芒同車系測速校準，與預設的年式和 BoP 仍有差異。缺少可比證據的實車數值標記 `unknown`。 [2025 勒芒測速表](https://fiawec.alkamelsystems.com/Results/14_2025/04_LE%20MANS/600_FIA%20WEC/202506141600_Race/24_Hour%2024/15_EventMaxiumSpeed_Race_Hour%2024.PDF)
+
+## M21 3D 引擎工作相位
+
+四行程以各缸曲軸與凸輪相位呈現進氣、壓縮、點火作功、排氣。轉子採工作室及點火、氣口指示。管路、殼體、剖面與視覺點火時刻為示意。慢速只改檢視畫面的演示速度。 [NASA Glenn 四行程說明](https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/internal-combustion-engine-otto-cycle/) · [Mazda RENESIS 排氣埠資料](https://newsroom.mazda.com/en/publicity/release/2003/200306/0604e.html)
+
+## M22 飛機與航天台架
+
+新增 PT6A-67P 渦槳、GE90-115B 渦扇、RL10C-1 真空引擎與 Falcon 9 兩級演示。Falcon 9 的一級先運作並關機，級間分離後二級點火。台架採一級 7,605 kN 海平面基準與二級 981 kN 真空基準，階段時間壓縮，軸位、殼體、氣流、聲音和火焰為教學近似。 [EASA PT6A](https://www.easa.europa.eu/en/downloads/7348/en) · [GE90](https://www.geaerospace.com/news/press-releases/commercial-engines/ge90-115b-ges-best-ever-new-jet-engine-entry-airline-service) · [ULA RL10](https://www.ulalaunch.com/docs/default-source/launch-booklets/mobrochure_nrol101.pdf) · [SpaceX Falcon 使用指南](https://www.spacex.com/assets/media/falcon-users-guide-2025-05-09.pdf)
+
 ## 4. 開發者引用習慣
 
 每新增或修改一筆真實規格，請保存來源 URL、核對日、年式/地區/型號、原始值、單位、證據等級（A/B/C/D），以及對應的設定檔/測試；找不到資料就填 `unknown` 而不是猜。

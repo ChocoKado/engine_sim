@@ -4,6 +4,7 @@ import {
   advanceSimulation,
   createSimulationState,
   INITIAL_SIMULATION_INPUT,
+  PIT_SPEED_LIMIT_KMH,
 } from "../lib/simulation";
 import type { SimulationInput, SimulationState } from "../lib/simulation";
 import { enqueueShift } from "../lib/transmission";
@@ -32,10 +33,19 @@ export function useSimulation(vehicle: Vehicle, onFrame: (state: SimulationState
         const next = advanceSimulation(previousState, input.current, vehicle, elapsedSeconds, remainderSeconds);
         state.current = next.state;
         remainderSeconds = next.remainderSeconds;
+        if (next.state.pitZone !== previousState.pitZone) {
+          if (next.state.pitZone === "box") {
+            input.current = { ...input.current, engineOn: false, throttle: 0, brake: 0, pitReturn: false };
+            setPedalReset((version) => version + 1);
+          } else {
+            input.current = { ...input.current, pitReturn: false };
+          }
+        }
         if (next.state !== previousState) onFrame(next.state, timestamp - remainderSeconds * 1000);
 
         const commandApplied = next.state.gear !== previousState.gear ||
           next.state.enginePhase !== previousState.enginePhase ||
+          next.state.pitZone !== previousState.pitZone ||
           next.state.shiftMode !== previousState.shiftMode ||
           next.state.shift?.phase !== previousState.shift?.phase ||
           next.state.engineFailed !== previousState.engineFailed;
@@ -87,6 +97,12 @@ export function useSimulation(vehicle: Vehicle, onFrame: (state: SimulationState
     setPedalReset((version) => version + 1);
   }
 
+  function requestPitReturn() {
+    if (state.current.pitZone !== "track" || state.current.vehicleSpeed * 3.6 > PIT_SPEED_LIMIT_KMH) return;
+    input.current = { ...input.current, throttle: 0, pitReturn: true };
+    setPedalReset((version) => version + 1);
+  }
+
   function resetSimulation() {
     const { roadSpeedLimitDisabled } = input.current;
     const initial = { ...createSimulationState(vehicle), roadSpeedLimitDisabled };
@@ -96,5 +112,6 @@ export function useSimulation(vehicle: Vehicle, onFrame: (state: SimulationState
     setPedalReset((version) => version + 1);
   }
 
-  return { snapshot, readState, pedalReset, setPedal, shift, setShiftMode, setRoadSpeedLimitDisabled, toggleEngine, resetSimulation };
+  return { snapshot, readState, pedalReset, setPedal, shift, setShiftMode, setRoadSpeedLimitDisabled,
+    toggleEngine, requestPitReturn, resetSimulation };
 }

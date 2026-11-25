@@ -41,6 +41,7 @@ export interface Vehicle {
       readonly rotorWidthM: number;
     };
     readonly vva?: { readonly switchRpm: number | null; readonly highIntakeLiftM: number };
+    readonly vtec?: { readonly switchRpm: number; readonly highIntakeLiftM: number; readonly highExhaustLiftM: number };
   };
   readonly audio: {
     readonly firingAnglesRad: readonly number[];
@@ -86,6 +87,8 @@ export interface Vehicle {
       readonly peakPowerKw: number;
       readonly capacityKj: number;
       readonly regenPowerKw: number;
+      readonly minDeploymentKmh?: number;
+      readonly totalPowerCapKw?: number;
       readonly taperStartKmh?: number;
       readonly taperEndKmh?: number;
     };
@@ -94,6 +97,7 @@ export interface Vehicle {
       readonly launchTorqueNm: number;
       readonly batteryCapacityKwh: number;
       readonly engineStartKmh: number;
+      readonly regenPowerKw?: number;
     };
     readonly frictionNm: number;
     readonly frictionNmPerRadPerSecond: number;

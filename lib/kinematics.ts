@@ -6,6 +6,14 @@ const STROKES = ["power", "exhaust", "intake", "compression"] as const;
 const REVOLUTION_RAD = 2 * Math.PI;
 
 export type RotaryGeometry = NonNullable<Vehicle["geometry"]["rotary"]>;
+export type EngineStroke = (typeof STROKES)[number];
+
+export const STROKE_COLORS = {
+  intake: "#64e6bc",
+  compression: "#8bbdff",
+  power: "#ffcc67",
+  exhaust: "#ff856b",
+} satisfies Record<EngineStroke, string>;
 
 export const VALVE_EVENTS = {
   intake: { opensDegrees: 345, closesDegrees: 560 },
@@ -24,12 +32,14 @@ function valveLift(angleRad: number, opensDegrees: number, closesDegrees: number
   return maximum * Math.sin(Math.PI * opening) ** 2;
 }
 
-export function getEnginePose(vehicle: Vehicle, crankAngleRad: number, engineRpm = 0) {
+export function getEnginePose(vehicle: Vehicle, crankAngleRad: number, engineRpm = 0, vtecEngagement = 0) {
   const angle = wrapCycle(crankAngleRad);
-  const { strokeM, rodLengthM, intakeLiftM, exhaustLiftM, vva } = vehicle.geometry;
+  const { strokeM, rodLengthM, intakeLiftM, exhaustLiftM, vva, vtec } = vehicle.geometry;
   const crankRadius = strokeM / 2;
   const vvaMode = !vva ? null : vva.switchRpm === null ? "unknown" : engineRpm >= vva.switchRpm ? "high" : "low";
-  const intakeMaximum = vvaMode === "high" && vva ? vva.highIntakeLiftM : intakeLiftM;
+  const baseIntake = vvaMode === "high" && vva ? vva.highIntakeLiftM : intakeLiftM;
+  const intakeMaximum = vtec ? baseIntake + (vtec.highIntakeLiftM - baseIntake) * vtecEngagement : baseIntake;
+  const exhaustMaximum = vtec ? exhaustLiftM + (vtec.highExhaustLiftM - exhaustLiftM) * vtecEngagement : exhaustLiftM;
 
   const firingAngles = vehicle.geometry.cylinderFiringAnglesRad ?? vehicle.audio.firingAnglesRad;
   const cylinders = firingAngles.map((firingAngle) => {
@@ -42,8 +52,10 @@ export function getEnginePose(vehicle: Vehicle, crankAngleRad: number, engineRpm
       crankPinZM,
       pistonYM: crankPinYM + Math.sqrt(rodLengthM ** 2 - crankPinZM ** 2),
       intakeLiftM: valveLift(localAngle, VALVE_EVENTS.intake.opensDegrees, VALVE_EVENTS.intake.closesDegrees, intakeMaximum),
-      exhaustLiftM: valveLift(localAngle, VALVE_EVENTS.exhaust.opensDegrees, VALVE_EVENTS.exhaust.closesDegrees, exhaustLiftM),
+      exhaustLiftM: valveLift(localAngle, VALVE_EVENTS.exhaust.opensDegrees, VALVE_EVENTS.exhaust.closesDegrees, exhaustMaximum),
       stroke: STROKES[Math.floor(localAngle / RADIANS_PER_STROKE)],
+      // Widen the visible flash slightly so an ignition at the firing TDC can be studied in slow motion.
+      ignitionGlow: Math.max(0, 1 - localAngle / (Math.PI / 8)),
     };
   });
 

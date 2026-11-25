@@ -1,6 +1,7 @@
 import type { Vehicle } from "./vehicles.ts";
 import { defineCar } from "./car-model.ts";
 import { expandedRoadCars } from "./road-cars.ts";
+import { supraA80 } from "./supra-a80.ts";
 
 const poundsToKg = 0.45359237;
 const poundFeetToNm = 1.3558179483;
@@ -98,4 +99,5 @@ export const cars: readonly Vehicle[] = [
     },
   }),
   ...expandedRoadCars,
+  supraA80,
 ];

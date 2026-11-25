@@ -6,8 +6,8 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { buildExhaust } from "./EngineExhaust";
 import type { Vehicle } from "../data/vehicles";
-import { getEnginePose, getRotaryPose, getTrochoidPoint, VALVE_EVENTS } from "../lib/kinematics";
-import type { RotaryGeometry } from "../lib/kinematics";
+import { getEnginePose, getRotaryPose, getTrochoidPoint, STROKE_COLORS, VALVE_EVENTS } from "../lib/kinematics";
+import type { EngineStroke, RotaryGeometry } from "../lib/kinematics";
 import { rpmFromRadiansPerSecond } from "../lib/simulation";
 import type { SimulationState } from "../lib/simulation";
 
@@ -17,14 +17,42 @@ interface EngineSceneProps {
   readExhaustFlame: () => number;
   cutaway: boolean;
   paused: boolean;
+  visualSpeed: number;
+  onStrokesChange: (strokes: readonly EngineStroke[]) => void;
 }
 
 const metresToScene = 10;
 const verticalAxis = new THREE.Vector3(0, 1, 0);
 const fullTurn = 2 * Math.PI;
+const cycleTurn = 2 * fullTurn;
 
 function metal(color: number, metalness: number, roughness: number) {
   return new THREE.MeshStandardMaterial({ color, metalness, roughness, side: THREE.DoubleSide });
+}
+
+function cylinderNumber(number: number, bore: number) {
+  const label = document.createElement("canvas");
+  label.width = label.height = 64;
+  const ctx = label.getContext("2d");
+  if (!ctx) return null;
+  ctx.beginPath();
+  ctx.arc(32, 32, 29, 0, fullTurn);
+  ctx.fillStyle = "#111e24";
+  ctx.fill();
+  ctx.strokeStyle = "#b5c9cc";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.font = "700 34px system-ui";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "white";
+  ctx.fillText(String(number), 32, 34);
+  const map = new THREE.CanvasTexture(label);
+  map.colorSpace = THREE.SRGBColorSpace;
+  const marker = new THREE.Sprite(new THREE.SpriteMaterial({ map, depthTest: false, toneMapped: false }));
+  marker.scale.setScalar(bore * 0.22);
+  marker.renderOrder = 2;
+  return marker;
 }
 
 function impellerVanes(radius: number) {
@@ -78,6 +106,15 @@ function buildRotaryEngine(vehicle: Vehicle, geometry: RotaryGeometry) {
   const rib = metal(0x617b90, 0.30, 0.55);
   const rotorMetal = metal(0xd9e3e7, 0.44, 0.32);
   const shaftMetal = metal(0xc3945e, 0.48, 0.43);
+  const ports = new THREE.Group();
+  const portGeometry = new THREE.SphereGeometry(radius * 0.068, 10, 8);
+  const intakeMark = new THREE.MeshBasicMaterial({ color: STROKE_COLORS.intake });
+  const exhaustMark = new THREE.MeshBasicMaterial({ color: STROKE_COLORS.exhaust });
+  const sparkMark = new THREE.MeshBasicMaterial({ color: STROKE_COLORS.power });
+  const sparkFlash = new THREE.MeshBasicMaterial({ color: 0xfff5d5, toneMapped: false });
+  const exhaustPort = getTrochoidPoint(-Math.PI / 6, caseRadius, eccentricity);
+  const sideExhaust = vehicle.id === "mazda-rx8";
+  stack.add(ports);
 
   function traceTrochoid(path: THREE.Path, curveRadius: number, clockwise = false) {
     const segments = 96;
@@ -149,28 +186,54 @@ function buildRotaryEngine(vehicle: Vehicle, geometry: RotaryGeometry) {
     eccentric.position.z = z;
     stack.add(eccentric);
     axle(eccentric, radius * 0.24, width * 0.99, 0, shaftMetal);
-    return { eccentric, rotor: makeRotor(z) };
+    const intakePort = getTrochoidPoint(Math.PI / 6, caseRadius, eccentricity);
+    function portMark(point: { x: number; y: number }, depth: number, material: THREE.Material) {
+      const mesh = new THREE.Mesh(portGeometry, material);
+      mesh.position.set(point.x, point.y, z + depth);
+      ports.add(mesh);
+      return mesh;
+    }
+    portMark(intakePort, width * 0.49, intakeMark);
+    portMark(exhaustPort, sideExhaust ? width * 0.49 : 0, exhaustMark);
+    const plugs = [-0.15, 0.15].map((angle) => {
+      const point = getTrochoidPoint(Math.PI + angle, caseRadius, eccentricity);
+      portMark(point, width * 0.49, sparkMark);
+      const flash = portMark(point, width * 0.52, sparkFlash);
+      flash.visible = false;
+      return flash;
+    });
+    return { eccentric, rotor: makeRotor(z), plugs };
   });
   axle(stack, radius * 0.08, stackLength + width * 0.68, 0, shaftMetal);
-  const port = getTrochoidPoint(-Math.PI / 6, caseRadius, eccentricity);
   const exhaust = buildExhaust(vehicle, [rotors.map(({ eccentric }) => ({
-    point: new THREE.Vector3(eccentric.position.z, port.y, -port.x),
-    outward: new THREE.Vector3(0, -0.50, -0.866),
+    point: stack.localToWorld(new THREE.Vector3(exhaustPort.x, exhaustPort.y, eccentric.position.z + (sideExhaust ? width * 0.49 : 0))),
+    outward: sideExhaust ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, -0.50, -0.866),
   }))], radius);
-  exhaust.group.rotation.y = -Math.PI / 2;
   group.add(exhaust.group);
 
-  function applyPose(state: SimulationState) {
-    const pose = getRotaryPose(geometry, state.crankAngleRad);
-    for (const [index, { rotor, eccentric }] of rotors.entries()) {
+  function applyPose(state: SimulationState, crankAngle: number) {
+    const pose = getRotaryPose(geometry, crankAngle);
+    for (const [index, { rotor, eccentric, plugs }] of rotors.entries()) {
       const { centerXM, centerYM, angleRad } = pose[index];
       rotor.position.x = eccentric.position.x = centerXM * metresToScene;
       rotor.position.y = eccentric.position.y = centerYM * metresToScene;
       rotor.rotation.z = angleRad;
+      const phase = (crankAngle + fullTurn * index / geometry.rotors) % fullTurn;
+      const flash = Math.max(0, 1 - phase / (Math.PI / 8));
+      for (const plug of plugs) {
+        plug.visible = state.engineOn && state.combustionTorqueNm > 0 && flash > 0.05;
+        plug.scale.setScalar(0.7 + flash * 1.8);
+      }
     }
+    return null;
   }
 
-  return { group, cover, applyPose, applyFlame: exhaust.applyFlame, layout: "rotary" as const };
+  function applyCutaway(cutaway: boolean) {
+    cover.visible = !cutaway;
+    ports.visible = cutaway;
+  }
+
+  return { group, cover, applyCutaway, applyPose, applyFlame: exhaust.applyFlame, layout: "rotary" as const, extraMaterials: [] };
 }
 
 function buildEngine(vehicle: Vehicle) {
@@ -209,6 +272,17 @@ function buildEngine(vehicle: Vehicle) {
   const crankMetal = metal(0xc3945e, 0.48, 0.43);
   const intakeMetal = metal(0x61d5ab, 0.25, 0.38);
   const exhaustMetal = metal(0xff9e75, 0.27, 0.38);
+  const intakeCasting = metal(0x6c8983, 0.44, 0.43);
+  const oilPan = metal(0x2b393f, 0.48, 0.48);
+  const porcelain = metal(0xf0e4cc, 0.12, 0.33);
+  const strokes = Object.fromEntries(Object.entries(STROKE_COLORS).map(([stroke, color]) => [
+    stroke, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.33, depthWrite: false, toneMapped: false }),
+  ])) as Record<EngineStroke, THREE.MeshBasicMaterial>;
+  const chargeGeometry = new THREE.CylinderGeometry(bore * 0.38, bore * 0.38, 1, 16);
+  const flowGeometry = new THREE.SphereGeometry(bore * 0.082, 8, 6);
+  const intakeFlow = new THREE.MeshBasicMaterial({ color: STROKE_COLORS.intake, toneMapped: false });
+  const exhaustFlow = new THREE.MeshBasicMaterial({ color: STROKE_COLORS.exhaust, toneMapped: false });
+  const ignition = new THREE.MeshBasicMaterial({ color: 0xfff3c9, toneMapped: false });
 
   function box(parent: THREE.Object3D, w: number, h: number, d: number, material: THREE.Material, x: number, y: number, z: number) {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
@@ -233,6 +307,9 @@ function buildEngine(vehicle: Vehicle) {
   }
 
   box(group, width * 1.05, bore * 0.2, bore * 1.2, frame, 0, -throwRadius - bore * 0.14, 0);
+  box(group, width * 0.97, bore * 0.32, bore * 0.93, oilPan, 0, -throwRadius - bore * 0.38, 0);
+  box(group, width * 0.9, bore * 0.078, bore * 1.03, ribs, 0, -throwRadius - bore * 0.27, 0);
+  box(group, width * 0.63, bore * 0.11, bore * 0.22, oilPan, width * 0.09, -throwRadius - bore * 0.57, 0);
   box(group, width * 1.04, bore * 0.88, bore * 0.23, frame, 0, 0, -radius * 0.86);
   box(cover, width * 1.04, bore * 0.85, bore * 0.18, frame, 0, 0, radius * 0.93);
 
@@ -245,17 +322,18 @@ function buildEngine(vehicle: Vehicle) {
 
   const camTracks = !isVEngine && bankSize === 1 ? [0] : [-bore * 0.23, bore * 0.23];
 
-  function makeCam(bank: THREE.Group, bankFiringAngles: readonly number[], z: number) {
+  function makeCam(bank: THREE.Group, bankFiringAngles: readonly number[], z: number, intakeSide: number) {
     const cam = new THREE.Group();
     cam.position.set(0, camY, z);
     bank.add(cam);
-    const material = z > 0 ? intakeMetal : z < 0 ? exhaustMetal : crankMetal;
+    const intakeTrack = z * intakeSide > 0;
+    const material = z === 0 ? crankMetal : intakeTrack ? intakeMetal : exhaustMetal;
     const shaft = cylinder(cam, bore * 0.055, bankWidth, material, 0, 0, 0);
     shaft.rotation.z = Math.PI / 2;
 
     for (const [index, firingAngle] of bankFiringAngles.entries()) {
       const x = (index - (bankSize - 1) / 2) * spacing;
-      const valveTypes: (keyof typeof VALVE_EVENTS)[] = camTracks.length === 1 ? ["intake", "exhaust"] : [z > 0 ? "intake" : "exhaust"];
+      const valveTypes: (keyof typeof VALVE_EVENTS)[] = camTracks.length === 1 ? ["intake", "exhaust"] : [intakeTrack ? "intake" : "exhaust"];
       for (const valveType of valveTypes) {
         const intake = valveType === "intake";
         const { opensDegrees, closesDegrees } = VALVE_EVENTS[valveType];
@@ -283,7 +361,32 @@ function buildEngine(vehicle: Vehicle) {
     return valve;
   }
 
-  function makeCylinder(bank: THREE.Group, bankCover: THREE.Group, index: number, crankSides: readonly number[]) {
+  function addIntakeManifold(bank: THREE.Group, intakeSide: number) {
+    const chamberY = seatY + bore * 0.44;
+    const chamberZ = intakeSide * bore * 1.03;
+    const plenum = cylinder(bank, bore * 0.17, bankWidth + bore * 0.09, intakeCasting, 0, chamberY, chamberZ);
+    plenum.rotation.z = Math.PI / 2;
+    const neckX = -bankWidth / 2 - bore * 0.15;
+    const throttleBody = cylinder(bank, bore * 0.13, bore * 0.22, rodMetal, neckX, chamberY, chamberZ);
+    throttleBody.rotation.z = Math.PI / 2;
+    const intakeRim = new THREE.Mesh(new THREE.TorusGeometry(bore * 0.13, bore * 0.027, 8, 16), frame);
+    intakeRim.rotation.y = Math.PI / 2;
+    intakeRim.position.set(neckX - bore * 0.1, chamberY, chamberZ);
+    bank.add(intakeRim);
+
+    for (let index = 0; index < bankSize; index += 1) {
+      const x = (index - (bankSize - 1) / 2) * spacing;
+      const path = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(x, seatY - bore * 0.09, intakeSide * bore * 0.48),
+        new THREE.Vector3(x, seatY + bore * 0.10, intakeSide * bore * 0.82),
+        new THREE.Vector3(x, chamberY - bore * 0.08, chamberZ),
+      ]);
+      bank.add(new THREE.Mesh(new THREE.TubeGeometry(path, 12, bore * 0.084, 9), intakeCasting));
+    }
+  }
+
+  function makeCylinder(bank: THREE.Group, bankCover: THREE.Group, index: number, bankIndex: number,
+    crankSides: readonly number[], exhaustSide: number) {
     const x = (index - (bankSize - 1) / 2) * spacing;
     halfBarrel(bank, radius, barrelHeight, frame, x, barrelY, true);
     halfBarrel(bankCover, radius, barrelHeight, frame, x, barrelY, false);
@@ -321,10 +424,31 @@ function buildEngine(vehicle: Vehicle) {
     const smallEnd = cylinder(rod, bore * 0.112, bore * 0.15, rodMetal, 0, rodLength / 2, 0);
     smallEnd.rotation.z = Math.PI / 2;
 
+    cylinder(bank, bore * 0.046, bore * 0.18, porcelain, x, seatY + bore * 0.18, 0);
+    cylinder(bank, bore * 0.064, bore * 0.07, crankMetal, x, seatY + bore * 0.057, 0);
+    const annotations = new THREE.Group();
+    bank.add(annotations);
+    const charge = new THREE.Mesh(chargeGeometry, strokes.compression);
+    charge.position.set(x, seatY, 0);
+    charge.scale.y = 0.001;
+    annotations.add(charge);
+    const spark = new THREE.Mesh(flowGeometry, ignition);
+    spark.position.set(x, seatY - bore * 0.045, 0);
+    spark.visible = false;
+    annotations.add(spark);
+    const intakePacket = new THREE.Mesh(flowGeometry, intakeFlow);
+    const exhaustPacket = new THREE.Mesh(flowGeometry, exhaustFlow);
+    annotations.add(intakePacket, exhaustPacket);
+    const number = cylinderNumber(bankIndex * bankSize + index + 1, bore);
+    if (number) {
+      number.position.set(x, seatY + bore * 0.74, 0);
+      annotations.add(number);
+    }
+    const intakeSide = -exhaustSide;
     return {
-      x, crank, piston, rod,
-      intake: makeValve(bank, x - bore * 0.2, bore * 0.18, intakeMetal),
-      exhaust: makeValve(bank, x + bore * 0.2, -bore * 0.18, exhaustMetal),
+      x, crank, piston, rod, charge, spark, annotations, intakePacket, exhaustPacket, intakeSide, exhaustSide,
+      intake: makeValve(bank, x - bore * 0.2, intakeSide * bore * 0.18, intakeMetal),
+      exhaust: makeValve(bank, x + bore * 0.2, exhaustSide * bore * 0.18, exhaustMetal),
     };
   }
 
@@ -337,10 +461,12 @@ function buildEngine(vehicle: Vehicle) {
     group.add(bank);
     cover.add(bankCover);
     box(bank, bankWidth * 1.02, bore * 0.17, bore * 0.43, frame, 0, seatY + bore * 0.06, -radius * 0.65);
-    box(bankCover, bankWidth * 1.04, bore * 0.24, bore * 1.12, frame, 0, seatY + bore * 0.22, 0);
+    box(bankCover, bankWidth * 1.04, bore * 0.34, bore * 1.12, frame, 0, seatY + bore * 0.38, 0);
+    box(bankCover, bankWidth * 0.88, bore * 0.055, bore * 0.82, ribs, 0, seatY + bore * 0.57, 0);
     const bankFiringAngles = firingAngles.slice(index * bankSize, (index + 1) * bankSize);
     const crankSides = isVEngine ? [side] : [-1, 1];
     const exhaustSide = isVEngine ? side : 1;
+    addIntakeManifold(bank, -exhaustSide);
     const exhaustPorts = bankFiringAngles.map((_, localIndex) => ({
       point: bank.localToWorld(new THREE.Vector3((localIndex - (bankSize - 1) / 2) * spacing,
         seatY - bore * 0.08, exhaustSide * bore * 0.48)),
@@ -348,8 +474,8 @@ function buildEngine(vehicle: Vehicle) {
     }));
     return {
       exhaustPorts,
-      cams: camTracks.map((z) => makeCam(bank, bankFiringAngles, z)),
-      cylinders: bankFiringAngles.map((_, localIndex) => makeCylinder(bank, bankCover, localIndex, crankSides)),
+      cams: camTracks.map((z) => makeCam(bank, bankFiringAngles, z, -exhaustSide)),
+      cylinders: bankFiringAngles.map((_, localIndex) => makeCylinder(bank, bankCover, localIndex, index, crankSides, exhaustSide)),
     };
   });
   const cams = banks.flatMap((bank) => bank.cams);
@@ -389,9 +515,11 @@ function buildEngine(vehicle: Vehicle) {
 
   const impeller = vehicle.supercharger ? addSupercharger() : null;
   const rodDirection = new THREE.Vector3();
-  function applyPose(state: SimulationState) {
-    const pose = getEnginePose(vehicle, state.crankAngleRad, rpmFromRadiansPerSecond(state.engineAngularVelocity));
-    if (impeller) impeller.rotation.z = state.superchargerAngleRad;
+  function applyPose(state: SimulationState, crankAngle: number, impellerAngle: number) {
+    const pose = getEnginePose(vehicle, crankAngle, rpmFromRadiansPerSecond(state.engineAngularVelocity), state.vtecEngagement);
+    if (impeller) impeller.rotation.z = impellerAngle;
+    const moving = state.engineAngularVelocity > 0.1;
+    const burning = state.engineOn && state.combustionTorqueNm > 0;
     for (const cam of cams) cam.rotation.x = pose.camAngleRad;
     for (const [index, parts] of cylinders.entries()) {
       const cylinder = pose.cylinders[index];
@@ -405,21 +533,44 @@ function buildEngine(vehicle: Vehicle) {
       parts.rod.quaternion.setFromUnitVectors(verticalAxis, rodDirection);
       parts.intake.position.y = seatY - cylinder.intakeLiftM * metresToScene;
       parts.exhaust.position.y = seatY - cylinder.exhaustLiftM * metresToScene;
+      const chargeHeight = Math.max(0.003, seatY - pistonY - bore * 0.17);
+      parts.charge.position.y = seatY - chargeHeight * 0.5;
+      parts.charge.scale.y = chargeHeight;
+      parts.charge.material = strokes[cylinder.stroke];
+      parts.spark.visible = burning && cylinder.ignitionGlow > 0.035;
+      parts.spark.scale.setScalar(0.65 + 1.45 * cylinder.ignitionGlow);
+      const degrees = cylinder.crankAngleRad * 180 / Math.PI;
+      const intakeProgress = (degrees - VALVE_EVENTS.intake.opensDegrees)
+        / (VALVE_EVENTS.intake.closesDegrees - VALVE_EVENTS.intake.opensDegrees);
+      const exhaustProgress = (degrees - VALVE_EVENTS.exhaust.opensDegrees)
+        / (VALVE_EVENTS.exhaust.closesDegrees - VALVE_EVENTS.exhaust.opensDegrees);
+      parts.intakePacket.visible = moving && cylinder.intakeLiftM > 0.0001;
+      parts.exhaustPacket.visible = moving && cylinder.exhaustLiftM > 0.0001;
+      parts.intakePacket.position.set(parts.x - bore * 0.16, seatY - bore * intakeProgress * 0.32,
+        parts.intakeSide * bore * (0.72 - intakeProgress * 0.62));
+      parts.exhaustPacket.position.set(parts.x + bore * 0.16, seatY - bore * (0.29 - exhaustProgress * 0.17),
+        parts.exhaustSide * bore * (0.12 + exhaustProgress * 0.51));
     }
+    return pose.cylinders;
+  }
+
+  function applyCutaway(cutaway: boolean) {
+    cover.visible = !cutaway;
+    for (const { annotations } of cylinders) annotations.visible = cutaway;
   }
 
   const layout = isBoxer ? "boxer" : isVEngine ? "v" : "inline";
-  return { group, cover, applyPose, applyFlame: exhaust.applyFlame, layout };
+  return { group, cover, applyCutaway, applyPose, applyFlame: exhaust.applyFlame, layout, extraMaterials: Object.values(strokes) };
 }
 
-export default function EngineScene({ vehicle, readState, readExhaustFlame, cutaway, paused }: EngineSceneProps) {
+export default function EngineScene({ vehicle, readState, readExhaustFlame, cutaway, paused, visualSpeed, onStrokesChange }: EngineSceneProps) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const options = useRef({ readState, readExhaustFlame, cutaway, paused });
+  const options = useRef({ readState, readExhaustFlame, cutaway, paused, visualSpeed, onStrokesChange });
   const [unavailable, setUnavailable] = useState(false);
 
   useEffect(() => {
-    options.current = { readState, readExhaustFlame, cutaway, paused };
-  }, [readState, readExhaustFlame, cutaway, paused]);
+    options.current = { readState, readExhaustFlame, cutaway, paused, visualSpeed, onStrokesChange };
+  }, [readState, readExhaustFlame, cutaway, paused, visualSpeed, onStrokesChange]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -462,7 +613,9 @@ export default function EngineScene({ vehicle, readState, readExhaustFlame, cuta
 
     const engine = buildEngine(vehicle);
     let previousState = options.current.readState();
-    engine.applyPose(previousState);
+    let crankAngle = previousState.crankAngleRad;
+    let impellerAngle = previousState.superchargerAngleRad;
+    let visiblePose = engine.applyPose(previousState, crankAngle, impellerAngle);
     scene.add(engine.group);
     const camera = new THREE.PerspectiveCamera(37, 1, 0.05, 50);
     const controls = new OrbitControls(camera, canvas);
@@ -485,7 +638,10 @@ export default function EngineScene({ vehicle, readState, readExhaustFlame, cuta
     let lost = false;
     let dirty = true;
     let lastFlame = 0;
-    engine.cover.visible = !options.current.cutaway;
+    let lastTime: number | null = null;
+    let lastLegendAt = -Infinity;
+    let lastStrokes: readonly EngineStroke[] = [];
+    engine.applyCutaway(options.current.cutaway);
 
     function onOrbit() { dirty = true; }
 
@@ -493,14 +649,33 @@ export default function EngineScene({ vehicle, readState, readExhaustFlame, cuta
       frame = 0;
       if (lost || document.hidden) return;
       const current = options.current;
+      const elapsed = lastTime === null ? 0 : Math.min(0.075, (timestamp - lastTime) / 1000);
+      lastTime = timestamp;
       if (!current.paused) {
         const state = current.readState();
-        if (state.crankAngleRad !== previousState.crankAngleRad
+        const sceneSeconds = elapsed * current.visualSpeed;
+        const nextAngle = current.visualSpeed === 1 ? state.crankAngleRad
+          : (crankAngle + state.engineAngularVelocity * sceneSeconds) % cycleTurn;
+        const nextImpeller = current.visualSpeed === 1 ? state.superchargerAngleRad
+          : (impellerAngle + state.superchargerAngularVelocity * sceneSeconds) % fullTurn;
+        if (nextAngle !== crankAngle || nextImpeller !== impellerAngle
           || state.engineAngularVelocity !== previousState.engineAngularVelocity
-          || state.superchargerAngleRad !== previousState.superchargerAngleRad) {
-          engine.applyPose(state);
-          previousState = state;
+          || state.engineOn !== previousState.engineOn
+          || state.vtecEngagement !== previousState.vtecEngagement
+          || Boolean(state.combustionTorqueNm) !== Boolean(previousState.combustionTorqueNm)) {
+          crankAngle = nextAngle;
+          impellerAngle = nextImpeller;
+          visiblePose = engine.applyPose(state, crankAngle, impellerAngle);
           dirty = true;
+        }
+        previousState = state;
+      }
+      if (current.cutaway && visiblePose && timestamp - lastLegendAt >= 85) {
+        lastLegendAt = timestamp;
+        const strokes = visiblePose.map(({ stroke }) => stroke);
+        if (strokes.some((stroke, index) => lastStrokes[index] !== stroke)) {
+          lastStrokes = strokes;
+          current.onStrokesChange(strokes);
         }
       }
       const flame = current.paused ? 0 : current.readExhaustFlame();
@@ -510,7 +685,7 @@ export default function EngineScene({ vehicle, readState, readExhaustFlame, cuta
       }
       lastFlame = flame;
       if (engine.cover.visible === current.cutaway) {
-        engine.cover.visible = !current.cutaway;
+        engine.applyCutaway(current.cutaway);
         dirty = true;
       }
       controls.update();
@@ -524,6 +699,7 @@ export default function EngineScene({ vehicle, readState, readExhaustFlame, cuta
     function syncVisibility() {
       cancelAnimationFrame(frame);
       frame = 0;
+      lastTime = null;
       if (!lost && !document.hidden) frame = requestAnimationFrame(draw);
     }
 
@@ -585,11 +761,14 @@ export default function EngineScene({ vehicle, readState, readExhaustFlame, cuta
       canvas.removeEventListener("webglcontextrestored", onContextRestored);
       controls.removeEventListener("change", onOrbit);
       controls.dispose();
-      const materials = new Set<THREE.Material>();
+      const materials = new Set<THREE.Material>(engine.extraMaterials);
       const geometries = new Set<THREE.BufferGeometry>();
       engine.group.traverse((part) => {
         if (part instanceof THREE.Mesh) {
           geometries.add(part.geometry);
+          materials.add(part.material);
+        } else if (part instanceof THREE.Sprite) {
+          part.material.map?.dispose();
           materials.add(part.material);
         }
       });

@@ -8,6 +8,7 @@ class AerospaceSoundProcessor extends AudioWorkletProcessor {
   constructor({ processorOptions }) {
     super();
     this.kind = processorOptions.kind;
+    this.propellerBlades = processorOptions.propellerBlades ?? (this.kind === "turboprop" ? 4 : 2);
     this.lastPacketTime = -Infinity;
     this.frame = { primary: 0, secondary: 0, shaftRpm: 0, outputLevel: 0, vacuum: false };
     this.phase = 0;
@@ -25,7 +26,7 @@ class AerospaceSoundProcessor extends AudioWorkletProcessor {
     this.port.onmessage = ({ data }) => {
       if (![data?.primary, data?.secondary, data?.shaftRpm, data?.outputLevel].every(Number.isFinite)) return;
       if (data.primary < 0 || data.primary > 1 || data.secondary < 0 || data.secondary > 1 ||
-        data.shaftRpm < 0 || data.shaftRpm > 3500 || data.outputLevel < 0 || data.outputLevel > 1) return;
+        data.shaftRpm < 0 || data.shaftRpm > 7000 || data.outputLevel < 0 || data.outputLevel > 1) return;
       this.frame = data;
       this.lastPacketTime = currentTime;
     };
@@ -36,8 +37,9 @@ class AerospaceSoundProcessor extends AudioWorkletProcessor {
     if (!output) return true;
     const frame = this.frame;
     const fresh = currentTime - this.lastPacketTime < 0.23;
-    const rocket = this.kind === "rocket";
+    const rocket = this.kind === "rocket" || this.kind === "staged-rocket";
     const piston = this.kind === "piston";
+    const prop = this.kind === "turboprop";
     const fan = this.kind === "turbofan";
     const targetLevel = !fresh || (rocket && frame.vacuum) ? 0 : rocket ? frame.outputLevel
       : Math.min(1, frame.primary * 0.77 + frame.secondary * 0.23 + frame.outputLevel * 0.4);
@@ -56,13 +58,16 @@ class AerospaceSoundProcessor extends AudioWorkletProcessor {
       this.mid += (noise - this.mid) * this.midRate;
 
       let sound;
-      if (piston) {
+      if (piston || prop) {
         // A two-blade prop and a four-cylinder four-stroke both pulse twice per shaft turn.
         this.phase = advancePhase(this.phase, this.rpm / 60);
         const angle = turn * this.phase;
-        const blade = Math.sin(angle * 2) * 0.49 + Math.sin(angle * 4) * 0.16;
-        const combustion = Math.sin(angle * 6) * 0.20 + Math.sin(angle * 8) * 0.10;
-        sound = blade + combustion * (0.31 + 0.69 * frame.outputLevel) + 0.70 * this.mid;
+        const blades = this.propellerBlades;
+        const blade = Math.sin(angle * blades) * 0.49 + Math.sin(angle * 2 * blades) * 0.16;
+        this.corePhase = advancePhase(this.corePhase, 1550 * this.secondary);
+        const core = prop ? Math.sin(turn * this.corePhase) * 0.16
+          : Math.sin(angle * 6) * 0.20 + Math.sin(angle * 8) * 0.10;
+        sound = blade + core * (0.31 + 0.69 * frame.outputLevel) + (prop ? 0.91 : 0.70) * this.mid;
       } else if (rocket) {
         sound = 3.65 * this.bass + 1.20 * this.mid + 0.18 * (noise - this.mid);
       } else {
