@@ -419,7 +419,20 @@ GR Supra 車型基準採較柔和的卸壓聲。選「進氣・渦輪顫振」�
 
 ## M22 飛機與航天台架
 
-新增 PT6A-67P 渦槳、GE90-115B 渦扇、RL10C-1 真空引擎與 Falcon 9 兩級演示。Falcon 9 的一級先運作並關機，級間分離後二級點火。台架採一級 7,605 kN 海平面基準與二級 981 kN 真空基準，階段時間壓縮，軸位、殼體、氣流、聲音和火焰為教學近似。 [EASA PT6A](https://www.easa.europa.eu/en/downloads/7348/en) · [GE90](https://www.geaerospace.com/news/press-releases/commercial-engines/ge90-115b-ges-best-ever-new-jet-engine-entry-airline-service) · [ULA RL10](https://www.ulalaunch.com/docs/default-source/launch-booklets/mobrochure_nrol101.pdf) · [SpaceX Falcon 使用指南](https://www.spacex.com/assets/media/falcon-users-guide-2025-05-09.pdf)
+新增 PT6A-67P 渦槳、GE90-115B 渦扇與 RL10C-1 真空火箭引擎台架（原 Falcon 9 一二級演示已依需求移除，保留單機火箭台架）。軸位、殼體、氣流、聲音和火焰為教學近似。 [EASA PT6A](https://www.easa.europa.eu/en/downloads/7348/en) · [GE90](https://www.geaerospace.com/news/press-releases/commercial-engines/ge90-115b-ges-best-ever-new-jet-engine-entry-airline-service) · [ULA RL10](https://www.ulalaunch.com/docs/default-source/launch-booklets/mobrochure_nrol101.pdf)
+
+## M23–M26 物理聲學合成、雙模式 ERS、同軌重播與擴充車款（2026-11-25）
+
+- **公開音檔查核與聲學合成升級（M23）**：查核 Freesound（CC0 1.0）與 Wikimedia Commons（PD／CC0）後確認，公開領域並無涵蓋本站百餘款指定年式車型的多轉速×負載實車錄音；未授權商用或影音平台音訊依規範不予擷取。因此移除需使用者自備音檔的匯入欄位，參考 [Ange Yaghi Engine Simulator 物理脈衝與管路反射架構](https://github.com/ange-yaghi/engine-sim) 及引擎聲學文獻，於 `public/engine-sound-processor.js` 加入有限寬度排氣吹降波、進氣喇叭口四分之一波長共鳴（約 2.05–3.15 kHz）、週期燃燒微變異（IMEP cycle-to-cycle jitter）、三抽頭管路／地面早期反射，以及修正 6–12 缸起動馬達壓縮上止點相位。聲浪仍明示為物理聲學合成示意。
+- **F1／WEC 雙模式 ERS 電能回充與高速煞車退檔**：依 [2025 FIA F1 技術規則](https://api.fia.com/sites/default/files/documents/fia_2025_formula_1_technical_regulations_-_issue_03_-_2025-04-07.pdf) 與 [2026 FIA F1 技術規則](https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_c_technical_-_iss_15_-_2025-12-10_0.pdf)，油電賽車支援兩種回充：① **踩煞車線控回充（Brake-by-Wire）**，在不改變踏板總減速度下優先以 MGU 回收動能；② **高速收油引擎煞車回充（Lift-and-Coast Overrun）**，全收油滑行時由 MGU 對曲軸／傳動軸施加發電阻力扭矩並回充電池。賽車序列變速箱於重煞時縮短 AT 退檔間隔，在煞停至 `0 km/h` 前退回一檔，靜止後不再逐檔跳動。
+- **操作錄製與同軌重播（M24）**：`lib/telemetry-recorder.ts` 以 120 Hz 固定步長記錄起始狀態、踏板開度與換檔指令，可切換不同排氣／進氣音色做完全同軌重播，並匯出 CSV 與 JSON。
+- **M26 新增六款完整規格車型**：
+  - **Ducati 1199 Panigale ’12**：1,198 cc Superquadro 90° V2（`112 × 60.8 mm`），195 hp／10,750 RPM、132 Nm／9,000 RPM，初級 `1.77`、終傳 `39/15`、六檔 `37/15..23/24`，裝備重量 188 kg。[Ducati Heritage](https://www.ducati.com/ww/en/heritage/models/1199-superleggera)
+  - **Suzuki GSX-R1000 ’05（K5）**：998.6 cc 直列四缸（`73.4 × 59.0 mm`），178 PS／11,000 RPM、117.6 Nm／8,500 RPM，初級 `73/47`、終傳 `42/17`、六檔 `41/16..33/26`，乾重 166 kg 折算裝備重量約 196 kg（C 級）。[Suzuki Digital Library](https://www.suzuki.co.jp/suzuki_digital_library/)
+  - **Honda VTR1000SP-1 ’00（SC45 / RC51）**：999 cc 90° V2（`100.0 × 63.6 mm`），歐規 136 PS／9,500 RPM、103 Nm／8,000 RPM，初級 `68/40`、終傳 `40/16`、六檔 `32/13..25/26`。[Honda 官方新聞稿關聯頁](https://global.honda/jp/news/2000/20000927-cb1300.html)
+  - **Honda Integra Type R DC2（1998 日規 98 Spec）**：1,797 cc B18C VTEC（`81.0 × 87.2 mm`），200 PS／8,000 RPM、19.0 kgf·m／6,200 RPM，五檔 `3.230..0.787`、終傳 `4.785`，車重 1,080 kg，日規 180 km/h 限速。[Honda Fact Book](https://www.honda.co.jp/factbook/auto/INTEGRA/19950824/)
+  - **Nissan GT-R R35（2017 日規 Pure・6DCT）**：3,799 cc VR38DETT 60° 雙渦輪 V6（`95.5 × 88.4 mm`），570 PS／6,800 RPM、637 Nm／3,300–5,800 RPM，GR6 六速雙離合 `4.056..0.796`、終傳 `3.700`，車重 1,760 kg。[Nissan Global Newsroom](https://global.nissannews.com/en/releases/2017-nissan-gt-r-makes-world-debut-at-new-york-international-auto-show)
+  - **Lexus LFA（2010 日規・6ASG）**：4,805 cc 1LR-GUE 72° 等間隔 V10（`88.0 × 79.0 mm`），560 PS／8,700 RPM、480 Nm／6,800 RPM、9,000 RPM 紅線，六速 ASG `3.231..0.795` 搭配前副軸 `1.259` 與終傳 `3.417`，車重 1,480 kg，原廠極速 325 km/h。[Toyota 75 年車系檔案](https://www.toyota.co.jp/jpn/company/history/75years/vehicle_lineage/car/id60016301/)
 
 ## 4. 開發者引用習慣
 

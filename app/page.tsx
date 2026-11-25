@@ -17,7 +17,6 @@ import { useEngineAudio } from "../hooks/useEngineAudio";
 import { useSimulation } from "../hooks/useSimulation";
 import { PIT_ENTRY_LENGTH_M, PIT_EXIT_LENGTH_M, PIT_SPEED_LIMIT_KMH, rpmFromRadiansPerSecond } from "../lib/simulation";
 
-const motorcycleGearSequence = [1, 0, 2, 3, 4, 5, 6];
 const simulationModes = {
   motorcycle: { label: "機車", heading: "騎乘控制台" },
   car: { label: "汽車", heading: "駕駛控制台" },
@@ -65,14 +64,13 @@ function Tachometer({ rpm, referenceRpm, isCar }: { rpm: number; referenceRpm: n
 function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
   const [showEngine, setShowEngine] = useState(false);
   const [tuning, setTuning] = useState<TuningProfile>(tuningProfiles[0]);
-  const ignitionPending = useRef(false);
   const {
-    audioStatus, sendAudioState, toggleAudio, startIgnitionAudio, volume, changeVolume, prepareAudio, readExhaustFlame,
-    recordedKind, selectRecording, loadRecording, removeRecording,
+    audioStatus, sendAudioState, toggleAudio, startIgnitionAudio, volume, changeVolume, readExhaustFlame,
   } = useEngineAudio(vehicle, tuning, showEngine);
   const {
     snapshot, readState, pedalReset, setPedal, shift, setShiftMode, setRoadSpeedLimitDisabled,
     toggleEngine, requestPitReturn, resetSimulation,
+    replayStatus, activeRecordedRun, toggleRunRecording, toggleRunReplay,
   } = useSimulation(vehicle, sendAudioState);
   const { engineAngularVelocity, vehicleSpeed, gear, powerOn, enginePhase, engineWarmth, shiftMode, shift: pendingShift, lastShift, engineFailed,
     roadSpeedLimitDisabled, hybridEnergyKj, hybridPowerKw, electricEnergyKj, electricPowerKw, turboBoostBar } = snapshot;
@@ -83,27 +81,35 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
   const { pitZone, pitDistanceM, vtecEngagement } = snapshot;
   const availableTunings = vehicle.geometry.rotary ? [...tuningProfiles, rotaryPortTuning]
     : vehicle.turbocharger && vehicle.kind === "car" ? [...tuningProfiles, turboFlutterTuning] : tuningProfiles;
+
+  useEffect(() => {
+    if (!availableTunings.some((profile) => profile.id === tuning.id)) {
+      setTuning(tuningProfiles[0]);
+    }
+  }, [availableTunings, tuning.id]);
+
   const ignitionLabel = enginePhase === "electric" ? (vehicleSpeed > 0.3 ? "電力出站" : "電力待命")
     : enginePhase === "cranking" ? "啟動中"
     : enginePhase === "running" ? (engineWarmth < 0.9 && gear === 0 && snapshot.throttle === 0 ? "暖車中" : "引擎運轉")
     : "動力關閉";
   const gears = vehicle.kind ? Array.from({ length: vehicle.gears + 1 }, (_, index) => index)
-    : motorcycleGearSequence.filter((position) => position <= vehicle.gears);
+    : [1, 0, ...Array.from({ length: Math.max(0, vehicle.gears - 1) }, (_, index) => index + 2)];
 
-  async function toggleIgnition() {
-    if (ignitionPending.current) return;
-    if (!powerOn) {
-      ignitionPending.current = true;
-      await startIgnitionAudio();
-      ignitionPending.current = false;
-    }
+  function toggleIgnition() {
+    if (!powerOn) void startIgnitionAudio();
     toggleEngine();
   }
 
   function toggleEngineView() {
-    if (!showEngine && powerOn) prepareAudio();
     setShowEngine(!showEngine);
   }
+
+  const hybridLabel = hybridPowerKw < -0.5
+    ? (snapshot.brake > 0.02 ? "ERS 煞車回充" : "ERS 收油回充")
+    : "ERS 輔助";
+  const electricLabel = electricPowerKw < -0.5
+    ? (snapshot.brake > 0.02 ? "電力煞車回充" : "電力收油回充")
+    : "電力輸出";
 
   return (
     <div className="console-layout" onContextMenu={(event) => event.preventDefault()}>
@@ -111,7 +117,7 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
         <div className="dashboard-heading">
           <h2 id="dashboard-title">{showEngine ? "引擎內構" : "儀表"}</h2>
           <div className="dashboard-actions">
-            {!showEngine && <ShiftModeControls mode={shiftMode} onModeChange={setShiftMode} />}
+            <ShiftModeControls mode={shiftMode} onModeChange={setShiftMode} />
             <button type="button" className="mode-button engine-view-toggle" onClick={toggleEngineView}>
               {showEngine ? "返回儀表" : "3D 內構"}
             </button>
@@ -145,15 +151,15 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
                 {vehicle.turbocharger && <div><dt>增壓</dt><dd>{turboBoostBar.toFixed(2)} bar</dd></div>}
                 {hybrid && <>
                   <div><dt>ERS 電量</dt><dd>{Math.round(100 * hybridEnergyKj / hybrid.capacityKj)}%</dd></div>
-                  <div><dt>{hybridPowerKw < -0.5 ? "ERS 回收" : "ERS 輔助"}</dt><dd>{Math.round(Math.abs(hybridPowerKw))} kW</dd></div>
+                  <div><dt>{hybridLabel}</dt><dd>{Math.round(Math.abs(hybridPowerKw))} kW</dd></div>
                 </>}
                 {electric && <>
                   <div><dt>電量</dt><dd>{Math.round(100 * electricEnergyKj / (3600 * electric.batteryCapacityKwh))}%</dd></div>
-                  <div><dt>{electricPowerKw < -0.5 ? "電力回收" : "電力輸出"}</dt><dd>{Math.round(Math.abs(electricPowerKw))} kW</dd></div>
+                  <div><dt>{electricLabel}</dt><dd>{Math.round(Math.abs(electricPowerKw))} kW</dd></div>
                 </>}
               </dl>
             )}
-            <p className="dashboard-note">傳動採近似模型，{vehicle.kind ? "輪胎" : "後輪"}假定純滾動，計入滾阻與風阻。聲浪為合成示意。</p>
+            <p className="dashboard-note">傳動採近似模型，{vehicle.kind ? "輪胎" : "後輪"}假定純滾動，計入滾阻與風阻。物理聲學合成示意。</p>
             {(tuning.id === "turbo-flutter" || tuning.id === "rotary-port") && (
               <p className="dashboard-note audio-voicing-note">
                 {tuning.id === "turbo-flutter" ? "增壓收油的改裝進氣音色。" : "改裝汽口的低速脈衝音色。"}
@@ -220,8 +226,13 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
         onShift={shift}
         onPedalChange={setPedal}
         resetKey={pedalReset}
-        recordingComparison={<RecordingComparison vehicleId={vehicle.id} idleRpm={vehicle.physics.idleRpm}
-          recordedKind={recordedKind} onSelect={selectRecording} onLoad={loadRecording} onRemove={removeRecording} />}
+        recordingComparison={<RecordingComparison
+          vehicleId={vehicle.id}
+          replayStatus={replayStatus}
+          recordedRun={activeRecordedRun}
+          onToggleRunRecording={toggleRunRecording}
+          onToggleRunReplay={toggleRunReplay}
+        />}
       />
     </div>
   );
@@ -298,7 +309,7 @@ export default function Home() {
                   <option key={option} value={option}>{option}</option>
                 ))}
               </select>
-              <a href={activeVehicle.source}>原廠資料</a>
+              <a href={activeVehicle.source} target="_blank" rel="noopener noreferrer">原廠資料</a>
             </div>
             {roadMode !== "motorcycle" || brandVehicles.length > 6 ? (
               <label className="vehicle-model-picker">
@@ -343,7 +354,7 @@ export default function Home() {
             </div>
           </section>
 
-          <DrivingConsole key={activeVehicle.id} vehicle={activeVehicle} />
+          <DrivingConsole vehicle={activeVehicle} />
         </>
       )}
     </main>

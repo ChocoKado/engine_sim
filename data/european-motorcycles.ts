@@ -109,9 +109,18 @@ const ducatiBase = [
     peakTorqueNm: 90.5, peakTorqueRpm: 6900, peakPowerPs: 114, peakPowerRpm: 9000,
     referenceRpm: 10000, fuelCutRpm: 10400, rollingRadiusM: 0.313, dragAreaM2: 0.38, exhaustFrequencyHz: 91,
   }),
+  defineMotorcycle({
+    id: "ducati-1199-panigale", brand: "Ducati", name: "1199 Panigale ’12", version: "2012 歐規・Superquadro",
+    engine: "90° V2・Superquadro",
+    source: "https://www.ducati.com/ww/en/heritage/models/1199-superleggera",
+    displacementCc: 1198, boreMm: 112, strokeMm: 60.8, firingDegrees: twin270Firing, bankAngleDegrees: 90, curbMassKg: 188,
+    gearRatios: [37 / 15, 30 / 16, 27 / 18, 25 / 20, 24 / 22, 23 / 24], primaryRatio: 1.77, finalDriveRatio: 39 / 15,
+    peakTorqueNm: 132, peakTorqueRpm: 9000, peakPowerPs: 195 * 745.6998716 / 735.49875, peakPowerRpm: 10750,
+    referenceRpm: 11500, fuelCutRpm: 11800, rollingRadiusM: 0.322, dragAreaM2: 0.355, exhaustFrequencyHz: 99,
+  }),
 ];
 
-const [panigaleV2, panigaleV4, panigaleV4R, ducati916] = ducatiBase;
+const [panigaleV2, panigaleV4, panigaleV4R, ducati916, ducati1199] = ducatiBase;
 const panigaleV4Lamborghini = defineMotorcycle({
   id: "ducati-panigale-v4-lamborghini", brand: "Ducati", name: "Panigale V4 Lamborghini", version: "2026 歐規・限量",
   engine: "90° V4・Twin Pulse", source: "https://www.ducati.com/ww/en/bikes/panigale/panigale-v4-lamborghini",
@@ -152,6 +161,7 @@ export const ducatiVehicles = [
     source: "https://www.ducati.com/gb/en/bikes/panigale/panigale-v4-marquez-2025-world-champion-replica", curbMassKg: 199,
   }),
   ducati916,
+  ducati1199,
 ];
 
 export const bmwVehicles = [

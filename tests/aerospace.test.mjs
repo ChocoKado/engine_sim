@@ -5,7 +5,7 @@ import vm from "node:vm";
 import { aerospaceEngines } from "../data/aerospace.ts";
 import { advanceAerospace, INITIAL_AEROSPACE_INPUT, INITIAL_AEROSPACE_STATE, stepAerospace } from "../lib/aerospace.ts";
 
-const [piston, turbofan, turbojet, rocket, turboprop, largeFan, upperEngine, staged] = aerospaceEngines;
+const [piston, turbofan, turbojet, rocket, turboprop, largeFan, upperEngine] = aerospaceEngines;
 const full = { ...INITIAL_AEROSPACE_INPUT, enabled: true, command: 1 };
 
 function run(engine, input, frames, initial = INITIAL_AEROSPACE_STATE) {
@@ -58,20 +58,11 @@ test("free-turbine load slows the propeller without coupling its rotational rate
   assert.equal(loaded.coreRpm, nominal.coreRpm);
 });
 
-test("the Falcon demonstration ignites a separate upper stage after the booster cutoff", () => {
-  const first = run(staged, full, 240);
-  const separated = run(staged, full, 530);
-  const upper = run(staged, full, 1700);
-  assert.equal(first.stage, "booster");
-  assert.ok(first.primary > .95 && first.secondary === 0 && !first.vacuum);
-  assert.equal(separated.stage, "separation");
-  assert.equal(separated.thrustKn, 0);
-  assert.equal(upper.stage, "upper");
-  assert.ok(upper.primary === 0 && upper.secondary > .99 && upper.vacuum);
-  assert.ok(Math.abs(upper.thrustKn - staged.upperThrustKn) < .01);
-  assert.equal(run(staged, INITIAL_AEROSPACE_INPUT, 1, upper).stage, "ready");
+test("the Centaur RL10 vacuum rocket engine operates strictly in vacuum mode", () => {
   const centaur = run(upperEngine, full, 1400);
+  const stopped = run(upperEngine, INITIAL_AEROSPACE_INPUT, 1200, centaur);
   assert.ok(centaur.vacuum && Math.abs(centaur.thrustKn - 101.9) < .01);
+  assert.equal(stopped.thrustKn, 0);
 });
 
 test("aerospace audio stays under its ceiling and fades without fresh telemetry or in vacuum", () => {
@@ -85,7 +76,7 @@ test("aerospace audio stays under its ceiling and fades without fresh telemetry 
     });
     vm.runInContext(source, context);
     const processor = new Processor({ processorOptions: { kind: engine.kind } });
-    const state = run(engine, full, engine.kind === "staged-rocket" ? 240 : 2000);
+    const state = run(engine, full, 2000);
     const signal = new Float32Array(128);
     function render(blocks, freshFrame) {
       for (let block = 0; block < blocks; block += 1) {
@@ -98,7 +89,7 @@ test("aerospace audio stays under its ceiling and fades without fresh telemetry 
     }
     const peak = render(60, state);
     assert.ok(state.vacuum ? peak < 1e-4 : peak > 0.02, engine.name);
-    if (engine.kind === "rocket" || engine.kind === "staged-rocket") assert.ok(render(180, { ...state, vacuum: true }) < 1e-4);
+    if (engine.kind === "rocket") assert.ok(render(180, { ...state, vacuum: true }) < 1e-4);
     assert.ok(render(250) < 1e-4);
   }
 });

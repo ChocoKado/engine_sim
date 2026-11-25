@@ -17,10 +17,48 @@ export function buildExhaust(vehicle: Vehicle, banks: readonly ExhaustPort[][], 
   const cast = new THREE.MeshStandardMaterial({ color: 0x4d5358, metalness: 0.56, roughness: 0.52 });
   const dark = new THREE.MeshBasicMaterial({ color: 0x191718, side: THREE.DoubleSide });
   const radius = scale * (race ? 0.056 : 0.066);
-  const flames: THREE.Mesh[] = [];
-  const flameMaterial = new THREE.ShaderMaterial({
+  const flames: THREE.Group[] = [];
+  const flashLights: THREE.PointLight[] = [];
+  const outerFlameMaterial = new THREE.ShaderMaterial({
     transparent: true,
     depthWrite: false,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+    uniforms: { strength: { value: 0 }, time: { value: 0 } },
+    vertexShader: `
+      uniform float strength;
+      uniform float time;
+      varying vec2 coords;
+      void main() {
+        coords = uv;
+        vec3 shaped = position;
+        float along = uv.y;
+        float swell = 1.0 + 0.36 * sin(along * 3.14159) + 0.09 * sin(16.0 * along - 52.0 * time) * along;
+        shaped.yz *= swell * (1.0 - 0.58 * smoothstep(0.55, 1.0, along));
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(shaped, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform float strength;
+      uniform float time;
+      varying vec2 coords;
+      void main() {
+        float along = coords.y;
+        float tongues = 0.74 + 0.26 * sin(22.0 * along + 18.84955 * coords.x - 64.0 * time)
+          * cos(11.0 * along - 12.56637 * coords.x + 41.0 * time);
+        float shockRing = 0.86 + 0.14 * max(0.0, cos(26.0 * along - 48.0 * time)) * (1.0 - along);
+        vec3 nozzleBlue = mix(vec3(0.34, 0.68, 1.0), vec3(0.98, 0.95, 0.86), smoothstep(0.0, 0.20, along));
+        vec3 midGold = mix(nozzleBlue, vec3(1.0, 0.76, 0.24), smoothstep(0.16, 0.52, along));
+        vec3 outerOrange = mix(midGold, vec3(1.0, 0.24, 0.03), smoothstep(0.46, 0.92, along));
+        float envelope = (1.0 - smoothstep(0.56, 1.0, along)) * tongues * shockRing;
+        gl_FragColor = vec4(outerOrange * (1.15 + 0.45 * strength), clamp(strength * 1.18 * envelope, 0.0, 1.0));
+      }
+    `,
+  });
+  const coreFlameMaterial = new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
     blending: THREE.AdditiveBlending,
     uniforms: { strength: { value: 0 }, time: { value: 0 } },
     vertexShader: `
@@ -36,16 +74,26 @@ export function buildExhaust(vehicle: Vehicle, banks: readonly ExhaustPort[][], 
       varying vec2 coords;
       void main() {
         float along = coords.y;
-        float detail = 0.72 + 0.28 * sin(24.0 * along + 19.0 * coords.x - 61.0 * time);
-        vec3 base = mix(vec3(0.3, 0.58, 1.0), vec3(1.0, 0.79, 0.36), smoothstep(0.01, 0.26, along));
-        vec3 color = mix(base, vec3(1.0, 0.23, 0.035), smoothstep(0.28, 0.9, along));
-        float fade = (1.0 - smoothstep(0.45, 1.0, along)) * detail;
-        gl_FragColor = vec4(color, strength * fade);
+        float diamond = 0.80 + 0.20 * cos(30.0 * along - 72.0 * time);
+        vec3 coreColor = mix(vec3(0.62, 0.86, 1.0), vec3(1.0, 0.93, 0.68), smoothstep(0.05, 0.65, along));
+        float alpha = (1.0 - smoothstep(0.35, 1.0, along)) * diamond;
+        gl_FragColor = vec4(coreColor * 1.3, clamp(strength * 1.35 * alpha, 0.0, 1.0));
       }
     `,
   });
-  const flameGeometry = new THREE.ConeGeometry(radius * 1.47, scale * 0.94, 12, 1, true)
-    .translate(0, scale * 0.47, 0).rotateZ(-Math.PI / 2);
+  const muzzleGlowMaterial = new THREE.MeshBasicMaterial({
+    color: 0xff9d42,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    toneMapped: false,
+  });
+  const outerPlumeGeometry = new THREE.CylinderGeometry(radius * 2.15, radius * 1.62, scale * 2.35, 16, 6, true)
+    .translate(0, scale * 1.175, 0).rotateZ(-Math.PI / 2);
+  const coreJetGeometry = new THREE.ConeGeometry(radius * 1.25, scale * 1.42, 14, 1, true)
+    .translate(0, scale * 0.71, 0).rotateZ(-Math.PI / 2);
+  const muzzleGlowGeometry = new THREE.SphereGeometry(radius * 2.45, 12, 10);
 
   function run(points: THREE.Vector3[], pipeRadius: number, material: THREE.Material) {
     const path = new THREE.CatmullRomCurve3(points);
@@ -110,20 +158,41 @@ export function buildExhaust(vehicle: Vehicle, banks: readonly ExhaustPort[][], 
     outlet.position.copy(lip).addScaledVector(xAxis, -radius * 0.22);
     group.add(outlet);
 
-    const flame = new THREE.Mesh(flameGeometry, flameMaterial);
-    flame.position.copy(lip);
-    flame.visible = false;
-    flame.scale.setScalar(0.001);
-    flames.push(flame);
-    group.add(flame);
+    const flameAssembly = new THREE.Group();
+    flameAssembly.position.copy(lip);
+    flameAssembly.visible = false;
+    flameAssembly.scale.setScalar(0.001);
+    const outerPlume = new THREE.Mesh(outerPlumeGeometry, outerFlameMaterial);
+    const coreJet = new THREE.Mesh(coreJetGeometry, coreFlameMaterial);
+    const muzzleGlow = new THREE.Mesh(muzzleGlowGeometry, muzzleGlowMaterial);
+    muzzleGlow.scale.set(1.35, 0.92, 0.92);
+    muzzleGlow.position.x = scale * 0.14;
+    flameAssembly.add(outerPlume, coreJet, muzzleGlow);
+    flames.push(flameAssembly);
+    group.add(flameAssembly);
+
+    const flashLight = new THREE.PointLight(0xff7d2b, 0, scale * 6.5, 1.5);
+    flashLight.position.copy(lip).addScaledVector(xAxis, scale * 0.35);
+    flashLights.push(flashLight);
+    group.add(flashLight);
   }
 
   function applyFlame(strength: number, timeSeconds: number) {
-    flameMaterial.uniforms.strength.value = Math.min(1, 1.4 * strength);
-    flameMaterial.uniforms.time.value = timeSeconds % 40;
+    const visible = strength > 0.015;
+    const clamped = Math.min(1, 1.35 * strength);
+    outerFlameMaterial.uniforms.strength.value = clamped;
+    outerFlameMaterial.uniforms.time.value = timeSeconds % 40;
+    coreFlameMaterial.uniforms.strength.value = Math.min(1, 1.55 * strength);
+    coreFlameMaterial.uniforms.time.value = timeSeconds % 40;
+    muzzleGlowMaterial.opacity = visible ? Math.min(0.62, 0.14 + 0.56 * strength) : 0;
+    const lengthScale = 0.62 + strength * 1.28;
+    const radialScale = 0.72 + strength * 0.88;
     for (const flame of flames) {
-      flame.visible = strength > 0.02;
-      flame.scale.set(0.32 + strength * 1.15, 0.42 + strength * 0.85, 0.42 + strength * 0.85);
+      flame.visible = visible;
+      flame.scale.set(lengthScale, radialScale, radialScale);
+    }
+    for (const light of flashLights) {
+      light.intensity = visible ? 3.8 * strength : 0;
     }
   }
 

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { AudioStatus } from "../hooks/useEngineAudio";
 import { aerospaceEngines } from "../data/aerospace";
 import type { AerospaceCategory, AerospaceEngine, AerospaceKind } from "../data/aerospace";
-import { advanceAerospace, aerospaceStageLabels, INITIAL_AEROSPACE_INPUT, INITIAL_AEROSPACE_STATE } from "../lib/aerospace";
+import { advanceAerospace, INITIAL_AEROSPACE_INPUT, INITIAL_AEROSPACE_STATE } from "../lib/aerospace";
 import type { AerospaceInput, AerospaceState } from "../lib/aerospace";
 import styles from "./AerospaceConsole.module.css";
 
@@ -75,7 +75,10 @@ function useBenchAudio(kind: AerospaceKind, propellerBlades?: number) {
     let timeout: ReturnType<typeof setTimeout> | undefined;
     try {
       if (!previous) {
-        const context = new AudioContext({ latencyHint: "interactive" });
+        const AudioContextClass = window.AudioContext
+          ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (!AudioContextClass) throw new Error("AudioContext unavailable");
+        const context = new AudioContextClass({ latencyHint: "interactive" });
         if (!context.audioWorklet) {
           void context.close().catch(() => {});
           throw new Error("AudioWorklet unavailable");
@@ -92,7 +95,7 @@ function useBenchAudio(kind: AerospaceKind, propellerBlades?: number) {
         });
         const created = { context, gain, ready } as BenchAudio;
         context.onstatechange = () => {
-          if (graph.current !== created || !created.node || !requested.current || context.state === "running") return;
+          if (graph.current !== created || !created.node || !requested.current || (context.state as string) === "running") return;
           requested.current = false;
           fadeAudio(created, 0);
           setStatus("paused");
@@ -184,8 +187,7 @@ function Bench({ engine }: { engine: AerospaceEngine }) {
     };
   }, [engine, send]);
 
-  const staged = engine.kind === "staged-rocket";
-  const rocket = staged || engine.kind === "rocket";
+  const rocket = engine.kind === "rocket";
   const outputLabel = propeller ? "軸功率" : "靜態推力";
   const outputUnit = propeller ? "kW" : "kN";
   const value = propeller ? state.powerKw : state.thrustKn;
@@ -208,8 +210,8 @@ function Bench({ engine }: { engine: AerospaceEngine }) {
             {engine.kind === "turboprop" && <div className={styles.metric}><span className="readout-label">氣體產生器</span><output aria-label="氣體產生器">{Math.round(state.secondary * 100)}%</output></div>}
           </div>
         ) : rocket ? (
-          <div className={styles.metric}><span className="readout-label">{staged ? "分級狀態" : "推力基準"}</span><output>
-            {staged ? aerospaceStageLabels[state.stage] : state.vacuum ? "真空" : "海平面"}
+          <div className={styles.metric}><span className="readout-label">推力基準</span><output>
+            {state.vacuum ? "真空" : "海平面"}
           </output></div>
         ) : (
           <div className={styles.spools}>
@@ -234,8 +236,7 @@ function Bench({ engine }: { engine: AerospaceEngine }) {
         </div>
       </>}
       <p className="dashboard-note">
-        {staged ? "縮時分級示意，機身比例近似。一級先點火，關機分離後，由二級引擎接續推進。"
-          : "定點台架近似，聲浪與內構為合成示意。"}
+        定點台架近似，聲浪與內構為合成示意。
         {rocket && state.vacuum && " 真空模式不播放外部聲音。"}
       </p>
     </section>
@@ -246,15 +247,15 @@ function Bench({ engine }: { engine: AerospaceEngine }) {
         <div className="control-actions">
           <button type="button" className="audio-toggle" disabled={status === "starting"} onClick={() => void toggle()}>{audioLabel[status]}</button>
           <button type="button" className={`engine-toggle${controls.enabled ? " engine-running" : ""}`} onClick={() => change({ enabled: !controls.enabled })}>
-            {controls.enabled ? "停止" : staged ? "啟動分級" : "啟動"}
+            {controls.enabled ? "停止" : "啟動"}
           </button>
         </div>
       </div>
-      {!staged && <label className={styles.command}>
+      <label className={styles.command}>
         <span>{rocket ? "推力指令" : "油門指令"}</span><span>{Math.round(controls.command * 100)}%</span>
         <input type="range" min={0} max={100} className="volume-slider" aria-label={rocket ? "推力指令" : "油門指令"}
           value={Math.round(controls.command * 100)} onChange={(event) => change({ command: Number(event.currentTarget.value) / 100 })} />
-      </label>}
+      </label>
       {propeller && <div className={styles.profile} role="group" aria-label="螺旋槳負載">
         <button type="button" className="mode-button" aria-pressed={!controls.heavyPropLoad} onClick={() => change({ heavyPropLoad: false })}>參考負載</button>
         <button type="button" className="mode-button" aria-pressed={controls.heavyPropLoad} onClick={() => change({ heavyPropLoad: true })}>較重負載</button>
@@ -272,7 +273,7 @@ function Bench({ engine }: { engine: AerospaceEngine }) {
 }
 
 export function AerospaceConsole({ category }: { category: AerospaceCategory }) {
-  const available = aerospaceEngines.filter((engine) => (category === "space") === (engine.kind === "rocket" || engine.kind === "staged-rocket"));
+  const available = aerospaceEngines.filter((engine) => (category === "space") === (engine.kind === "rocket"));
   const [selection, setSelection] = useState<string>(available[0].id);
   const engine = available.find((option) => option.id === selection) ?? available[0];
 
@@ -280,7 +281,7 @@ export function AerospaceConsole({ category }: { category: AerospaceCategory }) 
     <section className="vehicle-section" aria-labelledby="aerospace-title">
       <div className="section-heading">
         <div className="vehicle-heading"><h2 id="aerospace-title">選擇引擎</h2><small>{engine.reference}</small></div>
-        <a href={engine.source}>規格來源</a>
+        <a href={engine.source} target="_blank" rel="noopener noreferrer">規格來源</a>
       </div>
       <div className={styles.options} role="radiogroup" aria-labelledby="aerospace-title">
         {available.map((option) => <label className="vehicle-option" key={option.id}>

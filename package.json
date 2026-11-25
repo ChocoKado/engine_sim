@@ -11,7 +11,8 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --test tests/*.test.mjs",
+    "speed-audit": "node scripts/speed-audit.mjs"
   },
   "dependencies": {
     "next": "16.4.6",

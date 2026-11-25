@@ -125,7 +125,7 @@ function buildModel(engine: AerospaceEngine): Model {
     } };
   }
 
-  if (engine.kind === "rocket" || engine.kind === "staged-rocket") {
+  if (engine.kind === "rocket") {
     function bell(parent: THREE.Object3D, x: number, radius: number, length: number) {
       const root = new THREE.Group();
       root.position.x = x;
@@ -154,56 +154,6 @@ function buildModel(engine: AerospaceEngine): Model {
         plume.scale.set(.37 + .63 * level + .035 * flicker, spread, spread);
         soft.opacity = .16 + .29 * level;
       };
-    }
-
-    if (engine.kind === "staged-rocket") {
-      const booster = new THREE.Group();
-      const upper = new THREE.Group();
-      root.add(booster, upper);
-      const boosterCover = cylinder(covers, silver, .60, .60, 4.72, -.97);
-      const upperCover = cylinder(covers, silver, .60, .60, 1.64, 2.23);
-      cylinder(booster, dark, .59, .59, 4.65, -.95, true, Math.PI);
-      cylinder(booster, steel, .52, .48, 4.49, -.98);
-      for (const x of [-3.30, -2.18, -.44, .63, 1.34]) ring(booster, silver, .591, .028, x);
-      for (let i = 0; i < 4; i++) {
-        const mount = new THREE.Group();
-        mount.rotation.x = i * Math.PI / 2;
-        booster.add(mount);
-        box(mount, dark, 1.02, .60, 0, .32, .105, .24);
-      }
-      cylinder(upper, dark, .59, .59, 1.64, 2.22, true, Math.PI);
-      cylinder(upper, steel, .49, .43, 1.41, 2.29);
-      cylinder(upper, silver, .44, .59, .42, 3.25, true);
-      cylinder(upper, silver, .045, .44, .50, 3.70, true);
-      ring(upper, warm, .59, .044, 1.39);
-      const boosterPlumes = Array.from({ length: engine.boosterEngines }, (_, index) => {
-        const nozzle = bell(booster, -3.34, .143, .31);
-        const angle = (index - 1) * turn / (engine.boosterEngines - 1);
-        nozzle.position.y = index ? Math.sin(angle) * .39 : 0;
-        nozzle.position.z = index ? Math.cos(angle) * .39 : 0;
-        return flame(nozzle, -.31, .15, 1.45);
-      });
-      bell(upper, 1.47, .49, .72);
-      const upperPlume = flame(upper, .75, .45, 1.5);
-      part("九具一級引擎", palette.warm, -3.49, .41, .35, booster);
-      part("級間接合", palette.metal, 1.38, .58, .15, upper);
-      part("二級大噴嘴", palette.exhaust, 1.0, .40, .20, upper);
-      let separation = 0;
-      let flicker = 0;
-      return { root, covers, parts, update: (state, elapsed) => {
-        if (state.stage === "ready" || state.stage === "booster") separation = 0;
-        else separation = Math.min(1, separation + elapsed * 1.12);
-        flicker += elapsed * 27;
-        booster.position.set(-1.18 * separation, -.37 * separation, -.12 * separation);
-        upper.position.x = .35 * separation;
-        boosterCover.position.x = -.97 + booster.position.x;
-        boosterCover.position.y = booster.position.y;
-        boosterCover.position.z = booster.position.z;
-        upperCover.position.x = 2.23 + upper.position.x;
-        boosterPlumes.forEach((update, index) => update(state.primary, false, Math.sin(flicker + index)));
-        upperPlume(state.secondary, true, Math.sin(flicker));
-        hot.emissiveIntensity = .14 + Math.max(state.primary, state.secondary) * .83;
-      } };
     }
 
     const vacuumNozzle = engine.seaLevelThrustKn === null;
@@ -354,12 +304,11 @@ export function AerospaceScene({ engine, readState, cutaway, speed }: {
     renderer.domElement.className = "engine-canvas";
     renderer.domElement.setAttribute("aria-hidden", "true");
     element.prepend(renderer.domElement);
-    const staged = engine.kind === "staged-rocket";
-    const camera = new THREE.PerspectiveCamera(staged ? 36 : 32, 1, .1, 52);
-    camera.position.set(staged ? 3.2 : 3.7, staged ? 2.2 : 2.3, staged ? 9.2 : 6.4);
+    const camera = new THREE.PerspectiveCamera(32, 1, .1, 52);
+    camera.position.set(3.7, 2.3, 6.4);
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enablePan = false;
-    controls.minDistance = staged ? 5 : 3.3;
+    controls.minDistance = 3.3;
     controls.maxDistance = 14;
     const scene = new THREE.Scene();
     scene.add(new THREE.HemisphereLight(0xf4fbff, 0x604c3a, 2.3));
@@ -373,6 +322,10 @@ export function AerospaceScene({ engine, readState, cutaway, speed }: {
     scene.add(model.root);
     setParts(model.parts);
 
+    let dirty = true;
+    let lost = false;
+    const onOrbit = () => { dirty = true; };
+    controls.addEventListener("change", onOrbit);
     const size = new ResizeObserver(() => {
       const width = element.clientWidth;
       const height = element.clientHeight;
@@ -380,28 +333,56 @@ export function AerospaceScene({ engine, readState, cutaway, speed }: {
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
       renderer.setSize(width, height, false);
+      dirty = true;
     });
     size.observe(element);
+    const onContextLost = (event: Event) => {
+      event.preventDefault();
+      lost = true;
+      setUnavailable(true);
+    };
+    const onContextRestored = () => {
+      lost = false;
+      dirty = true;
+      setUnavailable(false);
+    };
+    renderer.domElement.addEventListener("webglcontextlost", onContextLost);
+    renderer.domElement.addEventListener("webglcontextrestored", onContextRestored);
     const position = new THREE.Vector3();
     let past: number | undefined;
+    let lastSelected = -1;
     let visual = readState();
     model.update(visual, 0);
     renderer.setAnimationLoop((now) => {
       const settings = display.current;
       const elapsed = Math.min(.05, past === undefined ? 0 : (now - past) / 1000) * settings.speed;
       past = now;
-      if (document.hidden) return;
-      model.covers.visible = !settings.cutaway;
+      if (lost || document.hidden) return;
+      if (model.covers.visible === settings.cutaway) {
+        model.covers.visible = !settings.cutaway;
+        dirty = true;
+      }
+      if (settings.selected !== lastSelected) {
+        lastSelected = settings.selected;
+        dirty = true;
+      }
       if (elapsed > 0) {
         const next = readState();
-        visual = settings.speed === 1 ? next : {
-          ...next,
-          shaftAngle: (visual.shaftAngle + elapsed * next.shaftRpm * turn / 60) % turn,
-          coreAngle: (visual.coreAngle + elapsed * next.coreRpm * turn / 60) % turn,
-          cycleAngle: (visual.cycleAngle + elapsed * next.shaftRpm * turn / 60) % (2 * turn),
-        };
-        model.update(visual, elapsed);
+        const active = next.outputLevel > 0.001 || next.shaftRpm > 0.1 || next.coreRpm > 0.1
+          || visual.outputLevel > 0.001 || visual.shaftRpm > 0.1 || visual.coreRpm > 0.1;
+        if (active) {
+          visual = settings.speed === 1 ? next : {
+            ...next,
+            shaftAngle: (visual.shaftAngle + elapsed * next.shaftRpm * turn / 60) % turn,
+            coreAngle: (visual.coreAngle + elapsed * next.coreRpm * turn / 60) % turn,
+            cycleAngle: (visual.cycleAngle + elapsed * next.shaftRpm * turn / 60) % (2 * turn),
+          };
+          model.update(visual, elapsed);
+          dirty = true;
+        }
       }
+      if (!dirty) return;
+      dirty = false;
       renderer.render(scene, camera);
       const part = model.parts[settings.selected];
       const dot = marker.current;
@@ -413,6 +394,9 @@ export function AerospaceScene({ engine, readState, cutaway, speed }: {
     });
     return () => {
       size.disconnect();
+      controls.removeEventListener("change", onOrbit);
+      renderer.domElement.removeEventListener("webglcontextlost", onContextLost);
+      renderer.domElement.removeEventListener("webglcontextrestored", onContextRestored);
       renderer.setAnimationLoop(null);
       controls.dispose();
       const geometries = new Set<THREE.BufferGeometry>();

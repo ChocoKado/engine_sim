@@ -1,4 +1,4 @@
-import { defineMotorcycle, defineTrim, inlineFourFiring, singleFiring, twin180Firing } from "./motorcycle.ts";
+import { defineMotorcycle, defineTrim, inlineFourFiring, singleFiring, twin180Firing, twin270Firing } from "./motorcycle.ts";
 
 const cbrMidGears = [3.286, 2.105, 1.600, 1.300, 1.150, 1.043];
 const firebladeSp = defineMotorcycle({
@@ -112,5 +112,13 @@ export const hondaVehicles = [
     gearRatios: [2.769, 1.882, 1.450, 1.227, 1.100, 0.964], primaryRatio: 1.520, finalDriveRatio: 42 / 16,
     peakTorqueNm: 88, peakTorqueRpm: 8500, peakPowerPs: 124, peakPowerRpm: 10500,
     referenceRpm: 11500, fuelCutRpm: 12000, rollingRadiusM: 0.312, dragAreaM2: 0.38, exhaustFrequencyHz: 145,
+  }),
+  defineMotorcycle({
+    id: "honda-vtr1000sp1", brand: "Honda", name: "VTR1000SP-1 ’00", version: "2000 歐規・SC45", engine: "90° V2・齒輪驅動凸輪",
+    source: "https://global.honda/jp/news/2000/20000927-cb1300.html",
+    displacementCc: 999, boreMm: 100, strokeMm: 63.6, firingDegrees: twin270Firing, bankAngleDegrees: 90, curbMassKg: 219,
+    gearRatios: [32 / 13, 29 / 16, 30 / 21, 31 / 25, 27 / 25, 25 / 26], primaryRatio: 68 / 40, finalDriveRatio: 40 / 16,
+    peakTorqueNm: 103, peakTorqueRpm: 8000, peakPowerPs: 136, peakPowerRpm: 9500,
+    referenceRpm: 10000, fuelCutRpm: 10400, rollingRadiusM: 0.316, dragAreaM2: 0.375, exhaustFrequencyHz: 94,
   }),
 ];

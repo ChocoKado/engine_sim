@@ -519,6 +519,21 @@ button { font: inherit; }
   background: linear-gradient(to top, var(--pedal-color) var(--pedal-opening), #ffffff27 var(--pedal-opening));
   pointer-events: none;
 }
+.pedal-button::after {
+  content: "";
+  position: absolute;
+  inset: .55rem .65rem .55rem auto;
+  width: .3rem;
+  background: linear-gradient(
+    to bottom,
+    #ffffff4d 0 2px, transparent 2px 25%,
+    #ffffff38 25% calc(25% + 1px), transparent calc(25% + 1px) 50%,
+    #ffffff4d 50% calc(50% + 2px), transparent calc(50% + 2px) 75%,
+    #ffffff38 75% calc(75% + 1px), transparent calc(75% + 1px) calc(100% - 2px),
+    #ffffff4d calc(100% - 2px) 100%
+  );
+  pointer-events: none;
+}
 .pedal-button[aria-pressed="true"] { border-color: var(--pedal-color); }
 .pedal-label { font-size: 1.15rem; font-weight: 800; }
 .pedal-status { color: var(--text); font: 700 .8125rem/1.25 var(--mono); font-variant-numeric: tabular-nums; }
@@ -574,6 +589,17 @@ button { font: inherit; }
   cursor: pointer;
 }
 
+input, textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.replay-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+}
+
 .recording-comparison {
   display: grid;
   gap: .45rem;
@@ -603,7 +629,7 @@ button { font: inherit; }
 .recording-file-row { display: flex; justify-content: space-between; align-items: center; gap: .4rem; overflow-wrap: anywhere; }
 .recording-reference a { color: var(--accent); }
 
-@media (min-width: 40rem) and (orientation: landscape), (min-width: 54rem) {
+@media (min-width: 35rem) and (orientation: landscape), (min-width: 54rem) {
   .vehicle-heading { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: .4rem; }
   .vehicle-options { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   .vehicle-options-scroll {
@@ -663,7 +689,7 @@ button { font: inherit; }
   .gear-readout { padding-inline: .15rem; }
 }
 
-@media (min-width: 40rem) and (orientation: landscape) and (max-height: 32rem) {
+@media (min-width: 35rem) and (orientation: landscape) and (max-height: 32rem) {
   .console-shell { padding-block: max(.65rem, env(safe-area-inset-top)) max(.65rem, env(safe-area-inset-bottom)); }
 
   .site-header {

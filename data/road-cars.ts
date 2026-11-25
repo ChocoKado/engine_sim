@@ -5,6 +5,7 @@ const poundFeetToNm = 1.3558179483;
 const evenFour = [0, 180, 360, 540] as const;
 const evenSix = [0, 120, 240, 360, 480, 600] as const;
 const evenEight = [0, 90, 180, 270, 360, 450, 540, 630] as const;
+const evenTen = [0, 72, 144, 216, 288, 360, 432, 504, 576, 648] as const;
 const oddTen = [0, 90, 144, 234, 288, 378, 432, 522, 576, 666] as const;
 const alternatingSix = [0, 1, 0, 1, 0, 1] as const;
 const alternatingTen = [0, 1, 0, 1, 0, 1, 0, 1, 0, 1] as const;
@@ -222,6 +223,50 @@ export const expandedRoadCars = [
       peakTorqueNm: 718, peakTorqueRpm: 7000, peakPowerPs: 800, peakPowerRpm: 8500,
       idleRpm: 850, referenceRpm: 8900, fuelCutRpm: 8900, lowRpmTorqueRatio: 0.52,
       engineInertiaKgM2: 0.275, wheelInertiaKgM2: 6.4, rollingRadiusM: 0.356, dragAreaM2: 0.78, maxDriveAccelerationG: 1.02,
+    },
+  }),
+  defineCar({
+    id: "honda-integra-type-r-dc2", brand: "Honda", name: "Integra Type R DC2", version: "1998 日規 98 Spec・5MT",
+    engine: "B18C 自然進氣直列四缸・VTEC", displacementCc: 1797,
+    vtecSwitchRpm: 5700,
+    source: "https://www.honda.co.jp/factbook/auto/INTEGRA/19950824/",
+    cylinderDimensionsMm: [81, 87.2, 137.9], firingDegrees: evenFour, cylinderFiringDegrees: [0, 540, 180, 360],
+    exhaustFrequencyHz: 176, pulseDecayMs: 5.7,
+    physics: {
+      curbMassKg: 1080, gearRatios: [3.230, 2.105, 1.458, 1.034, 0.787], finalDriveRatio: 4.785,
+      peakTorqueNm: 19.0 * 9.80665, peakTorqueRpm: 6200, peakPowerPs: 200, peakPowerRpm: 8000,
+      idleRpm: 850, referenceRpm: 8400, fuelCutRpm: 8600, lowRpmTorqueRatio: 0.50,
+      engineInertiaKgM2: 0.125, wheelInertiaKgM2: 3.6, rollingRadiusM: 0.296, dragAreaM2: 0.61, maxDriveAccelerationG: 0.62,
+      speedLimitKmh: 180,
+    },
+  }),
+  defineCar({
+    id: "nissan-gtr-r35", brand: "Nissan", name: "GT-R R35", version: "2017 日規 Pure・6DCT",
+    engine: "VR38DETT 雙渦輪 V6", displacementCc: 3799,
+    source: "https://global.nissannews.com/en/releases/2017-nissan-gt-r-makes-world-debut-at-new-york-international-auto-show",
+    cylinderDimensionsMm: [95.5, 88.4, 165], bankAngleDegrees: 60, firingDegrees: evenSix,
+    cylinderFiringDegrees: [0, 240, 480, 120, 360, 600], exhaustBanks: alternatingSix,
+    turbocharger: { maxBoostBar: 1.1, spoolStartRpm: 2000, turbineCount: 2 },
+    exhaustFrequencyHz: 116, pulseDecayMs: 7.5,
+    physics: {
+      curbMassKg: 1760, gearRatios: [4.056, 2.301, 1.595, 1.248, 1.001, 0.796], finalDriveRatio: 3.700,
+      peakTorqueNm: 637, peakTorqueRpm: 3300, peakTorqueEndRpm: 5800, peakPowerPs: 570, peakPowerRpm: 6800,
+      idleRpm: 750, referenceRpm: 7000, fuelCutRpm: 7100, lowRpmTorqueRatio: 0.34,
+      engineInertiaKgM2: 0.24, wheelInertiaKgM2: 6.2, rollingRadiusM: 0.343, dragAreaM2: 0.69, maxDriveAccelerationG: 1.05,
+    },
+  }),
+  defineCar({
+    id: "lexus-lfa", brand: "Lexus", name: "LFA", version: "2010 日規・6ASG",
+    engine: "1LR-GUE 72° 自然進氣 V10", displacementCc: 4805,
+    source: "https://www.toyota.co.jp/jpn/company/history/75years/vehicle_lineage/car/id60016301/",
+    cylinderDimensionsMm: [88, 79, 146], bankAngleDegrees: 72, firingDegrees: evenTen,
+    exhaustBanks: alternatingTen, exhaustFrequencyHz: 196, pulseDecayMs: 4.8,
+    physics: {
+      // Transaxle includes the 1.259 front counter gear ahead of the 3.417 final drive.
+      curbMassKg: 1480, gearRatios: [3.231, 2.188, 1.609, 1.233, 0.970, 0.795], finalDriveRatio: 1.259 * 3.417,
+      peakTorqueNm: 480, peakTorqueRpm: 6800, peakPowerPs: 560, peakPowerRpm: 8700,
+      idleRpm: 900, referenceRpm: 9000, fuelCutRpm: 9400, lowRpmTorqueRatio: 0.48,
+      engineInertiaKgM2: 0.165, wheelInertiaKgM2: 5.5, rollingRadiusM: 0.338, dragAreaM2: 0.66, maxDriveAccelerationG: 0.92,
     },
   }),
 ];

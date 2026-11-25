@@ -11,13 +11,16 @@ import type { EngineStroke, RotaryGeometry } from "../lib/kinematics";
 import { rpmFromRadiansPerSecond } from "../lib/simulation";
 import type { SimulationState } from "../lib/simulation";
 
+export type SceneQuality = "low" | "medium" | "high";
+
 interface EngineSceneProps {
   vehicle: Vehicle;
   readState: () => SimulationState;
-  readExhaustFlame: () => number;
+  readExhaustFlame: (advanceMs?: number) => number;
   cutaway: boolean;
   paused: boolean;
   visualSpeed: number;
+  quality?: SceneQuality;
   onStrokesChange: (strokes: readonly EngineStroke[]) => void;
 }
 
@@ -563,14 +566,26 @@ function buildEngine(vehicle: Vehicle) {
   return { group, cover, applyCutaway, applyPose, applyFlame: exhaust.applyFlame, layout, extraMaterials: Object.values(strokes) };
 }
 
-export default function EngineScene({ vehicle, readState, readExhaustFlame, cutaway, paused, visualSpeed, onStrokesChange }: EngineSceneProps) {
+function targetPixelRatio(quality: SceneQuality): number {
+  const dpr = window.devicePixelRatio || 1;
+  if (quality === "low") return 1;
+  if (quality === "high") return Math.min(dpr, 2);
+  return Math.min(dpr, 1.5);
+}
+
+export default function EngineScene({
+  vehicle, readState, readExhaustFlame, cutaway, paused, visualSpeed, quality = "medium", onStrokesChange,
+}: EngineSceneProps) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const options = useRef({ readState, readExhaustFlame, cutaway, paused, visualSpeed, onStrokesChange });
+  const options = useRef({ readState, readExhaustFlame, cutaway, paused, visualSpeed, quality, onStrokesChange });
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const [unavailable, setUnavailable] = useState(false);
 
   useEffect(() => {
-    options.current = { readState, readExhaustFlame, cutaway, paused, visualSpeed, onStrokesChange };
-  }, [readState, readExhaustFlame, cutaway, paused, visualSpeed, onStrokesChange]);
+    options.current = { readState, readExhaustFlame, cutaway, paused, visualSpeed, quality, onStrokesChange };
+    const activeRenderer = rendererRef.current;
+    if (activeRenderer) activeRenderer.setPixelRatio(targetPixelRatio(quality));
+  }, [readState, readExhaustFlame, cutaway, paused, visualSpeed, quality, onStrokesChange]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -591,8 +606,9 @@ export default function EngineScene({ vehicle, readState, readExhaustFlame, cuta
     const subject = vehicle.geometry.rotary ? "轉子引擎內構"
       : vehicle.supercharger ? "引擎與機械增壓器內構" : "引擎內構";
     canvas.setAttribute("aria-label", `${vehicle.name} ${subject}與排氣管示意，可旋轉及縮放`);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    renderer.setPixelRatio(targetPixelRatio(options.current.quality));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    rendererRef.current = renderer;
     host.appendChild(canvas);
 
     const scene = new THREE.Scene();
@@ -638,6 +654,8 @@ export default function EngineScene({ vehicle, readState, readExhaustFlame, cuta
     let lost = false;
     let dirty = true;
     let lastFlame = 0;
+    let flameTimeSeconds = 0;
+    let slowFrames = 0;
     let lastTime: number | null = null;
     let lastLegendAt = -Infinity;
     let lastStrokes: readonly EngineStroke[] = [];
@@ -649,11 +667,12 @@ export default function EngineScene({ vehicle, readState, readExhaustFlame, cuta
       frame = 0;
       if (lost || document.hidden) return;
       const current = options.current;
-      const elapsed = lastTime === null ? 0 : Math.min(0.075, (timestamp - lastTime) / 1000);
+      const rawElapsed = lastTime === null ? 0 : (timestamp - lastTime) / 1000;
+      const elapsed = Math.min(0.075, Math.max(0, rawElapsed));
       lastTime = timestamp;
+      const sceneSeconds = current.paused ? 0 : elapsed * current.visualSpeed;
       if (!current.paused) {
         const state = current.readState();
-        const sceneSeconds = elapsed * current.visualSpeed;
         const nextAngle = current.visualSpeed === 1 ? state.crankAngleRad
           : (crankAngle + state.engineAngularVelocity * sceneSeconds) % cycleTurn;
         const nextImpeller = current.visualSpeed === 1 ? state.superchargerAngleRad
@@ -678,10 +697,11 @@ export default function EngineScene({ vehicle, readState, readExhaustFlame, cuta
           current.onStrokesChange(strokes);
         }
       }
-      const flame = current.paused ? 0 : current.readExhaustFlame();
+      const flame = current.readExhaustFlame(sceneSeconds * 1000);
+      if (!current.paused) flameTimeSeconds += sceneSeconds;
       if (flame > 0 || lastFlame > 0) {
-        engine.applyFlame(flame, timestamp / 1000);
-        dirty = true;
+        engine.applyFlame(flame, flameTimeSeconds);
+        if (!current.paused || flame !== lastFlame) dirty = true;
       }
       lastFlame = flame;
       if (engine.cover.visible === current.cutaway) {
@@ -690,6 +710,15 @@ export default function EngineScene({ vehicle, readState, readExhaustFlame, cuta
       }
       controls.update();
       if (dirty) {
+        if (rawElapsed > 0.045 && renderer.getPixelRatio() > 1) {
+          slowFrames += 1;
+          if (slowFrames >= 24) {
+            renderer.setPixelRatio(1);
+            slowFrames = 0;
+          }
+        } else {
+          slowFrames = 0;
+        }
         renderer.render(scene, camera);
         dirty = false;
       }
@@ -775,6 +804,7 @@ export default function EngineScene({ vehicle, readState, readExhaustFlame, cuta
       for (const geometry of geometries) geometry.dispose();
       for (const material of materials) material.dispose();
       environment.dispose();
+      rendererRef.current = null;
       renderer.dispose();
       renderer.forceContextLoss();
       canvas.remove();

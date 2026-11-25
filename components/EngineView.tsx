@@ -8,6 +8,7 @@ import { STROKE_COLORS } from "../lib/kinematics";
 import type { EngineStroke } from "../lib/kinematics";
 import { rpmFromRadiansPerSecond } from "../lib/simulation";
 import type { SimulationState } from "../lib/simulation";
+import type { SceneQuality } from "./EngineScene";
 import styles from "./EngineView.module.css";
 
 const EngineScene = dynamic(() => import("./EngineScene"), {
@@ -24,6 +25,12 @@ const visualSpeeds = [
   { value: 1 / 240, label: "1/240×" },
 ] as const;
 
+const qualityOptions: readonly { value: SceneQuality; label: string }[] = [
+  { value: "low", label: "省電 (1.0×)" },
+  { value: "medium", label: "標準 (1.5×)" },
+  { value: "high", label: "高畫質 (2.0×)" },
+];
+
 const strokeNames: Record<EngineStroke, string> = {
   intake: "進氣", compression: "壓縮", power: "作功", exhaust: "排氣",
 };
@@ -33,22 +40,25 @@ export function EngineView({ vehicle, snapshot, readState, readExhaustFlame }: {
   vehicle: Vehicle;
   snapshot: SimulationState;
   readState: () => SimulationState;
-  readExhaustFlame: () => number;
+  readExhaustFlame: (advanceMs?: number) => number;
 }) {
   const [cutaway, setCutaway] = useState(true);
   const [paused, setPaused] = useState(false);
   const [visualSpeed, setVisualSpeed] = useState(1);
+  const [quality, setQuality] = useState<SceneQuality>("medium");
   const [strokes, setStrokes] = useState<readonly EngineStroke[]>([]);
   const rpm = Math.round(rpmFromRadiansPerSecond(snapshot.engineAngularVelocity));
+  const speedKmh = Math.round(snapshot.vehicleSpeed * 3.6);
+  const gearLabel = snapshot.gear === 0 ? "N" : String(snapshot.gear);
   const impellerRpm = Math.round(rpmFromRadiansPerSecond(snapshot.superchargerAngularVelocity));
 
   return (
     <div className="engine-view">
       <EngineScene vehicle={vehicle} readState={readState} readExhaustFlame={readExhaustFlame}
-        cutaway={cutaway} paused={paused} visualSpeed={visualSpeed} onStrokesChange={setStrokes} />
+        cutaway={cutaway} paused={paused} visualSpeed={visualSpeed} quality={quality} onStrokesChange={setStrokes} />
       <div className="engine-view-tools">
         <div>
-          <span className="engine-rpm">{rpm} RPM</span>
+          <span className="engine-rpm">{rpm} RPM · {speedKmh} km/h · 檔位 {gearLabel}</span>
           {vehicle.supercharger && (
             <div>增壓葉輪 <span className="impeller-rpm">{impellerRpm.toLocaleString("zh-TW")} RPM</span></div>
           )}
@@ -64,11 +74,18 @@ export function EngineView({ vehicle, snapshot, readState, readExhaustFlame }: {
           </button>
         </div>
       </div>
-      <label className={styles.speedControl}>動畫速度
-        <select value={visualSpeed} onChange={(event) => setVisualSpeed(Number(event.currentTarget.value))}>
-          {visualSpeeds.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
-        </select>
-      </label>
+      <div className={styles.controlsRow}>
+        <label className={styles.speedControl}>動畫速度
+          <select value={visualSpeed} onChange={(event) => setVisualSpeed(Number(event.currentTarget.value))}>
+            {visualSpeeds.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
+          </select>
+        </label>
+        <label className={styles.speedControl}>畫質
+          <select value={quality} onChange={(event) => setQuality(event.currentTarget.value as SceneQuality)}>
+            {qualityOptions.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
+          </select>
+        </label>
+      </div>
       {cutaway && (vehicle.geometry.rotary ? (
         <ul className={styles.legend} aria-label="轉子引擎色標">
           <li style={{ "--phase-color": STROKE_COLORS.intake } as CSSProperties}>進氣口</li>
@@ -88,11 +105,10 @@ export function EngineView({ vehicle, snapshot, readState, readExhaustFlame }: {
         </ul>
       ))}
       <p className="dashboard-note">
-        拖曳旋轉，雙指或滾輪縮放。慢速只調整畫面。
+        拖曳旋轉，雙指或滾輪縮放。慢速只調整畫面，回火火焰會隨慢速延長並在暫停時定格。
         {vehicle.geometry.rotary ? "轉子、偏心軸與氣口位置為示意。" : "白光顯示點火。缸號依模型排序，汽門正時與管路為示意。"}
         {vehicle.geometry.vva && " VVA 切換點待驗。"}
         {vehicle.supercharger && " 增壓葉輪與殼體為示意。"}
-        {" 回火時可在尾管看到火焰。"}
       </p>
     </div>
   );

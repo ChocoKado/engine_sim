@@ -30,7 +30,7 @@ kawasaki-ninja7-hybrid,motorcycle,Kawasaki,Ninja 7 Hybrid,2024 歐規・燃油�
 kawasaki-zx25rr,motorcycle,Kawasaki,ZX-25RR,2026 日規,unknown,182.0,182.0,6,17289,,unknown,unknown,,,https://www.kawasaki-motors.com/ja-jp/motorcycle/ninja/supersport/ninja-zx-25r/2026-ninja-zx-25rr
 kawasaki-zx4rr,motorcycle,Kawasaki,ZX-4RR,2027 歐規・全功率,unknown,227.1,227.1,6,14207,,unknown,unknown,,,https://www.kawasaki.eu/en/Motorcycles/A2_Bikes/Ninja_ZX-4RR_2027.dispdir.dispdir.html.html
 kawasaki-zx10rr,motorcycle,Kawasaki,ZX-10RR,2026 澳洲版,unknown,310.5,310.5,6,13781,,unknown,unknown,,,https://www.kawasaki.com.au/en-au/motorcycle/ninja/supersport/ninja-zx-10r/2026-ninja-zx-10rr
-kawasaki-zx7r,motorcycle,Kawasaki,ZX-7R ’96,1996 出口版・經典,unknown,251.9,251.9,6,10963,,unknown,unknown,,,https://www.kawasaki.com/en-us/owner-center/parts/1996/ZX750-P1
+kawasaki-zx7r,motorcycle,Kawasaki,ZX-7R ’96,1996 出口版・經典,unknown,251.9,251.9,6,10964,,unknown,unknown,,,https://www.kawasaki.com/en-us/owner-center/parts/1996/ZX750-P1
 aprilia-rs125,motorcycle,Aprilia,RS 125,2025 歐規,unknown,119.4,119.4,6,11400,,unknown,unknown,,,https://www.aprilia.com/en_EN/models/rs-125/rs-125-125-4s4v-2025/
 aprilia-rs457,motorcycle,Aprilia,RS 457,2025 日規,unknown,189.0,189.0,6,9944,,unknown,unknown,,,https://wlassets.aprilia.com/wlassets/aprilia/jp/tech-spec/2024/RS_457_JP/original/457_JP.pdf
 aprilia-rs457-gp-replica,motorcycle,Aprilia,RS 457 GP Replica,2026 歐規,unknown,189.0,189.0,6,9944,,unknown,unknown,,,https://wlassets.aprilia.com/wlassets/aprilia/master/tech_spec/2026/RS-457-Replica/RS-457-GP-Replica-technical-sheet-EN/original/RS-457-GP-Replica-technical-sheet-EN.pdf
@@ -46,10 +46,11 @@ ducati-panigale-v2-mm93,motorcycle,Ducati,Panigale V2 MM93,2026 歐規・限量,
 ducati-panigale-v2-fb63,motorcycle,Ducati,Panigale V2 FB63,2026 歐規・限量,unknown,256.7,256.7,6,11510,,unknown,unknown,,,https://www.ducati.com/gb/en/bikes/panigale/panigale-v2-fb63
 ducati-panigale-v4,motorcycle,Ducati,Panigale V4,2027 歐規,unknown,318.1,318.1,6,14039,,unknown,unknown,,,https://www.ducati.com/gb/en/bikes/panigale/panigale-v4-2027/insights
 ducati-panigale-v4-s,motorcycle,Ducati,Panigale V4 S,2027 歐規,unknown,318.1,318.1,6,14040,,unknown,unknown,,,https://www.ducati.com/gb/en/bikes/panigale/panigale-v4-2027/insights
-ducati-panigale-v4-r,motorcycle,Ducati,Panigale V4 R,2026 歐規,unknown,318.5,318.5,6,15293,,unknown,unknown,,,https://www.ducati.com/gb/en/bikes/panigale/panigale-v4-r/insights
+ducati-panigale-v4-r,motorcycle,Ducati,Panigale V4 R,2026 歐規,unknown,318.5,318.5,6,15293,,318.4,manufacturer claim,road configuration,https://www.ducati.com/gb/en/bikes/panigale/panigale-v4-r/insights,https://www.ducati.com/gb/en/bikes/panigale/panigale-v4-r/insights
 ducati-panigale-v4-lamborghini,motorcycle,Ducati,Panigale V4 Lamborghini,2026 歐規・限量,unknown,314.3,314.3,6,14387,,unknown,unknown,,,https://www.ducati.com/ww/en/bikes/panigale/panigale-v4-lamborghini
 ducati-panigale-v4-marquez,motorcycle,Ducati,Panigale V4 Márquez,2026 歐規・冠軍紀念,unknown,314.3,314.3,6,14386,,unknown,unknown,,,https://www.ducati.com/gb/en/bikes/panigale/panigale-v4-marquez-2025-world-champion-replica
 ducati-916,motorcycle,Ducati,916,1994 歐規・經典,unknown,253.1,253.1,6,9073,,unknown,unknown,,,https://www.ducati.com/us/en/heritage/bikes/916
+ducati-1199-panigale,motorcycle,Ducati,1199 Panigale ’12,2012 歐規・Superquadro,unknown,309.5,309.5,6,11245,,unknown,unknown,,,https://www.ducati.com/ww/en/heritage/models/1199-superleggera
 suzuki-gsxr125,motorcycle,Suzuki,GSX-R125,2025 歐規,unknown,128.0,128.0,6,11053,,unknown,unknown,,,https://www.globalsuzuki.com/motorcycle/smgs/products/2025gsx-r125/
 suzuki-gsxr150,motorcycle,Suzuki,GSX-R150,印尼版,unknown,136.8,136.8,6,11814,,unknown,unknown,,,https://www.suzuki.co.id/motorcycle/gsx-r150
 suzuki-gixxer-sf,motorcycle,Suzuki,GIXXER SF,2026 印度版・155 cc,unknown,119.8,119.8,5,8966,,unknown,unknown,,,https://www.suzukimotorcycle.co.in/product-details/gixxer-sf
@@ -64,6 +65,7 @@ suzuki-gsxr1000,motorcycle,Suzuki,GSX-R1000,2027 美規・輸出近似,unknown,3
 suzuki-gsxr1000r,motorcycle,Suzuki,GSX-R1000R,2027 日規,unknown,302.3,302.3,6,14080,,unknown,unknown,,,https://www1.suzuki.co.jp/motor/lineup/gsxr1000rrrm7/?page=style&type=gsxr1000rrrm7
 suzuki-hayabusa,motorcycle,Suzuki,Hayabusa,2026 日規・第三代,299,298.6,298.6,6,10188,310.0,298,cross-generation test,second-generation test,https://www.motorradonline.de/tourer/vergleichstest-sport-gegen-speedbikes-die-schnellsten-motorraeder-im-test/,https://www1.suzuki.co.jp/motor/lineup/gsx1300rrqm6/
 suzuki-gsxr750-1985,motorcycle,Suzuki,GSX-R750 ’85,1985 日規・初代,unknown,219.5,219.5,6,9608,,unknown,unknown,,,https://www.suzuki.co.jp/suzuki_digital_library/2_moto/sports_081.html
+suzuki-gsxr1000-k5,motorcycle,Suzuki,GSX-R1000 ’05,2005 歐規・K5,unknown,298.5,298.5,6,12204,,unknown,unknown,,,https://www.suzuki.co.jp/suzuki_digital_library/
 honda-cbr150r,motorcycle,Honda,CBR150R,印尼版,unknown,130.6,130.6,6,10563,,unknown,unknown,,,https://asset.astra-honda.com/uploads/download/e-brochure-honda-cbr150r-1-23102024-070133.pdf
 honda-cbr250rr,motorcycle,Honda,CBR250RR,日規 MC51,unknown,184.0,184.0,6,13873,,unknown,unknown,,,https://www.honda.co.jp/CBR250RR/
 honda-cbr400r,motorcycle,Honda,CBR400R,2026 日規・雙缸,unknown,182.6,182.6,6,10047,,unknown,unknown,,,https://www.honda.co.jp/content/dam/site/www/CBR400R/cq_img/pdf/CBR400R_spec_2026.pdf
@@ -71,38 +73,42 @@ honda-cbr500r,motorcycle,Honda,CBR500R,2026 美規・雙缸,unknown,185.2,185.2,
 honda-cbr400r-four,motorcycle,Honda,CBR400R FOUR,2026 日規,unknown,200.7,200.7,6,12647,,unknown,unknown,,,https://www.honda.co.jp/content/dam/site/www/CBR400RF/cq_img/pdf/CBR400RF_SPEC_SP.pdf
 honda-cbr500r-four,motorcycle,Honda,CBR500R FOUR,2027 英規,unknown,199.9,199.9,6,12600,,unknown,unknown,,,https://www.honda.co.uk/motorcycles/range/super-sport/cbr500r-four/specifications.html
 honda-cbr600rr,motorcycle,Honda,CBR600RR,2024 日規,unknown,264.1,264.1,6,15126,,unknown,unknown,,,https://www.honda.co.jp/content/dam/site/www/CBR600RR/cq_img/pdf/CBR600RR_SPEC_SP.pdf
-honda-cbr650r,motorcycle,Honda,CBR650R,2026 日規,unknown,236.7,236.7,6,11558,,unknown,unknown,,,https://www.honda.co.jp/CBR650R/
+honda-cbr650r,motorcycle,Honda,CBR650R,2026 日規,unknown,236.7,236.7,6,11559,,unknown,unknown,,,https://www.honda.co.jp/CBR650R/
 honda-cbr1000rr,motorcycle,Honda,CBR1000RR,2027 美規・輸出近似,unknown,303.4,303.4,6,12476,,unknown,unknown,,,https://hondanews.com/en-US/powersports/releases/release-10b376615d3edad8d3556cbbb10c5c3b-2027-honda-cbr1000rr-specifications
 honda-cbr1000rr-r,motorcycle,Honda,CBR1000RR-R,2024 日規・Fireblade,unknown,320.5,320.5,6,14251,,unknown,unknown,,,https://www.honda.co.jp/content/dam/site/www/CBR1000RRR/cq_img/pdf/CBR1000RRR_SPEC_SP.pdf
 honda-cbr1000rr-r-sp,motorcycle,Honda,CBR1000RR-R SP,2024 日規・Fireblade,unknown,320.4,320.4,6,14250,,unknown,unknown,,,https://www.honda.co.jp/content/dam/site/www/CBR1000RRR/cq_img/pdf/CBR1000RRR_SPEC_SP.pdf
 honda-cbr250rr-mc22,motorcycle,Honda,CBR250RR ’90,1990 日規・MC22,unknown,189.1,189.1,6,16122,,unknown,unknown,,,https://www.honda.co.jp/factbook/motor/CBR250RR/19900300/011.html
 honda-vfr750r-rc30,motorcycle,Honda,VFR750R ’87,1987 日規・RC30,unknown,217.9,217.9,6,10567,,unknown,unknown,,,https://www.honda.co.jp/motorcycle-refresh-plan/pdf/VFR750R-RC30.pdf
-honda-cbr900rr,motorcycle,Honda,CBR900RR ’92,1992 歐規・初代,unknown,254.3,254.3,5,9489,,unknown,unknown,,,https://global.honda/en/CBR/history/stories/1992/
+honda-cbr900rr,motorcycle,Honda,CBR900RR ’92,1992 歐規・初代,unknown,256.1,254.3,5,9489,,unknown,unknown,,,https://global.honda/en/CBR/history/stories/1992/
+honda-vtr1000sp1,motorcycle,Honda,VTR1000SP-1 ’00,2000 歐規・SC45,unknown,267.0,267.0,6,9160,,unknown,unknown,,,https://global.honda/jp/news/2000/20000927-cb1300.html
 bmw-g310rr,motorcycle,BMW,G 310 RR,印度版・Sport,unknown,156.0,156.0,6,10699,,unknown,unknown,,,https://www.bmw-motorrad.in/en/models/sport/g310rr/technicaldata.html
 bmw-f450rr,motorcycle,BMW,F 450 RR,2027 德規・上市前預覽,unknown,178.1,178.1,6,9575,,unknown,unknown,,,https://www.bmw-motorrad.de/de/models/sport/f450rr/technicaldata.html
-bmw-s1000rr,motorcycle,BMW,S 1000 RR,2025 歐規,unknown,303.0,303.0,6,14293,,unknown,unknown,,,https://www.press.bmwgroup.com/switzerland/article/attachment/T0446040DE/624096
-bmw-m1000rr,motorcycle,BMW,M 1000 RR,2025 歐規,unknown,314.1,314.1,6,14362,,unknown,unknown,,,https://www.press.bmwgroup.com/switzerland/article/attachment/T0446040DE/624096
+bmw-s1000rr,motorcycle,BMW,S 1000 RR,2025 歐規,unknown,303.0,303.0,6,14293,,303,manufacturer claim,2025 EU technical data,https://www.press.bmwgroup.com/switzerland/article/attachment/T0446040DE/624096,https://www.press.bmwgroup.com/switzerland/article/attachment/T0446040DE/624096
+bmw-m1000rr,motorcycle,BMW,M 1000 RR,2025 歐規,unknown,314.1,314.1,6,14362,,314,manufacturer claim,2025 EU technical data,https://www.press.bmwgroup.com/switzerland/article/attachment/T0446040DE/624096,https://www.press.bmwgroup.com/switzerland/article/attachment/T0446040DE/624096
 bmw-s1000rr-2009,motorcycle,BMW,S 1000 RR ’09,2009 歐規・初代,unknown,301.1,301.1,6,13586,,unknown,unknown,,,https://www.press.bmwgroup.com/global/article/detail/T0119114EN/the-new-bmw-s-1000-rr
-toyota-gr86,car,Toyota,GR86,2025 日規 RZ・6MT,unknown,228.9,228.9,6,6241,,unknown,unknown,,,https://toyota.jp/pages/contents/request/webcatalog/86/gr86_main_202507.pdf
-honda-civic-type-r,car,Honda,Civic Type R,2027 美規 FL5・6MT,unknown,269.5,269.5,6,6461,,unknown,unknown,,,https://automobiles.honda.com/civic-type-r/specs-features-trim-comparison
-toyota-gr-supra,car,Toyota,GR Supra,2025 北美 3.0・6MT,249,248.7,248.7,6,5869,289.4,unknown,unknown,,,https://www.toyota.com/content/dam/toyota/brochures/pdf/2025/grsupra_ebrochure.pdf
-nissan-z,car,Nissan,Z,2024 澳規・6MT,unknown,285.6,285.6,6,6468,,unknown,unknown,,,https://www.nissan.com.au/content/dam/Nissan/AU/Files/Brochures/Models/Specsheet/Nissan_Z_Key-Visual_Collateral_SpecSheet_eSpec_v2.pdf
-ford-mustang-gt,car,Ford,Mustang GT,2025 美規 Fastback・6MT,249,248.7,248.7,5,5673,297.4,249,same-generation test,2024 6MT at 155 mph governor,https://www.caranddriver.com/reviews/a44892132/2024-ford-mustang-gt-test/,https://www.fromtheroad.ford.com/content/dam/fordmediasite/us/en/library/2025/specs/2025_Mustang_Technical_Specs.pdf
-mazda-rx8,car,Mazda,RX-8,2009 美規・6MT,unknown,234.8,234.8,6,7272,,unknown,unknown,,,https://news.mazdausa.com/download/2009-RX-8-Spec.pdf
+toyota-gr86,car,Toyota,GR86,2025 日規 RZ・6MT,unknown,229.6,229.6,6,6258,,unknown,unknown,,,https://toyota.jp/pages/contents/request/webcatalog/86/gr86_main_202507.pdf
+honda-civic-type-r,car,Honda,Civic Type R,2027 美規 FL5・6MT,unknown,269.6,269.6,6,6464,,unknown,unknown,,,https://automobiles.honda.com/civic-type-r/specs-features-trim-comparison
+toyota-gr-supra,car,Toyota,GR Supra,2025 北美 3.0・6MT,249,248.7,248.7,6,5869,289.4,249,manufacturer governor,North America 3.0 6MT 155 mph limit,https://www.toyota.com/content/dam/toyota/brochures/pdf/2025/grsupra_ebrochure.pdf,https://www.toyota.com/content/dam/toyota/brochures/pdf/2025/grsupra_ebrochure.pdf
+nissan-z,car,Nissan,Z,2024 澳規・6MT,unknown,285.8,285.8,6,6473,,unknown,unknown,,,https://www.nissan.com.au/content/dam/Nissan/AU/Files/Brochures/Models/Specsheet/Nissan_Z_Key-Visual_Collateral_SpecSheet_eSpec_v2.pdf
+ford-mustang-gt,car,Ford,Mustang GT,2025 美規 Fastback・6MT,249,248.7,248.7,4,6970,297.7,249,same-generation test,2024 6MT at 155 mph governor,https://www.caranddriver.com/reviews/a44892132/2024-ford-mustang-gt-test/,https://www.fromtheroad.ford.com/content/dam/fordmediasite/us/en/library/2025/specs/2025_Mustang_Technical_Specs.pdf
+mazda-rx8,car,Mazda,RX-8,2009 美規・6MT,unknown,235.9,235.9,6,7304,,unknown,unknown,,,https://news.mazdausa.com/download/2009-RX-8-Spec.pdf
 nissan-skyline-gtr-r34,car,Nissan,Skyline GT-R R34,2000 日規 V·spec II・6MT,unknown,255.7,255.7,6,5995,,unknown,unknown,,,https://global.nissannews.com/en/releases/skyline-and-skyline-gt-r-undergo-minor-model-change
 mazda-rx7-spirit-r,car,Mazda,RX-7 Spirit R,2002 日規 Type A・5MT,unknown,271.5,271.5,5,7711,,unknown,unknown,,,https://newsroom.mazda.com/en/publicity/release/2002/200203/0325e.html
-honda-nsx-na2,car,Honda,NSX NA2,1997 日規 NSX 3.2・6MT,unknown,273.7,273.7,6,6909,,unknown,unknown,,,https://www.honda.co.jp/factbook/auto/NSX/19970206/ns97-011.html
-honda-s2000-ap1,car,Honda,S2000 AP1,1999 日規標準版・6MT,unknown,256.7,256.7,6,8774,,unknown,unknown,,,https://www.honda.co.jp/auto-archive/s2000/2001/shogen.html
+honda-nsx-na2,car,Honda,NSX NA2,1997 日規 NSX 3.2・6MT,unknown,273.9,273.9,6,6915,,unknown,unknown,,,https://www.honda.co.jp/factbook/auto/NSX/19970206/ns97-011.html
+honda-s2000-ap1,car,Honda,S2000 AP1,1999 日規標準版・6MT,unknown,256.8,256.8,6,8776,,unknown,unknown,,,https://www.honda.co.jp/auto-archive/s2000/2001/shogen.html
 toyota-gr-yaris,car,Toyota,GR Yaris,2024 日規 RZ High Performance・6MT,unknown,261.4,261.4,6,6758,,unknown,unknown,,,https://toyotagazooracing.com/pressrelease/2024/0321-01/
 subaru-impreza-wrx-sti,car,Subaru,Impreza WRX STI,2005 加規 GDB・6MT,unknown,257.1,257.1,6,6487,,unknown,unknown,,,https://www.subaru.ca/Content/7907/media/en-ca/download/2005ImprezaWRXSTi.pdf
 audi-tt-rs-8j,car,Audi,TT RS Coupé 8J,2010 歐規 quattro・6MT,250,249.6,249.6,6,5838,277.8,unknown,unknown,,,https://www.vag-technique.fr/ext_files/ssp/vw/SSP_451_Audi_TT_RS_avec_moteur_TFSI_R5_de_2-5_L.pdf
-bmw-m3-e92,car,BMW,M3 E92 Coupé,2007 歐規・6MT,250,249.7,249.7,6,6813,296.6,unknown,unknown,,,https://www.press.bmwgroup.com/deutschland/article/attachment/T0082243DE/125133
+bmw-m3-e92,car,BMW,M3 E92 Coupé,2007 歐規・6MT,250,249.7,249.7,5,7814,297.5,unknown,unknown,,,https://www.press.bmwgroup.com/deutschland/article/attachment/T0082243DE/125133
 porsche-911-gt3-992,car,Porsche,911 GT3 (992.2),2025 歐規・6MT,unknown,308.4,308.4,6,8793,,313,manufacturer claim,992.2 6MT claimed maximum,https://pnr-prd2-pub2.newsroom.porsche.com/dam/jcr%3A46cb0e24-ad5a-489c-a404-52c678071d03/pag-911-gt3-mt-en.pdf,https://pnr-prd2-pub2.newsroom.porsche.com/dam/jcr%3A46cb0e24-ad5a-489c-a404-52c678071d03/pag-911-gt3-mt-en.pdf
-chevrolet-corvette-stingray-c8,car,Chevrolet,Corvette Stingray C8,2022 歐規 Z51 Coupé・8DCT,unknown,291.0,285.3,7,4582,,unknown,unknown,,,https://media.chevrolet.com/content/dam/Media/documents/INTL/chevrolet/tech-data/corvette-stingray/Chevrolet-Corvette-Stingray-TechSpecs_EN.pdf
-dodge-viper,car,Dodge,Viper SRT,2017 美規標準版・6MT,unknown,334.1,334.1,6,5830,,unknown,unknown,,,https://s3.amazonaws.com/chryslermedia.iconicweb.com/mediasite/specs/2017_DG_Viper_SPfla4qp9pu01chim5ofhl9bmqdd.pdf
-mercedes-sls-amg,car,Mercedes-AMG,SLS AMG Coupé,2010 C197・7DCT,317,316.6,316.6,7,6564,329.2,unknown,unknown,,,https://www.ausmotive.com/downloads/Mercedes-Benz/SLS-AMG-Press-kit-July2010.pdf
-lamborghini-gallardo-lp560,car,Lamborghini,Gallardo LP 560-4,2009 Coupé・6MT,unknown,323.5,320.4,6,6315,,unknown,unknown,,,https://www.lamborghini.com/en-en/history/gallardo-lp-560-4-coupe
-ferrari-812-superfast,car,Ferrari,812 Superfast,2017 歐規・7DCT,unknown,360.0,360.0,7,8250,,unknown,unknown,,,https://cdn.ferrari.com/cms/network/media/pdf/cs_ferrari_812_superfast_gbr.pdf
+chevrolet-corvette-stingray-c8,car,Chevrolet,Corvette Stingray C8,2022 歐規 Z51 Coupé・8DCT,unknown,297.3,297.3,6,6110,,unknown,unknown,,,https://media.chevrolet.com/content/dam/Media/documents/INTL/chevrolet/tech-data/corvette-stingray/Chevrolet-Corvette-Stingray-TechSpecs_EN.pdf
+dodge-viper,car,Dodge,Viper SRT,2017 美規標準版・6MT,unknown,334.5,334.5,6,5836,,unknown,unknown,,,https://s3.amazonaws.com/chryslermedia.iconicweb.com/mediasite/specs/2017_DG_Viper_SPfla4qp9pu01chim5ofhl9bmqdd.pdf
+mercedes-sls-amg,car,Mercedes-AMG,SLS AMG Coupé,2010 C197・7DCT,317,316.6,316.6,7,6564,329.5,unknown,unknown,,,https://www.ausmotive.com/downloads/Mercedes-Benz/SLS-AMG-Press-kit-July2010.pdf
+lamborghini-gallardo-lp560,car,Lamborghini,Gallardo LP 560-4,2009 Coupé・6MT,unknown,324.9,324.9,5,7670,,unknown,unknown,,,https://www.lamborghini.com/en-en/history/gallardo-lp-560-4-coupe
+ferrari-812-superfast,car,Ferrari,812 Superfast,2017 歐規・7DCT,unknown,360.2,360.2,7,8256,,unknown,unknown,,,https://cdn.ferrari.com/cms/network/media/pdf/cs_ferrari_812_superfast_gbr.pdf
+honda-integra-type-r-dc2,car,Honda,Integra Type R DC2,1998 日規 98 Spec・5MT,180,179.8,179.8,4,7971,245.2,unknown,unknown,,,https://www.honda.co.jp/factbook/auto/INTEGRA/19950824/
+nissan-gtr-r35,car,Nissan,GT-R R35,2017 日規 Pure・6DCT,unknown,304.2,304.2,6,6929,,315,manufacturer claim,R35 570 PS European press specification,https://global.nissannews.com/en/releases/2017-nissan-gt-r-makes-world-debut-at-new-york-international-auto-show,https://global.nissannews.com/en/releases/2017-nissan-gt-r-makes-world-debut-at-new-york-international-auto-show
+lexus-lfa,car,Lexus,LFA,2010 日規・6ASG,unknown,336.1,336.1,6,9021,,325,manufacturer claim,factory rated maximum speed,https://www.toyota.co.jp/jpn/company/history/75years/vehicle_lineage/car/id60016301/,https://www.toyota.co.jp/jpn/company/history/75years/vehicle_lineage/car/id60016301/
 toyota-supra-a80,car,Toyota,Supra A80,1993 日規 RZ・6MT,180,179.8,179.8,5,4838,263.7,unknown,unknown,,,https://toyota.jp/ucar/catalog/brand-TOYOTA/car-SUPRA/199305/1000910/
 ferrari-312t,formula1,Ferrari,312 T,1975 賽季,unknown,287.9,287.9,5,11896,,unknown,unknown,,,https://www.ferrari.com/en-CA/formula1/312-t
 mclaren-mp4-4,formula1,McLaren,MP4/4,1988 賽季,unknown,317.9,317.9,6,12081,,unknown,unknown,,,https://global.honda/en/F1/machine/1988_McLarenHondaMP44/
@@ -112,7 +118,7 @@ ferrari-f2004,formula1,Ferrari,F2004,2004 賽季,unknown,338.1,338.1,7,17739,,un
 brawn-bgp001,formula1,Brawn GP,BGP 001,2009 賽季,unknown,321.3,321.3,7,16488,,unknown,unknown,,,https://images2.bonhams.com/original?src=Images%2Flive%2F2025-04%2F14%2FS-30996-0-1.pdf
 mercedes-w11,formula1,Mercedes-AMG,F1 W11,2020 EQ Performance,unknown,341.9,318.9,8,11353,,unknown,unknown,,,https://media.mercedes-benz.com/en/article/95002cb8-fdee-4190-82fb-c2b00feaf8db
 red-bull-rb19,formula1,Red Bull Racing,RB19,2023 賽季,unknown,350.3,325.0,8,11317,,354.3,F1 event speed trap,"2023 Monza race, Sergio Perez",https://www.fia.com/events/fia-formula-one-world-championship/season-2023/italian-grand-prix/race-classification,https://global.honda/en/F1/machine/2023_RedBullRB19/
-ferrari-sf-26,formula1,Ferrari,SF-26,2026 賽季,unknown,330.1,304.9,8,10137,,unknown,unknown,,,https://www.ansa.it/documents/1769167532298_SF26.pdf
+ferrari-sf-26,formula1,Ferrari,SF-26,2026 賽季,unknown,330.2,304.9,8,10137,,unknown,unknown,,,https://www.ansa.it/documents/1769167532298_SF26.pdf
 cadillac-v-series-r,endurance,Cadillac,V-Series.R,2023 Le Mans・LMDh,unknown,343.4,343.4,7,8510,,343.4,WEC event speed trap,2025 Le Mans race car #12,https://fiawec.alkamelsystems.com/Results/14_2025/04_LE%20MANS/600_FIA%20WEC/202506141600_Race/24_Hour%2024/15_EventMaxiumSpeed_Race_Hour%2024.PDF,https://www.cadillac.com/content/cadillac/na/us/en/index/racing/imsa.html
 porsche-963,endurance,Porsche,963,2023 規格基準・LMDh,unknown,341.3,341.3,7,8290,,344.5,WEC event speed trap,2025 Le Mans FP1 car #5,https://fiawec.alkamelsystems.com/Results/14_2025/04_LE%20MANS/600_FIA%20WEC/202506141600_Race/24_Hour%2024/15_EventMaxiumSpeed_Race_Hour%2024.PDF,https://newsroom.porsche.com/en/2023/motorsports/porsche-hypercar-gtp-prototype-963-technology-31043.html
 bmw-m-hybrid-v8,endurance,BMW,M Hybrid V8,2023 規格基準・LMDh,unknown,344.3,344.3,7,7716,,343.4,WEC event speed trap,2025 Le Mans FP2 car #15,https://fiawec.alkamelsystems.com/Results/14_2025/04_LE%20MANS/600_FIA%20WEC/202506141600_Race/24_Hour%2024/15_EventMaxiumSpeed_Race_Hour%2024.PDF,https://newsroom.bmwgroup.com/global/the-heart-of-the-bmw-m-hybrid-v8-p663-eight-cylinder-hybrid-turbo-engine-drives-the-lmdh-prototype

@@ -138,8 +138,9 @@ function advanceIgnition(state: SimulationState, input: SimulationInput, vehicle
   const { physics } = vehicle;
   const electric = physics.electricDrive;
   const powerOn = input.engineOn && !state.engineFailed && !state.pitAwaitingPowerOff;
+  const manualNeutralStart = input.shiftMode === "MT" && state.gear === 0 && input.throttle > 0.12;
   const canStart = powerOn && (!electric || state.engineOn || state.enginePhase === "cranking"
-    || roadSpeed * 3.6 >= electric.engineStartKmh || state.electricEnergyKj <= 4);
+    || roadSpeed * 3.6 >= electric.engineStartKmh || state.electricEnergyKj <= 4 || manualNeutralStart);
   const crankTime = electric ? 0.24 : 0.34 + 0.14 * (1 - state.engineWarmth);
   const engineOn = canStart && (state.engineOn || state.crankingSeconds >= crankTime || rpm >= 0.8 * physics.idleRpm);
   const cranking = canStart && !engineOn;
@@ -165,22 +166,29 @@ function advanceIgnition(state: SimulationState, input: SimulationInput, vehicle
 
 function advanceElectricDrive(
   state: SimulationState, electric: Vehicle["physics"]["electricDrive"], powerOn: boolean, gear: number,
-  roadSpeed: number, throttle: number, brakeForce: number, wheelRadius: number, driveForceLimit: number,
+  roadSpeed: number, throttle: number, brake: number, brakeForce: number, wheelRadius: number, driveForceLimit: number,
   coupling: number, combustionScale: number,
 ) {
   const energy = state.electricEnergyKj;
   if (!electric || !powerOn || gear <= 0) return { torqueNm: 0, electricPowerKw: 0, electricEnergyKj: energy, motorLoad: 0 };
   const dt = FIXED_STEP_SECONDS;
   const capacityKj = electric.batteryCapacityKwh * 3600;
-  if (brakeForce > 0) {
-    const regenPowerKw = electric.regenPowerKw ?? electric.motorPowerKw;
+  const regenPowerKw = electric.regenPowerKw ?? electric.motorPowerKw;
+  if (brakeForce > 0 && (throttle <= 0.15 || brake >= throttle * 0.5)) {
     const recoverKw = Math.min(regenPowerKw, 0.76 * brakeForce * roadSpeed / 1000, (capacityKj - energy) / dt);
     return { torqueNm: 0, electricPowerKw: -recoverKw, electricEnergyKj: energy + recoverKw * dt,
       motorLoad: -Math.min(1, recoverKw / electric.motorPowerKw) };
   }
+  if (regenPowerKw > 0 && throttle <= 0.06 && brake === 0 && coupling >= 0.9 && roadSpeed > 12) {
+    const speedFactor = unitInterval((roadSpeed - 12) / 35);
+    const overrunKw = Math.min(0.28 * regenPowerKw * speedFactor, (capacityKj - energy) / dt);
+    const dragTorqueNm = -overrunKw * 1000 * wheelRadius / roadSpeed;
+    return { torqueNm: dragTorqueNm, electricPowerKw: -overrunKw, electricEnergyKj: energy + overrunKw * dt,
+      motorLoad: -Math.min(1, overrunKw / electric.motorPowerKw) };
+  }
 
   const powerSpeed = Math.max(0.7, roadSpeed);
-  const driveDemand = throttle * (1 - coupling);
+  const driveDemand = throttle * (1 - 0.5 * brake) * (1 - coupling);
   const powerKw = Math.min(energy / dt, electric.motorPowerKw) * driveDemand * combustionScale;
   const force = Math.min(electric.launchTorqueNm / wheelRadius * driveDemand,
     powerKw * 1000 / powerSpeed, driveForceLimit);
@@ -198,14 +206,16 @@ function advanceTurbo(
   const fullBoostRpm = Math.max(spoolStartRpm + 850, vehicle.physics.peakTorqueRpm);
   const flow = unitInterval((rpm - spoolStartRpm) / (fullBoostRpm - spoolStartRpm));
   const opening = throttle * (1 - shiftCut);
-  const target = turbo.maxBoostBar * flow * opening ** 1.4 * (inGear ? 1 : 0.24);
+  const target = turbo.maxBoostBar * flow * opening ** 1.4 * (inGear ? 1 : 0.44);
   const pressure = state.turboBoostBar;
   const releaseStarts = state.throttle * (1 - state.shiftCut) >= 0.48 && opening < 0.48 && pressure >= 0.12;
-  const decay = target > pressure ? 0.24 : opening < 0.45 ? 0.070 : 0.18;
+  const spoolTau = inGear ? 0.24 : 0.16;
+  const decay = target > pressure ? spoolTau : opening < 0.45 ? 0.070 : 0.18;
+  const fullReleasePressure = Math.max(0.28, Math.min(0.78, turbo.maxBoostBar * 0.58));
   return {
     turboBoostBar: pressure + (target - pressure) * (1 - Math.exp(-FIXED_STEP_SECONDS / decay)),
     turboRelease: releaseStarts
-      ? Math.min(1, pressure / 0.8)
+      ? Math.min(1, pressure / fullReleasePressure)
       : state.turboRelease * Math.exp(-FIXED_STEP_SECONDS / 0.082),
   };
 }
@@ -285,7 +295,10 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
   const vtec = vehicle.geometry.vtec;
   const highCam = vtec && engineOn ? unitInterval((rpm - vtec.switchRpm + 80) / 160)
     * unitInterval((throttle - 0.2) / 0.28) * unitInterval((ignition.engineWarmth - 0.08) / 0.20) : 0;
-  const camTorque = vtec ? 0.90 + 0.10 * highCam : 1;
+  const lowCamDip = vtec
+    ? (physics.peakTorqueRpm < vtec.switchRpm ? unitInterval((rpm - vtec.switchRpm + 80) / 320) : 1)
+    : 0;
+  const camTorque = vtec ? 1 - 0.10 * lowCamDip * (1 - highCam) : 1;
   const availableCombustion = (camTorque * fullThrottleTorqueNm(rpm, physics) + friction) * Math.min(revFuel, roadFuel);
   const idleCombustion = Math.min(0.65 * availableCombustion, Math.max(0, engineLoss + 0.42 * (idleSpeed - engineSpeed)));
   const matchingCharge = unitInterval((revMatchRpm - rpm) / 1400);
@@ -302,15 +315,28 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
   let assistTorque = 0;
   let hybridPowerKw = 0;
   if (hybrid && engineOn && gear > 0 && roadSpeed > 3) {
-    if (brake > 0) {
+    if (brake > 0 && (throttle <= 0.2 || brake >= throttle * 0.5)) {
+      // Brake-by-wire blends MGU harvesting into the requested braking deceleration.
       hybridPowerKw = -Math.min(hybrid.regenPowerKw, 0.82 * brakeForce * roadSpeed / 1000,
         (hybrid.capacityKj - state.hybridEnergyKj) / dt);
-    } else if (throttle > 0.55 && engineSpeed > idleSpeed && clutchScale >= 0.95
+    } else if (throttle <= 0.06 && brake === 0 && clutchScale >= 0.9 && state.shift === null
+      && engineSpeed > hotIdleSpeed * 1.25 && roadSpeed > 12) {
+      // Lift-and-coast overrun harvesting: MGU-K applies generator drag torque on the crankshaft.
+      const overrunShare = hybrid.taperStartKmh !== undefined ? 0.38 : 0.30;
+      const rpmWindow = unitInterval((rpm - physics.idleRpm * 1.25) / (physics.referenceRpm * 0.45));
+      const speedWindow = unitInterval((roadSpeed - 12) / 32);
+      const overrunKw = Math.min(
+        hybrid.regenPowerKw * overrunShare * rpmWindow * speedWindow,
+        (hybrid.capacityKj - state.hybridEnergyKj) / dt,
+      );
+      assistTorque = -overrunKw * 1000 / engineSpeed;
+      hybridPowerKw = -overrunKw;
+    } else if (throttle > 0.55 && brake < 0.35 && engineSpeed > idleSpeed && clutchScale >= 0.95
       && (hybrid.minDeploymentKmh === undefined || (pitZone === "track" && roadSpeedKmh >= hybrid.minDeploymentKmh))) {
       const taper = hybrid.taperStartKmh !== undefined && hybrid.taperEndKmh !== undefined
         ? unitInterval((hybrid.taperEndKmh - roadSpeedKmh) / (hybrid.taperEndKmh - hybrid.taperStartKmh))
         : 1;
-      const requestedKw = hybrid.peakPowerKw * taper * throttle * combustionScale * Math.min(revFuel, roadFuel);
+      const requestedKw = hybrid.peakPowerKw * taper * throttle * (1 - brake) * combustionScale * Math.min(revFuel, roadFuel);
       const remainingKw = Math.min(requestedKw, state.hybridEnergyKj / dt);
       // A combined-power profile describes the total demand. Its motor replaces a share of ICE torque.
       const assistLimit = combinedCap === undefined ? driveTorqueLimit - combustion + engineLoss : combustion - engineLoss;
@@ -318,13 +344,13 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
       hybridPowerKw = assistTorque * engineSpeed / 1000;
     }
   }
-  const combustionTorque = combinedCap === undefined ? combustion : combustion - assistTorque;
+  const combustionTorque = combinedCap === undefined || assistTorque <= 0 ? combustion : combustion - assistTorque;
   const starterTorque = ignition.starter
     ? physics.engineInertiaKgM2 * (radiansPerSecondFromRpm(ignition.crankingRpm) - engineSpeed) / 0.075 + engineLoss : 0;
   const engineTorque = combustionTorque + assistTorque + starterTorque - engineLoss;
   const startCoupling = physics.electricDrive ? unitInterval((ignition.runningSeconds - 0.08) / 0.32) : 1;
   const electric = advanceElectricDrive(state, physics.electricDrive, powerOn, gear, roadSpeed,
-    throttle, brakeForce, radius, driveForceLimit, startCoupling, combustionScale * roadFuel);
+    throttle, brake, brakeForce, radius, driveForceLimit, startCoupling, combustionScale * roadFuel);
   const slip = engineSpeed - matchedEngineSpeed;
   const launchShift = input.shiftMode === "MT" && transmission.shift?.fromGear === 0 && transmission.shift.targetGear === 1
     && transmission.shift.startRpm >= physics.referenceRpm * 0.36;
@@ -372,8 +398,8 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
   const crankAdvance = dt * (engineSpeed + nextEngineSpeed) / 2;
   const superchargerRatio = vehicle.supercharger?.driveRatio ?? 0;
   const nextRpm = rpmFromRadiansPerSecond(nextEngineSpeed);
-  const overRevThresholdRpm = Math.max(physics.referenceRpm, gearFuelCutRpm ?? 0);
-  const mechanicalOverRev = nextRpm > overRevThresholdRpm && (clutchTorque < 0 || state.mechanicalOverRev);
+  const overRevThresholdRpm = Math.max(physics.referenceRpm, fuelCutRpm);
+  const mechanicalOverRev = nextRpm > overRevThresholdRpm && (clutchTorque < 0 || (state.mechanicalOverRev && gear > 0));
   const newOverRev = mechanicalOverRev && !state.mechanicalOverRev;
   // An illustrative accumulated severity, with no prediction of a real engine's failure limit.
   const damageRate = Math.max(0, (nextRpm / overRevThresholdRpm - 1.10) / 0.10);

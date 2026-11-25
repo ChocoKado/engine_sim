@@ -43,6 +43,7 @@ function PointerActionButton({ className, onActivate, disabled, pressed, childre
   children: ReactNode;
 }) {
   const pointers = useRef(new Set<number>());
+  const lastPointerUp = useRef(-Infinity);
 
   function cancelPointer({ pointerId }: PointerEvent<HTMLButtonElement>) {
     pointers.current.delete(pointerId);
@@ -60,13 +61,17 @@ function PointerActionButton({ className, onActivate, disabled, pressed, childre
         pointers.current.add(event.pointerId);
       }}
       onPointerUp={(event) => {
-        if (pointers.current.delete(event.pointerId) && isInsideButton(event)) onActivate();
+        if (pointers.current.delete(event.pointerId) && isInsideButton(event)) {
+          lastPointerUp.current = performance.now();
+          onActivate();
+        }
       }}
       onPointerCancel={cancelPointer}
       onLostPointerCapture={cancelPointer}
-      onClick={(event) => {
-        // Pointer activation is handled above so a second finger does not need a synthetic click.
-        if (event.detail === 0) onActivate();
+      onClick={() => {
+        // Ignore synthetic clicks following pointer activation while preserving keyboard/assistive clicks.
+        if (performance.now() - lastPointerUp.current < 350) return;
+        onActivate();
       }}
     >
       {children}
@@ -90,9 +95,9 @@ function ShiftButton({ direction, onShift, disabled }: Pick<RidingControlsProps,
 
 function pedalPercent({ clientY, currentTarget }: PointerEvent<HTMLButtonElement>) {
   const { top, height } = currentTarget.getBoundingClientRect();
-  // Use the center of the pad for fine control and leave room to reach either limit with a thumb.
+  // Leave room at the top to reach 100% comfortably with a thumb and eliminate the bottom dead zone inside the pad.
   const position = (clientY - top) / Math.max(1, height);
-  const opening = Math.min(1, Math.max(0, (0.92 - position) / 0.84));
+  const opening = Math.min(1, Math.max(0, (1.0 - position) / 0.90));
   return Math.round(opening * 100);
 }
 
@@ -195,6 +200,7 @@ function PedalButton({ pedal, label, onPedalChange }: Pick<RidingControlsProps, 
 
   return (
     <button
+      ref={buttonRef}
       type="button"
       className={`pedal-button ${pedal}-button`}
       style={{ "--pedal-opening": `${opening}%` } as CSSProperties}

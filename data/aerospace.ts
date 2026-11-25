@@ -1,5 +1,5 @@
 export type AerospaceCategory = "aircraft" | "space";
-export type AerospaceKind = "piston" | "turboprop" | "turbofan" | "turbojet" | "rocket" | "staged-rocket";
+export type AerospaceKind = "piston" | "turboprop" | "turbofan" | "turbojet" | "rocket";
 
 interface AeroBase {
   readonly id: string;
@@ -20,7 +20,6 @@ export type AerospaceEngine = AeroBase & (
   | ({ readonly kind: "turboprop" } & PropellerDrive)
   | { readonly kind: "turbofan" | "turbojet"; readonly ratedThrustKn: number }
   | { readonly kind: "rocket"; readonly seaLevelThrustKn: number | null; readonly vacuumThrustKn: number }
-  | { readonly kind: "staged-rocket"; readonly boosterEngines: number; readonly boosterThrustKn: number; readonly upperThrustKn: number }
 );
 
 const poundsForceToKilonewtons = 0.004448221615;
@@ -68,11 +67,5 @@ export const aerospaceEngines = [
     reference: "真空推力 101.9 kN",
     seaLevelThrustKn: null, vacuumThrustKn: 101.9,
     source: "https://www.ulalaunch.com/docs/default-source/launch-booklets/mobrochure_nrol101.pdf",
-  },
-  {
-    id: "falcon-9-stages", kind: "staged-rocket", name: "Falcon 9", detail: "九具 Merlin 一級・單具 Merlin Vacuum 二級",
-    reference: "一級海平面 7,605 kN・二級真空 981 kN",
-    boosterEngines: 9, boosterThrustKn: 9 * 845, upperThrustKn: 981,
-    source: "https://www.spacex.com/assets/media/falcon-users-guide-2025-05-09.pdf",
   },
 ] as const satisfies readonly AerospaceEngine[];

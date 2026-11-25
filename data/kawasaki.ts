@@ -335,7 +335,7 @@ export const kawasakiVehicles = [
     source: "https://www.kawasaki.cz/cs/products/Supersport___Sport/2019/Ninja_H2/specifications?Uid=0842WFwLDlkOXFtdUFFZXF0KWQpeUQ5QDg5QUFpaCV1QWV4",
     // The mechanical step-up is documented in Kawasaki Technical Review No. 180.
     // Audio gain is a synthetic mix parameter, independent of the drive ratio.
-    supercharger: { driveRatio: 9.18, audioGain: 0.09 },
+    supercharger: { driveRatio: 9.18, audioGain: 0.20 },
     geometry: {
       boreM: 0.076,
       strokeM: 0.055,
@@ -390,7 +390,7 @@ export const kawasakiVehicles = [
     engine: "機械增壓直列四缸",
     gears: 6,
     source: "https://www.kawasaki.eu/en/Motorcycles/Hypersport/Ninja_H2R_2026.html/ZX1000YTFNN/ZX1000YTFNN",
-    supercharger: { driveRatio: 9.18, audioGain: 0.12 },
+    supercharger: { driveRatio: 9.18, audioGain: 0.25 },
     geometry: {
       boreM: 0.076,
       strokeM: 0.055,

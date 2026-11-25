@@ -37,7 +37,7 @@ class AerospaceSoundProcessor extends AudioWorkletProcessor {
     if (!output) return true;
     const frame = this.frame;
     const fresh = currentTime - this.lastPacketTime < 0.23;
-    const rocket = this.kind === "rocket" || this.kind === "staged-rocket";
+    const rocket = this.kind === "rocket";
     const piston = this.kind === "piston";
     const prop = this.kind === "turboprop";
     const fan = this.kind === "turbofan";

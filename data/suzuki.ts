@@ -118,4 +118,12 @@ export const suzukiVehicles = [
     peakTorqueNm: 62.8, peakTorqueRpm: 8000, peakPowerPs: 77, peakPowerRpm: 9500,
     referenceRpm: 10900, fuelCutRpm: 11400, rollingRadiusM: 0.326, dragAreaM2: 0.39, exhaustFrequencyHz: 125,
   }),
+  defineMotorcycle({
+    id: "suzuki-gsxr1000-k5", brand: "Suzuki", name: "GSX-R1000 ’05", version: "2005 歐規・K5", engine: "直列四缸・K5",
+    source: "https://www.suzuki.co.jp/suzuki_digital_library/",
+    displacementCc: 998.6, boreMm: 73.4, strokeMm: 59.0, firingDegrees: inlineFourFiring, curbMassKg: 196,
+    gearRatios: [41 / 16, 39 / 19, 36 / 21, 36 / 24, 34 / 25, 33 / 26], primaryRatio: 73 / 47, finalDriveRatio: 42 / 17,
+    peakTorqueNm: 117.6, peakTorqueRpm: 8500, peakPowerPs: 178, peakPowerRpm: 11000,
+    referenceRpm: 13000, fuelCutRpm: 13500, rollingRadiusM: 0.316, dragAreaM2: 0.355, exhaustFrequencyHz: 138,
+  }),
 ];
