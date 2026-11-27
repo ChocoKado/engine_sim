@@ -120,7 +120,7 @@ test("hot throttle lifts can produce different afterfire delays and counts witho
   assert.ok(burst.pops[0] > (liftSeconds + playbackDelaySeconds + 0.03) * rate);
   assert.deepEqual(burst.pulses, silent.pulses);
   const start = burst.pops[0];
-  const addedBurst = burst.signal.slice(start, start + 0.024 * rate).map((sample, index) => sample - silent.signal[start + index]);
+  const addedBurst = burst.signal.slice(start, start + 0.068 * rate).map((sample, index) => sample - silent.signal[start + index]);
   assertPressureCrack(addedBurst);
   assertBounded(burst.signal);
 });
@@ -179,10 +179,10 @@ function rms(signal) {
 }
 
 function assertPressureCrack(signal) {
-  const early = rms(signal.slice(0, 0.005 * rate));
-  const late = rms(signal.slice(0.015 * rate));
-  assert.ok(Math.max(...signal.map(Math.abs)) > 0.14);
-  assert.ok(early > 0.040 && late < early * 0.18);
+  const early = rms(signal.slice(0, 0.012 * rate));
+  const late = rms(signal.slice(0.048 * rate));
+  assert.ok(Math.max(...signal.map(Math.abs)) > 0.24);
+  assert.ok(early > 0.095 && late < early * 0.24);
 }
 
 function upperBandShare(signal) {
@@ -508,7 +508,7 @@ test("a simulated R9 upshift changes exhaust harmonics without interrupting cran
   assert.ok(latePop.pops[0] - earlyPop.pops[0] > rate * 0.025);
   assert.deepEqual(earlyPop.pulses, audible.pulses);
   const start = earlyPop.pops[0];
-  const burst = earlyPop.signal.slice(start, start + 0.02 * rate).map((sample, index) => sample - audible.signal[start + index]);
+  const burst = earlyPop.signal.slice(start, start + 0.068 * rate).map((sample, index) => sample - audible.signal[start + index]);
   assertPressureCrack(burst);
   assertBounded(earlyPop.signal);
   const cut = audible.signal.slice(sampleAt(cutStart, 0.018), sampleAt(cutStart, 0.062));

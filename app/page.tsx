@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { EngineView } from "../components/EngineView";
 import { RecordingComparison } from "../components/RecordingComparison";
@@ -9,7 +9,7 @@ import { RidingControls, ShiftModeControls } from "../components/RidingControls"
 import { cars } from "../data/cars";
 import { enduranceCars } from "../data/endurance-cars";
 import { formulaOneCars } from "../data/formula-one";
-import { rotaryPortTuning, tuningProfiles, turboFlutterTuning } from "../data/tuning";
+import { tuningProfiles } from "../data/tuning";
 import type { TuningProfile } from "../data/tuning";
 import { vehicles } from "../data/vehicles";
 import type { Vehicle } from "../data/vehicles";
@@ -64,29 +64,42 @@ function Tachometer({ rpm, referenceRpm, isCar }: { rpm: number; referenceRpm: n
 function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
   const [showEngine, setShowEngine] = useState(false);
   const [tuning, setTuning] = useState<TuningProfile>(tuningProfiles[0]);
+  const [turboFlutterEnabled, setTurboFlutterEnabled] = useState(false);
+  const [rotaryPortEnabled, setRotaryPortEnabled] = useState(false);
+  const canToggleRotaryPort = Boolean(vehicle.geometry.rotary);
+  const canToggleTurboFlutter = Boolean(vehicle.turbocharger && (vehicle.kind === "car" || vehicle.turbocharger.releaseStyle !== "subtle"));
+
+  useEffect(() => {
+    if (!canToggleRotaryPort && rotaryPortEnabled) setRotaryPortEnabled(false);
+    if (!canToggleTurboFlutter && turboFlutterEnabled) setTurboFlutterEnabled(false);
+  }, [canToggleRotaryPort, canToggleTurboFlutter, rotaryPortEnabled, turboFlutterEnabled]);
+
+  const effectiveTuning = useMemo<TuningProfile>(() => ({
+    ...tuning,
+    voicing: {
+      ...tuning.voicing,
+      turboFlutter: canToggleTurboFlutter && turboFlutterEnabled ? 1 : 0,
+      rotaryPort: canToggleRotaryPort && rotaryPortEnabled ? 1 : 0,
+    },
+  }), [canToggleRotaryPort, canToggleTurboFlutter, rotaryPortEnabled, tuning, turboFlutterEnabled]);
+
   const {
     audioStatus, sendAudioState, toggleAudio, startIgnitionAudio, volume, changeVolume, readExhaustFlame,
-  } = useEngineAudio(vehicle, tuning, showEngine);
+  } = useEngineAudio(vehicle, effectiveTuning, showEngine);
   const {
     snapshot, readState, pedalReset, setPedal, shift, setShiftMode, setRoadSpeedLimitDisabled,
     toggleEngine, requestPitReturn, resetSimulation,
     replayStatus, activeRecordedRun, toggleRunRecording, toggleRunReplay,
-  } = useSimulation(vehicle, sendAudioState);
+  } = useSimulation(vehicle, sendAudioState, canToggleRotaryPort && rotaryPortEnabled);
   const { engineAngularVelocity, vehicleSpeed, gear, powerOn, enginePhase, engineWarmth, shiftMode, shift: pendingShift, lastShift, engineFailed,
     roadSpeedLimitDisabled, hybridEnergyKj, hybridPowerKw, electricEnergyKj, electricPowerKw, turboBoostBar } = snapshot;
   const isRace = vehicle.kind === "formula1" || vehicle.kind === "endurance";
   const hybrid = vehicle.physics.hybridAssist;
   const electric = vehicle.physics.electricDrive;
   const speedKmh = vehicleSpeed * 3.6;
-  const { pitZone, pitDistanceM, vtecEngagement } = snapshot;
-  const availableTunings = vehicle.geometry.rotary ? [...tuningProfiles, rotaryPortTuning]
-    : vehicle.turbocharger && vehicle.kind === "car" ? [...tuningProfiles, turboFlutterTuning] : tuningProfiles;
-
-  useEffect(() => {
-    if (!availableTunings.some((profile) => profile.id === tuning.id)) {
-      setTuning(tuningProfiles[0]);
-    }
-  }, [availableTunings, tuning.id]);
+  const { pitZone, pitDistanceM, vtecEngagement, vvaEngagement, superchargerAngularVelocity } = snapshot;
+  const vva = vehicle.geometry.vva;
+  const impellerRpm = Math.round(rpmFromRadiansPerSecond(superchargerAngularVelocity));
 
   const ignitionLabel = enginePhase === "electric" ? (vehicleSpeed > 0.3 ? "電力出站" : "電力待命")
     : enginePhase === "cranking" ? "啟動中"
@@ -145,10 +158,12 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
                 </li>
               ))}
             </ol>
-            {(electric || hybrid || vehicle.turbocharger || vehicle.geometry.vtec) && (
+            {(electric || hybrid || vehicle.turbocharger || vehicle.supercharger || vehicle.geometry.vtec || vva) && (
               <dl className="drive-readout">
                 {vehicle.geometry.vtec && <div><dt>VTEC</dt><dd>{vtecEngagement >= 0.6 ? "高角度凸輪" : "低角度凸輪"}</dd></div>}
-                {vehicle.turbocharger && <div><dt>增壓</dt><dd>{turboBoostBar.toFixed(2)} bar</dd></div>}
+                {vva && <div><dt>VVA</dt><dd>{vva.switchRpm === null ? "待考" : vvaEngagement >= 0.5 ? "高揚程凸輪" : "低揚程凸輪"}</dd></div>}
+                {vehicle.supercharger && <div><dt>增壓葉輪</dt><dd>{impellerRpm.toLocaleString("zh-TW")} RPM</dd></div>}
+                {vehicle.turbocharger && <div><dt>渦輪增壓</dt><dd>{turboBoostBar.toFixed(2)} bar</dd></div>}
                 {hybrid && <>
                   <div><dt>ERS 電量</dt><dd>{Math.round(100 * hybridEnergyKj / hybrid.capacityKj)}%</dd></div>
                   <div><dt>{hybridLabel}</dt><dd>{Math.round(Math.abs(hybridPowerKw))} kW</dd></div>
@@ -160,9 +175,13 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
               </dl>
             )}
             <p className="dashboard-note">傳動採近似模型，{vehicle.kind ? "輪胎" : "後輪"}假定純滾動，計入滾阻與風阻。物理聲學合成示意。</p>
-            {(tuning.id === "turbo-flutter" || tuning.id === "rotary-port") && (
+            {((canToggleTurboFlutter && turboFlutterEnabled) || (canToggleRotaryPort && rotaryPortEnabled)) && (
               <p className="dashboard-note audio-voicing-note">
-                {tuning.id === "turbo-flutter" ? "增壓收油的改裝進氣音色。" : "改裝汽口的低速脈衝音色。"}
+                {canToggleRotaryPort && rotaryPortEnabled && canToggleTurboFlutter && turboFlutterEnabled
+                  ? "已同時啟用橋式汽口怠速脈衝（Brap）與渦輪收油顫振（Stu-tu-tu）。"
+                  : canToggleTurboFlutter && turboFlutterEnabled
+                    ? "增壓收油的改裝進氣顫振音色（Stu-tu-tu）。"
+                    : "改裝橋式汽口的斷續怠速脈衝音色（Brap）。"}
               </p>
             )}
             {vehicle.physics.speedLimitKmh !== undefined && (
@@ -222,7 +241,13 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
         onVolumeChange={changeVolume}
         tuning={tuning}
         onTuningChange={setTuning}
-        availableTunings={availableTunings}
+        availableTunings={tuningProfiles}
+        canToggleRotaryPort={canToggleRotaryPort}
+        rotaryPortEnabled={rotaryPortEnabled}
+        onToggleRotaryPort={() => setRotaryPortEnabled((prev) => !prev)}
+        canToggleTurboFlutter={canToggleTurboFlutter}
+        turboFlutterEnabled={turboFlutterEnabled}
+        onToggleTurboFlutter={() => setTurboFlutterEnabled((prev) => !prev)}
         onShift={shift}
         onPedalChange={setPedal}
         resetKey={pedalReset}

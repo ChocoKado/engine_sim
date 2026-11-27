@@ -23,11 +23,24 @@ interface RidingControlsProps {
   tuning: TuningProfile;
   onTuningChange: (tuning: TuningProfile) => void;
   availableTunings: readonly TuningProfile[];
+  canToggleRotaryPort?: boolean;
+  rotaryPortEnabled?: boolean;
+  onToggleRotaryPort?: () => void;
+  canToggleTurboFlutter?: boolean;
+  turboFlutterEnabled?: boolean;
+  onToggleTurboFlutter?: () => void;
   onToggleAudio: () => void;
   onShift: (direction: -1 | 1) => void;
   onPedalChange: (pedal: Pedal, opening: number) => void;
   resetKey: number;
   recordingComparison?: ReactNode;
+}
+
+function isInteractiveInputTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return true;
+  return target.classList.contains("engine-canvas") || target.isContentEditable;
 }
 
 function isInsideButton({ clientX, clientY, currentTarget }: PointerEvent<HTMLButtonElement>) {
@@ -142,16 +155,44 @@ function PedalButton({ pedal, label, onPedalChange }: Pick<RidingControlsProps, 
       if (document.hidden) reset();
     }
 
+    function matchesGlobalPedalKey(key: string): boolean {
+      const lower = key.toLowerCase();
+      return pedal === "throttle" ? (lower === "w" || key === "ArrowUp") : (lower === "s" || key === "ArrowDown");
+    }
+
+    function onWindowKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.metaKey || event.ctrlKey || event.altKey || isInteractiveInputTarget(event.target)) return;
+      if (!matchesGlobalPedalKey(event.key)) return;
+      event.preventDefault();
+      if (event.repeat) return;
+      activeKeys.add(`global:${event.key.toLowerCase()}`);
+      const percent = 100;
+      setOpening(percent);
+      onPedalChange(pedal, 1);
+    }
+
+    function onWindowKeyUp(event: globalThis.KeyboardEvent) {
+      if (!matchesGlobalPedalKey(event.key)) return;
+      if (!activeKeys.delete(`global:${event.key.toLowerCase()}`)) return;
+      const percent = activeKeys.size > 0 ? 100 : Math.max(0, ...activePointers.values());
+      setOpening(percent);
+      onPedalChange(pedal, percent / 100);
+    }
+
     window.addEventListener("blur", reset);
     window.addEventListener("orientationchange", reset);
     orientation.addEventListener("change", reset);
     document.addEventListener("visibilitychange", resetWhenHidden);
+    window.addEventListener("keydown", onWindowKeyDown);
+    window.addEventListener("keyup", onWindowKeyUp);
 
     return () => {
       window.removeEventListener("blur", reset);
       window.removeEventListener("orientationchange", reset);
       orientation.removeEventListener("change", reset);
       document.removeEventListener("visibilitychange", resetWhenHidden);
+      window.removeEventListener("keydown", onWindowKeyDown);
+      window.removeEventListener("keyup", onWindowKeyUp);
       releaseInputs();
       onPedalChange(pedal, 0);
     };
@@ -251,14 +292,34 @@ const audioLabels: Record<AudioStatus, string> = {
 
 export function RidingControls({
   title, powerOn, pitControls, engineFailed, shiftMode, onToggleEngine, onReset, audioStatus, onToggleAudio,
-  volume, onVolumeChange, tuning, onTuningChange, availableTunings, onShift, onPedalChange, resetKey, recordingComparison,
+  volume, onVolumeChange, tuning, onTuningChange, availableTunings,
+  canToggleRotaryPort = false, rotaryPortEnabled = false, onToggleRotaryPort,
+  canToggleTurboFlutter = false, turboFlutterEnabled = false, onToggleTurboFlutter,
+  onShift, onPedalChange, resetKey, recordingComparison,
 }: RidingControlsProps) {
+  useEffect(() => {
+    function onWindowShiftKey(event: globalThis.KeyboardEvent) {
+      if (event.repeat || event.metaKey || event.ctrlKey || event.altKey || shiftMode === "AT") return;
+      if (isInteractiveInputTarget(event.target)) return;
+      const lower = event.key.toLowerCase();
+      if (lower === "e" || event.key === "]") {
+        event.preventDefault();
+        onShift(1);
+      } else if (lower === "q" || event.key === "[") {
+        event.preventDefault();
+        onShift(-1);
+      }
+    }
+    window.addEventListener("keydown", onWindowShiftKey);
+    return () => window.removeEventListener("keydown", onWindowShiftKey);
+  }, [onShift, shiftMode]);
+
   return (
     <section className="panel controls-panel" aria-labelledby="controls-title">
       <div className="control-heading">
         <div>
           <h2 id="controls-title">{title}</h2>
-          <p id="pedal-instruction">上滑加大，放手歸零。</p>
+          <p id="pedal-instruction">上滑加大，放手歸零；鍵盤支援 W/↑ 油門、S/↓ 煞車、Q/E 換檔。</p>
         </div>
         <div className="control-actions">
           <button
@@ -319,6 +380,31 @@ export function RidingControls({
           </select>
         </div>
       </div>
+      {(canToggleRotaryPort || canToggleTurboFlutter) && (
+        <div className="mod-effect-toggles" role="group" aria-label="改裝聲浪特效（可複選）">
+          <span className="mod-effect-label">改裝特效</span>
+          {canToggleRotaryPort && onToggleRotaryPort && (
+            <button
+              type="button"
+              className="mode-button"
+              aria-pressed={rotaryPortEnabled}
+              onClick={onToggleRotaryPort}
+            >
+              轉子・橋式汽口 (Brap)
+            </button>
+          )}
+          {canToggleTurboFlutter && onToggleTurboFlutter && (
+            <button
+              type="button"
+              className="mode-button"
+              aria-pressed={turboFlutterEnabled}
+              onClick={onToggleTurboFlutter}
+            >
+              進氣・渦輪顫振 (Stu-tu-tu)
+            </button>
+          )}
+        </div>
+      )}
       {recordingComparison}
     </section>
   );

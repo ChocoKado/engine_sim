@@ -64,6 +64,11 @@ export function EngineView({ vehicle, snapshot, readState, readExhaustFlame }: {
           )}
           {vehicle.turbocharger && <div>渦輪增壓 <span className="impeller-rpm">{snapshot.turboBoostBar.toFixed(2)} bar</span></div>}
           {vehicle.geometry.vtec && <div>VTEC <span className="impeller-rpm">{snapshot.vtecEngagement > 0.5 ? "高揚程" : "低揚程"}</span></div>}
+          {vehicle.geometry.vva && (
+            <div>VVA <span className="impeller-rpm">
+              {vehicle.geometry.vva.switchRpm === null ? "待考" : snapshot.vvaEngagement >= 0.5 ? "高揚程" : "低揚程"}
+            </span></div>
+          )}
         </div>
         <div className="engine-view-actions">
           <button type="button" className="mode-button cutaway-toggle" aria-pressed={cutaway} onClick={() => setCutaway(!cutaway)}>
@@ -107,7 +112,7 @@ export function EngineView({ vehicle, snapshot, readState, readExhaustFlame }: {
       <p className="dashboard-note">
         拖曳旋轉，雙指或滾輪縮放。慢速只調整畫面，回火火焰會隨慢速延長並在暫停時定格。
         {vehicle.geometry.rotary ? "轉子、偏心軸與氣口位置為示意。" : "白光顯示點火。缸號依模型排序，汽門正時與管路為示意。"}
-        {vehicle.geometry.vva && " VVA 切換點待驗。"}
+        {vehicle.geometry.vva?.switchRpm === null && " VVA 切換點待驗。"}
         {vehicle.supercharger && " 增壓葉輪與殼體為示意。"}
       </p>
     </div>

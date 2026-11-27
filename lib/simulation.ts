@@ -27,6 +27,7 @@ export interface SimulationInput {
   readonly brake: number;
   readonly roadSpeedLimitDisabled: boolean;
   readonly pitReturn?: boolean;
+  readonly rotaryLope?: boolean;
 }
 
 export interface SimulationState extends SimulationInput, TransmissionState {
@@ -60,6 +61,9 @@ export interface SimulationState extends SimulationInput, TransmissionState {
   readonly shiftCut: number;
   readonly revMatchThrottle: number;
   readonly vtecEngagement: number;
+  readonly vvaEngagement: number;
+  readonly limiterCut: boolean;
+  readonly lopePhaseRad: number;
   readonly drivetrainTorqueNm: number;
   readonly clutchSlipRadPerSecond: number;
   readonly mechanicalOverRev: boolean;
@@ -112,6 +116,9 @@ export function createSimulationState(vehicle: Vehicle): SimulationState {
     shiftCut: 0,
     revMatchThrottle: 0,
     vtecEngagement: 0,
+    vvaEngagement: 0,
+    limiterCut: false,
+    lopePhaseRad: 0,
     drivetrainTorqueNm: 0,
     clutchSlipRadPerSecond: 0,
     mechanicalOverRev: false,
@@ -288,11 +295,20 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
   const engineLoss = friction + pumping + unloadedDrag;
   const gearFuelCutRpm = physics.gearFuelCutRpm?.[gear];
   const fuelCutRpm = gearFuelCutRpm ?? physics.fuelCutRpm;
-  const revFuel = unitInterval((fuelCutRpm - rpm) / FUEL_CUT_WINDOW_RPM);
+  const allowLimiterBounce = engineOn && throttle > 0.35 && (gear === 0 || input.shiftMode === "MT" || gear <= 3);
+  const limiterBandRpm = Math.min(330, Math.max(175, fuelCutRpm * 0.023));
+  const limiterCut = allowLimiterBounce
+    ? (rpm >= fuelCutRpm - 18 || (state.limiterCut && rpm > fuelCutRpm - limiterBandRpm))
+    : false;
+  const revFuel = allowLimiterBounce
+    ? (limiterCut ? 0 : 1)
+    : unitInterval((fuelCutRpm - rpm) / FUEL_CUT_WINDOW_RPM);
   const roadLimit = input.roadSpeedLimitDisabled ? Infinity : (physics.speedLimitKmh ?? Infinity);
   const speedLimit = pitZone === "exit" || pitZone === "entry" ? Math.min(PIT_SPEED_LIMIT_KMH, roadLimit) : roadLimit;
   const roadFuel = unitInterval((speedLimit - roadSpeedKmh) / SPEED_LIMIT_WINDOW_KMH);
   const vtec = vehicle.geometry.vtec;
+  const vva = vehicle.geometry.vva;
+  const vvaHigh = vva && vva.switchRpm !== null && engineOn ? unitInterval((rpm - vva.switchRpm + 90) / 180) : 0;
   const highCam = vtec && engineOn ? unitInterval((rpm - vtec.switchRpm + 80) / 160)
     * unitInterval((throttle - 0.2) / 0.28) * unitInterval((ignition.engineWarmth - 0.08) / 0.20) : 0;
   const lowCamDip = vtec
@@ -300,7 +316,12 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
     : 0;
   const camTorque = vtec ? 1 - 0.10 * lowCamDip * (1 - highCam) : 1;
   const availableCombustion = (camTorque * fullThrottleTorqueNm(rpm, physics) + friction) * Math.min(revFuel, roadFuel);
-  const idleCombustion = Math.min(0.65 * availableCombustion, Math.max(0, engineLoss + 0.42 * (idleSpeed - engineSpeed)));
+  const lopeActive = Boolean(input.rotaryLope && vehicle.geometry.rotary && engineOn && throttle < 0.12 && gear === 0);
+  const nextLopePhase = lopeActive ? (state.lopePhaseRad + RAD_PER_REVOLUTION * 5.0 * dt) % RAD_PER_REVOLUTION : 0;
+  const lopeKick = Math.max(0, Math.sin(nextLopePhase)) ** 2.4;
+  const idleCombustion = lopeActive
+    ? Math.min(0.65 * availableCombustion, Math.max(0, engineLoss * 3.2 * lopeKick + 0.55 * (idleSpeed - engineSpeed)))
+    : Math.min(0.65 * availableCombustion, Math.max(0, engineLoss + 0.42 * (idleSpeed - engineSpeed)));
   const matchingCharge = unitInterval((revMatchRpm - rpm) / 1400);
   const matchingCombustion = availableCombustion * matchingCharge;
   const driveTorqueLimit = ratio ? driveForceLimit * radius / (ratio * efficiency) : Infinity;
@@ -449,6 +470,9 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
     shiftCut: parked ? 0 : shiftCut,
     revMatchThrottle: running ? Math.max(0, matchingCharge - throttle * combustionScale) * revFuel * roadFuel : 0,
     vtecEngagement: running ? highCam : 0,
+    vvaEngagement: running ? vvaHigh : 0,
+    limiterCut: running ? limiterCut : false,
+    lopePhaseRad: running ? nextLopePhase : 0,
     drivetrainTorqueNm: drivetrainTorque,
     clutchSlipRadPerSecond: gear === 0 || !engineOn ? 0 : nextEngineSpeed - nextWheelSpeed * ratio,
     mechanicalOverRev,

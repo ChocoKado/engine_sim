@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
-import { buildExhaust } from "./EngineExhaust";
+import { buildExhaust, impellerVanes } from "./EngineExhaust";
 import type { Vehicle } from "../data/vehicles";
 import { getEnginePose, getRotaryPose, getTrochoidPoint, STROKE_COLORS, VALVE_EVENTS } from "../lib/kinematics";
 import type { EngineStroke, RotaryGeometry } from "../lib/kinematics";
@@ -56,37 +56,6 @@ function cylinderNumber(number: number, bore: number) {
   marker.scale.setScalar(bore * 0.22);
   marker.renderOrder = 2;
   return marker;
-}
-
-function impellerVanes(radius: number) {
-  const vertices: number[] = [];
-  const triangles: number[] = [];
-  const segments = 6;
-  const vaneCount = 12;
-
-  for (let vane = 0; vane < vaneCount; vane += 1) {
-    const innerRadius = vane % 2 === 0 ? 0.22 : 0.52;
-    const start = vertices.length / 3;
-    for (let segment = 0; segment <= segments; segment += 1) {
-      const travel = segment / segments;
-      const distance = radius * (innerRadius + (0.96 - innerRadius) * travel);
-      const sweep = vane * 2 * Math.PI / vaneCount + 0.45 * (distance / radius) ** 2;
-      const height = radius * (0.28 - 0.13 * travel);
-      for (const offset of [-0.038, 0.038]) {
-        vertices.push(distance * Math.cos(sweep + offset), distance * Math.sin(sweep + offset), height);
-      }
-      if (segment > 0) {
-        const index = start + segment * 2;
-        triangles.push(index - 2, index, index + 1, index - 2, index + 1, index - 1);
-      }
-    }
-  }
-
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
-  geometry.setIndex(triangles);
-  geometry.computeVertexNormals();
-  return geometry;
 }
 
 function buildRotaryEngine(vehicle: Vehicle, geometry: RotaryGeometry) {
@@ -236,7 +205,11 @@ function buildRotaryEngine(vehicle: Vehicle, geometry: RotaryGeometry) {
     ports.visible = cutaway;
   }
 
-  return { group, cover, applyCutaway, applyPose, applyFlame: exhaust.applyFlame, layout: "rotary" as const, extraMaterials: [] };
+  return {
+    group, cover, applyCutaway, applyPose,
+    applyFlame: exhaust.applyFlame, applyExhaustState: exhaust.applyExhaustState, hasTurbo: exhaust.hasTurbo,
+    layout: "rotary" as const, extraMaterials: [],
+  };
 }
 
 function buildEngine(vehicle: Vehicle) {
@@ -563,7 +536,11 @@ function buildEngine(vehicle: Vehicle) {
   }
 
   const layout = isBoxer ? "boxer" : isVEngine ? "v" : "inline";
-  return { group, cover, applyCutaway, applyPose, applyFlame: exhaust.applyFlame, layout, extraMaterials: Object.values(strokes) };
+  return {
+    group, cover, applyCutaway, applyPose,
+    applyFlame: exhaust.applyFlame, applyExhaustState: exhaust.applyExhaustState, hasTurbo: exhaust.hasTurbo,
+    layout, extraMaterials: Object.values(strokes),
+  };
 }
 
 function targetPixelRatio(quality: SceneQuality): number {
@@ -655,6 +632,8 @@ export default function EngineScene({
     let dirty = true;
     let lastFlame = 0;
     let flameTimeSeconds = 0;
+    let turboAngle = 0;
+    let headerHeat = 0;
     let slowFrames = 0;
     let lastTime: number | null = null;
     let lastLegendAt = -Infinity;
@@ -681,10 +660,27 @@ export default function EngineScene({
           || state.engineAngularVelocity !== previousState.engineAngularVelocity
           || state.engineOn !== previousState.engineOn
           || state.vtecEngagement !== previousState.vtecEngagement
+          || state.vvaEngagement !== previousState.vvaEngagement
           || Boolean(state.combustionTorqueNm) !== Boolean(previousState.combustionTorqueNm)) {
           crankAngle = nextAngle;
           impellerAngle = nextImpeller;
           visiblePose = engine.applyPose(state, crankAngle, impellerAngle);
+          dirty = true;
+        }
+        const rpmNorm = Math.min(1.2, rpmFromRadiansPerSecond(state.engineAngularVelocity) / vehicle.physics.referenceRpm);
+        const maxBoost = vehicle.turbocharger?.maxBoostBar ?? 1;
+        const boostNorm = vehicle.turbocharger ? Math.min(1, state.turboBoostBar / maxBoost) : 0;
+        const torqueNorm = Math.min(1, Math.max(0, state.combustionTorqueNm / vehicle.physics.peakTorqueNm));
+        const rawThermal = state.engineOn ? rpmNorm * (0.45 * torqueNorm + 0.55 * Math.max(state.throttle, boostNorm)) : 0;
+        const targetHeat = Math.min(1, Math.max(0, (rawThermal - 0.30) / 0.62));
+        const heatTau = targetHeat > headerHeat ? 1.8 : 3.4;
+        const nextHeat = headerHeat + (targetHeat - headerHeat) * (1 - Math.exp(-elapsed / heatTau));
+        const turboSpinRate = engine.hasTurbo && state.engineOn ? 14 + 24 * rpmNorm + 96 * boostNorm : 0;
+        const nextTurboAngle = (turboAngle + turboSpinRate * sceneSeconds) % fullTurn;
+        if (Math.abs(nextHeat - headerHeat) > 0.0015 || nextTurboAngle !== turboAngle) {
+          headerHeat = nextHeat;
+          turboAngle = nextTurboAngle;
+          engine.applyExhaustState(headerHeat, turboAngle);
           dirty = true;
         }
         previousState = state;

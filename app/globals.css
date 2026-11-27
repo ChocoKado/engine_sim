@@ -561,6 +561,18 @@ button { font: inherit; }
   font-size: .8125rem;
 }
 
+.mod-effect-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem;
+  margin-top: .45rem;
+  color: var(--muted);
+  font-size: .8125rem;
+}
+
+.mod-effect-label { margin-inline-end: .2rem; }
+
 .tuning-select-wrap { position: relative; }
 
 .tuning-select-wrap::after {

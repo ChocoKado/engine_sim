@@ -126,7 +126,8 @@ const yamahaBase = [
       cylinderSpacingM: 0.077,
       intakeLiftM: 0.0058,
       exhaustLiftM: 0.0054,
-      vva: { switchRpm: null, highIntakeLiftM: 0.0076 },
+      // Yamaha Motor Japan official YZF-R15 feature spec lists 7,000–7,400 r/min intake cam switchover.
+      vva: { switchRpm: 7400, highIntakeLiftM: 0.0076 },
     },
     audio: {
       firingAnglesRad: [0],

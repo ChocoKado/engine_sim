@@ -187,19 +187,27 @@ class SuperchargerWhine {
 class ExhaustAfterfire {
   constructor(exhaustFrequencyHz, reflectionMs, onFire) {
     this.onFire = onFire;
-    this.boom = new DampedResonator(clamp(exhaustFrequencyHz * 0.86, 96, 175), 3.0);
-    this.shell = new DampedResonator(clamp(exhaustFrequencyHz * 1.66, 180, 385), 2.5);
+    this.subBoom = new ExhaustBodyMode(clamp(exhaustFrequencyHz * 0.68, 72, 132), 18.5);
+    this.pipeBoom = new ExhaustBodyMode(clamp(exhaustFrequencyHz * 1.48, 165, 345), 13.0);
+    this.crackMode = new ExhaustBodyMode(clamp(exhaustFrequencyHz * 4.1, 520, 1120), 5.2);
     this.reflection = new Float32Array(Math.ceil(sampleRate * clamp(reflectionMs, 1.4, 6) / 1000));
     this.reflectionIndex = 0;
-    this.frontDecay = 1 - smoothingFactor(0.00072);
-    this.reboundDecay = 1 - smoothingFactor(0.0022);
-    this.blastLowRate = frequencyFactor(3100);
-    this.blastHighRate = frequencyFactor(155);
+    this.slapDelayA = Math.max(16, Math.round(sampleRate * 0.013));
+    this.slapDelayB = Math.max(32, Math.round(sampleRate * 0.025));
+    this.slapBuffer = new Float32Array(this.slapDelayB + 4);
+    this.slapIndex = 0;
+    this.detonationDecay = 1 - smoothingFactor(0.0028);
+    this.frontDecay = 1 - smoothingFactor(0.0011);
+    this.reboundDecay = 1 - smoothingFactor(0.0036);
+    this.blastLowRate = frequencyFactor(3500);
+    this.blastHighRate = frequencyFactor(95);
     this.blastLow = 0;
     this.blastHigh = 0;
+    this.detonation = 0;
     this.front = 0;
     this.rebound = 0;
     this.scatter = 0;
+    this.modeGain = 1;
     this.tailSamples = 0;
     this.reset();
   }
@@ -208,28 +216,39 @@ class ExhaustAfterfire {
     this.charge = 0;
     this.wasOpen = false;
     this.wasPoweredCut = false;
+    this.wasLimiterCut = false;
     this.armedFromUpshift = false;
     this.count = 0;
   }
 
-  update({ throttle, angularVelocity, combustion, load, shiftCut, upshifting, revMatchThrottle = 0 }, harmonics, seconds) {
+  update({ throttle, angularVelocity, combustion, load, shiftCut, upshifting, revMatchThrottle = 0, limiterCut = false }, harmonics, seconds) {
     const rpm = angularVelocity * RADIANS_PER_SECOND_TO_RPM;
     const open = throttle > 0.08;
     const poweredCut = upshifting && throttle >= 0.60 && shiftCut >= 0.50 && rpm >= 5000;
     const revMatching = revMatchThrottle > 0.04;
-    const voicing = 0.66 + 0.38 * clamp(harmonics, 0.5, 1.5);
+    const clampedHarmonics = clamp(harmonics, 0.5, 1.5);
+    const voicing = 0.66 + 0.38 * clampedHarmonics;
+    this.modeGain = clampedHarmonics < 0.8 ? 0.58 : clampedHarmonics > 1.2 ? 1.32 : 1.04;
+    const openPipe = clampedHarmonics > 1.2;
     if (revMatching) {
       this.count = 0;
       this.charge *= Math.exp(-seconds / 0.055);
     } else if (open) {
-      if (!this.armedFromUpshift) this.count = 0;
+      if (!this.armedFromUpshift && !limiterCut) this.count = 0;
       if (poweredCut && !this.wasPoweredCut) {
         const strength = this.charge * voicing;
-        if (strength > 0.20 && Math.random() < clamp(0.18 + 0.66 * strength, 0, 0.82)) {
+        if (strength > 0.20 && Math.random() < clamp((openPipe ? 0.28 : 0.18) + 0.68 * strength, 0, openPipe ? 0.90 : 0.82)) {
           this.armedFromUpshift = true;
           this.count = 1;
           this.delay = Math.round(sampleRate * (0.016 + Math.random() * 0.038));
-          this.strength = strength * 0.95;
+          this.strength = strength * 0.96;
+        }
+      } else if (openPipe && limiterCut && !this.wasLimiterCut && rpm >= 5500 && this.count === 0) {
+        const strength = Math.max(0.62, this.charge * voicing);
+        if (Math.random() < 0.68) {
+          this.count = 1;
+          this.delay = Math.round(sampleRate * (0.008 + Math.random() * 0.018));
+          this.strength = strength;
         }
       }
       const heat = clamp((rpm - 2600) / 5000, 0, 1) * clamp((throttle - 0.12) / 0.5, 0, 1);
@@ -238,8 +257,10 @@ class ExhaustAfterfire {
       this.charge += (1 - Math.exp(-seconds / chargeTau)) * (target - this.charge);
     } else if (this.wasOpen) {
       const strength = this.charge * voicing;
-      if (!this.armedFromUpshift && rpm > 3400 && strength > 0.14 && shiftCut < 0.15 && Math.random() < clamp(0.2 + 0.87 * strength, 0, 0.89)) {
-        this.count = 1 + Number(Math.random() < strength * 0.55) + Number(Math.random() < strength * 0.19);
+      const triggerChance = clamp((openPipe ? 0.32 : 0.20) + 0.87 * strength, 0, openPipe ? 0.94 : 0.89);
+      if (!this.armedFromUpshift && rpm > 3400 && strength > 0.14 && shiftCut < 0.15 && Math.random() < triggerChance) {
+        const extraCrackle = openPipe ? Number(Math.random() < strength * 0.42) : 0;
+        this.count = 1 + Number(Math.random() < strength * 0.55) + Number(Math.random() < strength * 0.19) + extraCrackle;
         const transit = this.reflection.length / sampleRate;
         this.delay = Math.round(sampleRate * (0.027 + transit + Math.random() * 0.112));
         this.strength = strength;
@@ -252,43 +273,59 @@ class ExhaustAfterfire {
     }
     this.wasOpen = open && !revMatching;
     this.wasPoweredCut = poweredCut;
+    this.wasLimiterCut = Boolean(limiterCut);
   }
 
   fire() {
     this.count -= 1;
     this.delay = Math.round(sampleRate * (0.062 + Math.random() * 0.142));
     const shiftPop = this.armedFromUpshift;
-    const impulse = clamp((0.42 + this.strength * 0.52) * (0.72 + Math.random() * 0.28), 0, 0.96);
-    this.strength *= 0.74;
-    const pressure = impulse * (shiftPop ? 1.18 : 1.04);
+    const impulse = clamp((0.44 + this.strength * 0.50) * (0.74 + Math.random() * 0.26), 0, 0.96);
+    this.strength *= 0.76;
+    const pressure = impulse * (shiftPop ? 1.24 : 1.14) * this.modeGain;
+    this.detonation = Math.min(1.6, this.detonation + pressure);
     this.front += pressure;
     this.rebound += pressure;
-    this.scatter += impulse * (shiftPop ? 0.68 : 1.05);
-    this.scatterDecay = 1 - smoothingFactor(shiftPop ? 0.0025 : 0.0033);
-    const durationMs = Math.round((shiftPop ? 31 : 46) + 22 * impulse);
-    this.tailSamples = Math.ceil(sampleRate * durationMs / 1000);
+    this.scatter += pressure * (shiftPop ? 0.88 : 1.15);
+    this.scatterDecay = 1 - smoothingFactor(shiftPop ? 0.0062 : 0.0088);
+    const reportMs = Math.round((shiftPop ? 31 : 46) + 22 * impulse);
+    const acousticMs = Math.round(reportMs + 26);
+    this.tailSamples = Math.ceil(sampleRate * acousticMs / 1000);
     this.armedFromUpshift = false;
-    this.onFire(impulse, durationMs);
+    this.onFire(impulse, reportMs);
     return impulse;
   }
 
   render(noise) {
-    const impulse = this.count > 0 && --this.delay <= 0 ? this.fire() : 0;
-    if (this.tailSamples === 0) return 0;
+    if (this.count > 0 && --this.delay <= 0) this.fire();
+    if (this.tailSamples === 0) return { sample: 0, duck: 0 };
     this.tailSamples -= 1;
-    // Combine steep supersonic muzzle shockwave + low-mid tailpipe detonation boom + hot gas blast.
+    // Finite-width detonation pulse excites unity-gain 72–345 Hz chest/pipe cavity modes + gunshot crack.
+    this.detonation *= this.detonationDecay;
     this.front *= this.frontDecay;
     this.rebound *= this.reboundDecay;
     this.scatter *= this.scatterDecay;
     this.blastLow += this.blastLowRate * (noise - this.blastLow);
     this.blastHigh += this.blastHighRate * (this.blastLow - this.blastHigh);
     const blastNoise = this.blastLow - this.blastHigh;
-    const shock = 1.05 * this.front - 0.36 * this.rebound;
-    const cavity = 2.65 * this.boom.render(impulse) + 1.85 * this.shell.render(impulse);
+    const shock = 1.18 * this.front - 0.44 * this.rebound;
+    const boom = 1.35 * this.subBoom.render(this.detonation)
+      + 1.05 * this.pipeBoom.render(this.detonation)
+      + 0.52 * this.crackMode.render(this.front);
+    const core = shock + boom + 1.38 * this.scatter * blastNoise;
     const delayed = this.reflection[this.reflectionIndex];
-    this.reflection[this.reflectionIndex] = shock + 0.35 * cavity;
+    this.reflection[this.reflectionIndex] = core;
     this.reflectionIndex = (this.reflectionIndex + 1) % this.reflection.length;
-    return shock - 0.28 * delayed + cavity + 0.92 * this.scatter * blastNoise;
+    const bufLen = this.slapBuffer.length;
+    const slapA = this.slapBuffer[(this.slapIndex + bufLen - this.slapDelayA) % bufLen];
+    const slapB = this.slapBuffer[(this.slapIndex + bufLen - this.slapDelayB) % bufLen];
+    this.slapBuffer[this.slapIndex] = core;
+    this.slapIndex = (this.slapIndex + 1) % bufLen;
+    const rawWave = core - 0.24 * delayed + 0.18 * slapA + 0.08 * slapB;
+    // Dense soft-clipping adds cannon-like harmonic weight without exceeding unity headroom.
+    const denseWave = 1.32 * rawWave / (0.50 + Math.abs(rawWave));
+    const duck = clamp(this.detonation * 0.95 + this.scatter * 0.42, 0, 0.85);
+    return { sample: denseWave, duck };
   }
 }
 
@@ -306,11 +343,11 @@ class TurboSound {
     this.envelope = 0;
     this.smoothing = smoothingFactor(0.012);
     this.bovCrack = 0;
-    this.bovDecay = 1 - smoothingFactor(0.036);
+    this.bovDecay = 1 - smoothingFactor(0.0065);
     this.bovMid = 0;
     this.bovHigh = 0;
-    this.bovMidRate = frequencyFactor(1150);
-    this.bovHighRate = frequencyFactor(4800);
+    this.bovMidRate = frequencyFactor(1250);
+    this.bovHighRate = frequencyFactor(4900);
     this.previousLevel = 0;
     this.pressure = 0;
     this.untilBurst = 0;
@@ -363,9 +400,9 @@ class TurboSound {
     if (this.envelope > 0.0005 || this.bovCrack > 0.0005) {
       this.bovMid += this.bovMidRate * (noise - this.bovMid);
       this.bovHigh += this.bovHighRate * (noise - this.bovHigh);
-      const pneumaticJet = (0.38 * this.envelope + 0.62 * this.bovCrack) * (this.bovHigh - this.bovMid)
-        + 0.42 * this.envelope * turbulence;
-      bypass = (1 - 0.88 * flutter) * this.gain * 0.82 * pneumaticJet;
+      const pneumaticJet = (0.18 * this.envelope + 0.66 * this.bovCrack) * (this.bovHigh - this.bovMid)
+        + 0.26 * this.envelope * turbulence;
+      bypass = (1 - 0.90 * flutter) * this.gain * 0.74 * pneumaticJet;
     }
     // Compressor surge flutter ("stu-tu-tu"): stalled reverse pressure pulses ring in the intake tract.
     if (this.pressure > 0.065 && --this.untilBurst <= 0) this.releaseBurst(noise);
@@ -375,10 +412,10 @@ class TurboSound {
     const falloff = (1 - travel) ** 2.8;
     const surgePitch = (690 + 610 * this.burstEnergy) * (1 - 0.22 * travel);
     this.surgePhase = (this.surgePhase + surgePitch / sampleRate) % 1;
-    const pipeChirp = 0.16 * Math.sin(REVOLUTION_RAD * this.surgePhase) + 0.07 * Math.sin(2 * REVOLUTION_RAD * this.surgePhase);
+    const pipeChirp = 0.28 * Math.sin(REVOLUTION_RAD * this.surgePhase) + 0.12 * Math.sin(2 * REVOLUTION_RAD * this.surgePhase);
     this.air += this.airEdge * (noise - this.air);
     this.airBaseline += this.airFloor * (noise - this.airBaseline);
-    const pressureNoise = 1.15 * (this.air - this.airBaseline) + 0.16 * turbulence + pipeChirp;
+    const pressureNoise = 2.05 * (this.air - this.airBaseline) + 0.24 * turbulence + pipeChirp;
     return bypass + flutter * this.burstEnergy * attack * falloff * pressureNoise;
   }
 }
@@ -472,8 +509,14 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
     });
     this.turbo = turbocharger ? new TurboSound(turbocharger) : null;
     this.rotaryIdleRpm = Number.isFinite(rotaryIdleRpm) && rotaryIdleRpm > 0 ? rotaryIdleRpm : 0;
-    this.rotaryIdleBody = this.rotaryIdleRpm ? new DampedResonator(124, 9) : null;
-    this.rotaryUnburned = this.rotaryIdleBody ? new Float32Array(2) : null;
+    this.rotaryIdleBody = this.rotaryIdleRpm ? new DampedResonator(124, 7.5) : null;
+    this.rotaryBark = this.rotaryIdleRpm ? new ExhaustBodyMode(485, 5.0) : null;
+    this.rotaryCycleStep = 0;
+    this.rotaryGapTarget = 3;
+    this.rotaryFiringNow = false;
+    this.rotaryStaccatoGate = 1;
+    this.rotaryGateRelease = smoothingFactor(0.010);
+    this.limiterSkip = 0;
     this.electricStarter = electricStarter === true;
     this.starter = null;
     this.motor = null;
@@ -510,6 +553,8 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
     this.outputSmoothing = frequencyFactor(5800);
     this.throttleAttack = smoothingFactor(0.045);
     this.throttleRelease = smoothingFactor(0.105);
+    this.blipAttack = smoothingFactor(0.0065);
+    this.blipChargeAttack = smoothingFactor(0.008);
     this.loadSmoothing = smoothingFactor(0.06);
     this.chargeAttack = smoothingFactor(0.03);
     this.chargeRelease = smoothingFactor(0.06);
@@ -593,6 +638,7 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
         turboBoostBar: Number.isFinite(data.turboBoostBar) ? clamp(data.turboBoostBar, 0, 6) : 0,
         revMatchThrottle: Number.isFinite(data.revMatchThrottle) ? clamp(data.revMatchThrottle, 0, 1) : 0,
         vtecEngagement: Number.isFinite(data.vtecEngagement) ? clamp(data.vtecEngagement, 0, 1) : 0,
+        limiterCut: data.limiterCut === true,
       });
       if (queue.length > 32) this.previousTelemetry = queue.shift();
     };
@@ -661,6 +707,8 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
     const motor = this.motor;
     const auxiliarySound = cranking || starter?.level > 0.0001 || motorSpeed > 0 || motor?.level > 0.0001;
     const starterCompression = cranking && !this.electricStarter;
+    const revMatching = running && telemetry.revMatchThrottle > 0.04;
+    const limiterCut = running && telemetry.limiterCut === true;
     const throttle = running ? Math.max(telemetry.throttle, telemetry.revMatchThrottle) : 0;
     const load = running ? telemetry.load : 0;
     const combustion = running ? Math.sqrt(telemetry.combustion) : 0;
@@ -717,12 +765,14 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
       this.phaseCorrection += this.phaseSmoothing * (correctionTarget - this.phaseCorrection);
       const instantaneousVelocity = Math.max(0, velocityTarget + index * velocityIncrement + this.phaseCorrection);
       this.angularVelocity += this.velocitySmoothing * (instantaneousVelocity - this.angularVelocity);
-      const throttleSmoothing = throttle >= this.throttle ? this.throttleAttack : this.throttleRelease;
+      const throttleSmoothing = throttle >= this.throttle
+        ? (revMatching ? this.blipAttack : this.throttleAttack)
+        : this.throttleRelease;
       const shiftSmoothing = shiftCut >= this.shiftCut ? this.shiftCutAttack : this.shiftCutRelease;
       this.shiftCut += shiftSmoothing * (shiftCut - this.shiftCut);
       const shifting = this.shiftCut > 0.025;
       const chargeSmoothing = combustion >= this.combustion
-        ? (shifting ? this.shiftCutRelease : this.chargeAttack)
+        ? (revMatching ? this.blipChargeAttack : shifting ? this.shiftCutRelease : this.chargeAttack)
         : (shifting ? this.shiftCutAttack : this.chargeRelease);
       this.throttle += throttleSmoothing * (throttle - this.throttle);
       this.camEngagement += this.camSmoothing * (camTarget - this.camEngagement);
@@ -737,9 +787,16 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
       const upperRange = clamp((rpm - this.brightnessStartRpm) / this.brightnessRangeRpm, 0, 1);
       const brightness = upperRange * upperRange * (3 - 2 * upperRange);
       const exhaustPulse = this.advanceCrank(this.angularVelocity / sampleRate);
+      let limiterPulseScale = 1;
+      if (exhaustPulse && limiterCut) {
+        this.limiterSkip = (this.limiterSkip + 1) % 4;
+        limiterPulseScale = this.limiterSkip === 0 ? 1.32 : 0;
+      }
       const pumping = exhaustPulse ? 0.12 + 0.29 * pumpingLevel : 0;
-      // Shifts soften the combustion pulse while the crank continues pumping air.
-      const charge = exhaustPulse ? this.combustion * (0.41 + 0.12 * this.load + this.catchCharge * 0.42) * (1 - 0.18 * this.shiftCut) : 0;
+      // Shifts and ECU rev-limiter cuts interrupt combustion while the crank continues pumping air.
+      const charge = exhaustPulse
+        ? this.combustion * limiterPulseScale * (0.41 + 0.12 * this.load + this.catchCharge * 0.42) * (1 - 0.18 * this.shiftCut)
+        : 0;
       const rotaryIdle = this.rotaryIdleBody
         ? voicing.rotaryPort * clamp((1.9 - rpm / this.rotaryIdleRpm) / 0.72, 0, 1) * clamp(1 - 3 * this.throttle, 0, 1)
         : 0;
@@ -752,27 +809,45 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
         this.cycleJitter = 1 + jitterDepth * noise;
       }
       if (exhaustPulse && rotaryIdle > 0.001) {
-        // The race-port model varies the strength of exhaust events around idle while preserving shaft phase.
-        const rotor = this.nextFiringIndex % 2;
-        const unburned = this.rotaryUnburned[rotor];
-        const weak = noise < 0.19 - 1.58 * unburned;
-        rotaryAccent = weak ? -0.93 : 0.47 + unburned * 1.32 + 0.15 * noise;
-        this.rotaryUnburned[rotor] = weak ? Math.min(0.88, unburned + 0.42) : 0;
+        // Bridgeport / peripheral-port scavenging cycle: 3–4 misfired rotor faces create a crisp silence break,
+        // followed by a sharp, over-rich metallic "BRAP!" ignition bark (~5–6 Hz cadence at idle).
+        this.rotaryCycleStep += 1;
+        if (this.rotaryCycleStep <= this.rotaryGapTarget) {
+          rotaryAccent = -0.97;
+          this.rotaryFiringNow = false;
+        } else {
+          rotaryAccent = 1.58 + 0.24 * Math.abs(noise);
+          this.rotaryFiringNow = true;
+          this.rotaryStaccatoGate = 1;
+          this.rotaryCycleStep = 0;
+          this.rotaryGapTarget = noise > 0.28 ? 4 : 3;
+        }
+      } else if (rotaryIdle <= 0.001) {
+        this.rotaryStaccatoGate = 1;
+        this.rotaryCycleStep = 0;
       }
+      if (rotaryIdle > 0.001 && !this.rotaryFiringNow) {
+        this.rotaryStaccatoGate += this.rotaryGateRelease * (0.05 - this.rotaryStaccatoGate);
+      } else if (this.rotaryFiringNow) {
+        this.rotaryStaccatoGate += (this.rotaryGateRelease * 0.28) * (0.12 - this.rotaryStaccatoGate);
+      }
+      const staccatoEnvelope = 1 - rotaryIdle * (1 - this.rotaryStaccatoGate);
       const pulseScale = (1 + rotaryIdle * rotaryAccent) * this.cycleJitter;
       const pressure = (pumping + charge) * pulseScale;
       // Finite-width blowdown wave softens digital Dirac buzz while keeping high-RPM harmonic clarity.
       this.blowdownAttack = (this.blowdownAttack + pressure * 0.28) * this.blowdownRise;
       this.blowdownEnvelope = (this.blowdownEnvelope + pressure * 0.28) * this.blowdownFall;
       const finitePulse = 0.90 * pressure + 0.10 * (1 - 0.65 * brightness) * Math.max(0, this.blowdownEnvelope - this.blowdownAttack);
-      const idleBody = this.rotaryIdleBody?.render(Math.max(0, rotaryAccent) * pressure * rotaryIdle) ?? 0;
+      const brapPulse = Math.max(0, rotaryAccent) * pressure * rotaryIdle;
+      const idleBody = (this.rotaryIdleBody?.render(brapPulse) ?? 0) + 0.34 * (this.rotaryBark?.render(brapPulse) ?? 0);
       const otherBankPulse = this.exhaustBanks && pressure
         && this.exhaustBanks[this.nextFiringIndex === 0 ? this.exhaustBanks.length - 1 : this.nextFiringIndex - 1] === 1;
       const body = this.exhaust.render(otherBankPulse ? 0 : finitePulse) + (this.otherBank?.render(otherBankPulse ? finitePulse : 0) ?? 0);
       const deeperBody = this.tripleCollector ? this.tripleCollector.render(finitePulse) * (0.22 + 0.28 * this.load) : 0;
       const highCam = this.camEngagement * this.throttle;
-      const overtone = this.exhaustOvertone.render(pressure) * (0.34 + 0.13 * this.load + 0.44 * brightness + 0.17 * highCam);
-      const edge = this.exhaustEdge.render(pressure * (0.063 + 0.96 * brightness + 0.24 * highCam));
+      const blipAccent = revMatching ? 0.24 : 0;
+      const overtone = this.exhaustOvertone.render(pressure) * (0.34 + 0.13 * this.load + 0.44 * brightness + 0.17 * highCam + blipAccent);
+      const edge = this.exhaustEdge.render(pressure * (0.063 + 0.96 * brightness + 0.24 * highCam + 0.18 * blipAccent));
 
       this.pressureNoiseBaseline += this.pressureNoiseBaselineSmoothing * (noise - this.pressureNoiseBaseline);
 
@@ -785,10 +860,10 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
       const blowdown = (this.pressureTail - this.pressureFront)
         * (0.09 + 0.08 * brightness + turbulence * (0.49 + 0.45 * brightness + 0.15 * highCam) * voicing.turbulence);
 
-      // Velocity-stack airbox induction howl: opens with throttle & high-RPM airflow velocity.
-      const inductionOpen = this.throttle * this.throttle * (0.14 + 0.86 * brightness) * (1 - 0.55 * this.shiftCut);
+      // Velocity-stack airbox induction howl: opens with throttle & high-RPM airflow velocity (and sharpens on downshift blip).
+      const inductionOpen = this.throttle * this.throttle * (0.14 + 0.86 * brightness + blipAccent) * (1 - 0.55 * this.shiftCut);
       const induction = this.intakeTrumpet.render(pressure * inductionOpen + 0.04 * inductionOpen * turbulence * voicing.turbulence)
-        * (0.26 + 0.12 * highCam);
+        * (0.26 + 0.12 * highCam + 0.14 * blipAccent);
 
       // Subtle high-RPM valvetrain & straight-cut primary/gearbox mechanical sheen.
       this.mechPhase = (this.mechPhase + (this.angularVelocity / REVOLUTION_RAD) / sampleRate) % 1;
@@ -800,7 +875,7 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
       const cutTone = cut * cut * (3 - 2 * cut);
       const exhaustBody = (body + deeperBody) * (1 - 0.06 * cutTone) * voicing.body;
       const exhaustHarmonics = (overtone + edge) * (1 - 0.32 * cutTone) * voicing.harmonics;
-      const exhaust = (exhaustBody + exhaustHarmonics) * 0.87 + blowdown * (1 - 0.25 * cutTone);
+      const exhaust = ((exhaustBody + exhaustHarmonics) * 0.87 + blowdown * (1 - 0.25 * cutTone)) * staccatoEnvelope;
       const delayLen = this.exhaustDelay.length;
       const primaryTap = this.exhaustDelay[(this.exhaustDelayIndex + delayLen - this.tapPrimaryOffset) % delayLen];
       const tailTap = this.exhaustDelay[(this.exhaustDelayIndex + delayLen - this.tapTailOffset) % delayLen];
@@ -817,16 +892,18 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
         : null;
       const whine = scOut ? scOut.whine : 0;
       const scChirp = scOut ? scOut.chirp : 0;
-      const afterfire = this.afterfire.render(noise);
+      const afterfireOut = this.afterfire.render(noise);
+      const afterfire = afterfireOut.sample;
+      const afterfireDuck = afterfireOut.duck;
       const release = this.turbo?.render(turboRelease, noise, turbulence, voicing.turboFlutter) ?? 0;
       const spool = this.turbo?.renderSpool(turboBoost, rpm, noise) ?? 0;
-      const pipeReflections = (0.11 * this.reflectedPressure + 0.025 * this.groundReflection) * voicing.reflection;
-      const mix = 0.96 * exhaust + induction + mechanicalWhir - pipeReflections + whine + spool + 0.82 * idleBody;
+      const pipeReflections = (0.11 * this.reflectedPressure + 0.025 * this.groundReflection) * voicing.reflection * staccatoEnvelope;
+      const mix = 0.96 * exhaust + induction + mechanicalWhir - pipeReflections + whine + spool + 0.92 * idleBody;
       this.dcMean += this.dcSmoothing * (mix - this.dcMean);
       this.filteredOutput += this.outputSmoothing * (mix - this.dcMean - this.filteredOutput);
       let normalized = this.filteredOutput / (1 + Math.abs(this.filteredOutput));
       if (this.collectorBody) {
-        const collectorPressure = this.collectorBody.render(exhaust, pressure, this.nextFiringIndex, rpm);
+        const collectorPressure = this.collectorBody.render(exhaust, pressure, this.nextFiringIndex, rpm) * staccatoEnvelope;
         const extension = collectorPressure * 0.50 * (1 - 0.76 * brightness - 0.12 * cutTone) * voicing.body;
         // Give the body its own soft knee so low frequencies don't compress the exhaust edge or whine.
         const direction = extension < 0 ? -1 : 1;
@@ -836,13 +913,14 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
         const remaining = headroom - knee;
         normalized += overflow > 0 ? direction * (knee + remaining * overflow / (remaining + overflow)) : extension;
       }
+      if (afterfireDuck > 0) normalized *= 1 - 0.78 * afterfireDuck;
       // Keep afterfire detonation, turbo blow-off/flutter, and supercharger surge chirp out of exhaust saturation.
       const transient = afterfire + release + scChirp;
       if (transient !== 0) {
         const direction = transient < 0 ? -1 : 1;
         const headroom = 0.985 - direction * normalized;
         if (headroom > 0) {
-          const knee = 0.72 * headroom;
+          const knee = 0.84 * headroom;
           const amount = Math.abs(transient);
           const overflow = amount - knee;
           const remaining = headroom - knee;

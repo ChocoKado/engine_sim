@@ -74,7 +74,7 @@ export function defineMotorcycle(spec: MotorcycleSpec): Vehicle {
       intakeLiftM: Math.min(0.012, boreM * 0.105),
       exhaustLiftM: Math.min(0.011, boreM * 0.097),
       bankAngleRad: spec.bankAngleDegrees ? radians(spec.bankAngleDegrees) : undefined,
-      vva: spec.hasVva ? { switchRpm: null, highIntakeLiftM: Math.min(0.014, boreM * 0.13) } : undefined,
+      vva: spec.hasVva ? { switchRpm: 7400, highIntakeLiftM: Math.min(0.014, boreM * 0.13) } : undefined,
       cylinderFiringAnglesRad: firingOrder.map(radians),
     },
     audio: {

@@ -9,16 +9,57 @@ export interface ExhaustPort {
 const xAxis = new THREE.Vector3(1, 0, 0);
 const yAxis = new THREE.Vector3(0, 1, 0);
 
+export function impellerVanes(radius: number) {
+  const vertices: number[] = [];
+  const triangles: number[] = [];
+  const segments = 6;
+  const vaneCount = 12;
+
+  for (let vane = 0; vane < vaneCount; vane += 1) {
+    const innerRadius = vane % 2 === 0 ? 0.22 : 0.52;
+    const start = vertices.length / 3;
+    for (let segment = 0; segment <= segments; segment += 1) {
+      const travel = segment / segments;
+      const distance = radius * (innerRadius + (0.96 - innerRadius) * travel);
+      const sweep = vane * 2 * Math.PI / vaneCount + 0.45 * (distance / radius) ** 2;
+      const height = radius * (0.28 - 0.13 * travel);
+      for (const offset of [-0.038, 0.038]) {
+        vertices.push(distance * Math.cos(sweep + offset), distance * Math.sin(sweep + offset), height);
+      }
+      if (segment > 0) {
+        const index = start + segment * 2;
+        triangles.push(index - 2, index, index + 1, index - 2, index + 1, index - 1);
+      }
+    }
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+  geometry.setIndex(triangles);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 export function buildExhaust(vehicle: Vehicle, banks: readonly ExhaustPort[][], scale: number) {
   const group = new THREE.Group();
   const race = vehicle.kind === "formula1" || vehicle.kind === "endurance";
-  const manifold = new THREE.MeshStandardMaterial({ color: 0xb59576, metalness: 0.66, roughness: 0.31 });
+  const manifold = new THREE.MeshStandardMaterial({
+    color: 0xb59576, metalness: 0.66, roughness: 0.31, emissive: 0xff4510, emissiveIntensity: 0,
+  });
   const steel = new THREE.MeshStandardMaterial({ color: 0x9aadb6, metalness: 0.7, roughness: 0.24 });
   const cast = new THREE.MeshStandardMaterial({ color: 0x4d5358, metalness: 0.56, roughness: 0.52 });
+  const turbineHot = new THREE.MeshStandardMaterial({
+    color: 0x564b48, metalness: 0.54, roughness: 0.48, emissive: 0xff4d14, emissiveIntensity: 0,
+  });
+  const compressorAlloy = new THREE.MeshStandardMaterial({ color: 0xc8d5dc, metalness: 0.68, roughness: 0.26 });
+  const impellerBladeMetal = new THREE.MeshStandardMaterial({
+    color: 0x7be0be, metalness: 0.42, roughness: 0.30, side: THREE.DoubleSide,
+  });
   const dark = new THREE.MeshBasicMaterial({ color: 0x191718, side: THREE.DoubleSide });
   const radius = scale * (race ? 0.056 : 0.066);
   const flames: THREE.Group[] = [];
   const flashLights: THREE.PointLight[] = [];
+  const turboImpellers: THREE.Group[] = [];
   const outerFlameMaterial = new THREE.ShaderMaterial({
     transparent: true,
     depthWrite: false,
@@ -136,11 +177,38 @@ export function buildExhaust(vehicle: Vehicle, banks: readonly ExhaustPort[][], 
     const trunkStart = merge.clone().addScaledVector(xAxis, 0.36 * scale);
     run([merge, turbineCenter, trunkStart], radius * 1.36, manifold);
     if (turbineCount) {
-      const housing = new THREE.Mesh(new THREE.TorusGeometry(scale * 0.16, scale * 0.063, 9, 20), cast);
-      housing.rotation.y = Math.PI / 2;
-      housing.position.copy(turbineCenter);
-      group.add(housing);
-      sleeve(turbineCenter, xAxis, scale * 0.14, scale * 0.20, steel);
+      const hotScroll = new THREE.Mesh(new THREE.TorusGeometry(scale * 0.165, scale * 0.064, 10, 22), turbineHot);
+      hotScroll.rotation.y = Math.PI / 2;
+      hotScroll.position.copy(turbineCenter);
+      group.add(hotScroll);
+      sleeve(turbineCenter, xAxis, scale * 0.11, scale * 0.22, cast);
+
+      // Open-bellmouth cold-side compressor housing facing outward so the spinning impeller is clearly visible.
+      const compRadius = scale * 0.155;
+      const compPos = turbineCenter.clone().add(new THREE.Vector3(scale * 0.04, scale * 0.03, side * scale * 0.18));
+      const compHousing = new THREE.Group();
+      compHousing.position.copy(compPos);
+      if (side < 0) compHousing.rotation.y = Math.PI;
+      group.add(compHousing);
+
+      const coldScroll = new THREE.Mesh(new THREE.TorusGeometry(compRadius * 1.06, compRadius * 0.36, 10, 22), compressorAlloy);
+      compHousing.add(coldScroll);
+      const throat = new THREE.Mesh(new THREE.CircleGeometry(compRadius * 0.98, 20), dark);
+      throat.position.z = compRadius * 0.04;
+      compHousing.add(throat);
+      const bellmouth = new THREE.Mesh(new THREE.TorusGeometry(compRadius * 0.96, compRadius * 0.14, 8, 22), steel);
+      bellmouth.position.z = compRadius * 0.22;
+      compHousing.add(bellmouth);
+
+      const wheel = new THREE.Group();
+      wheel.position.z = compRadius * 0.08;
+      wheel.add(new THREE.Mesh(impellerVanes(compRadius * 0.92), impellerBladeMetal));
+      const nut = new THREE.Mesh(new THREE.ConeGeometry(compRadius * 0.20, compRadius * 0.34, 12), steel);
+      nut.rotation.x = Math.PI / 2;
+      nut.position.z = compRadius * 0.22;
+      wheel.add(nut);
+      compHousing.add(wheel);
+      turboImpellers.push(wheel);
     } else {
       sleeve(turbineCenter, xAxis, radius * 1.62, radius * 1.45, steel);
     }
@@ -196,5 +264,14 @@ export function buildExhaust(vehicle: Vehicle, banks: readonly ExhaustPort[][], 
     }
   }
 
-  return { group, applyFlame };
+  function applyExhaustState(headerHeat: number, turboAngleRad: number) {
+    const heat = Math.min(1, Math.max(0, headerHeat));
+    manifold.emissiveIntensity = 0.88 * heat ** 1.35;
+    turbineHot.emissiveIntensity = 1.25 * heat ** 1.15;
+    for (const impeller of turboImpellers) {
+      impeller.rotation.z = turboAngleRad;
+    }
+  }
+
+  return { group, applyFlame, applyExhaustState, hasTurbo: turboImpellers.length > 0 };
 }

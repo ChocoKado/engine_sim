@@ -276,3 +276,57 @@ test("two-stage spacecraft is removed and afterfire, turbo free-rev, and H2R sup
   assert.ok(rms(liftSig.slice(windowStart, windowEnd)) > rms(steadySig.slice(windowStart, windowEnd)) * 1.18,
     "H2R high-RPM throttle snap-shut should add audible supercharger surge chirp");
 });
+
+test("ECU rev-limiter bounce, Yamaha R15 VVA engagement, and staccato RX-7 rotary lope work consistently", () => {
+  // 1. Rev-limiter bounce in Neutral toggles limiterCut and oscillates RPM cleanly near redline.
+  const r6 = vehicles.find(({ id }) => id === "yamaha-r6");
+  let r6State = { ...createSimulationState(r6), ...running, powerOn: true, enginePhase: "running", engineWarmth: 1 };
+  let cutTransitions = 0;
+  let prevCut = false;
+  for (let tick = 0; tick < 360; tick += 1) {
+    r6State = stepSimulation(r6State, { ...running, throttle: 1 }, r6);
+    if (r6State.limiterCut !== prevCut) {
+      cutTransitions += 1;
+      prevCut = r6State.limiterCut;
+    }
+  }
+  assert.ok(cutTransitions >= 6, `expected repeated ECU rev-limiter bounces, got ${cutTransitions}`);
+
+  // 2. Yamaha YZF-R15 VVA engagement activates smoothly across 7,400 RPM.
+  const r15 = vehicles.find(({ id }) => id === "yamaha-r15");
+  const lowR15 = stepSimulation(
+    { ...createSimulationState(r15), ...running, powerOn: true, enginePhase: "running", engineAngularVelocity: (6500 * Math.PI) / 30 },
+    { ...running, throttle: 0.8 },
+    r15,
+  );
+  const highR15 = stepSimulation(
+    { ...createSimulationState(r15), ...running, powerOn: true, enginePhase: "running", engineAngularVelocity: (8200 * Math.PI) / 30 },
+    { ...running, throttle: 0.8 },
+    r15,
+  );
+  assert.equal(lowR15.vvaEngagement, 0);
+  assert.equal(highR15.vvaEngagement, 1);
+
+  // 3. RX-7 Spirit R with rotaryLope enabled exhibits rhythmic idle RPM hunting around idleRpm.
+  const rx7 = cars.find(({ id }) => id === "mazda-rx7-spirit-r");
+  let rx7State = {
+    ...createSimulationState(rx7),
+    ...running,
+    powerOn: true,
+    enginePhase: "running",
+    engineWarmth: 1,
+    runningSeconds: 3,
+    engineAngularVelocity: (rx7.physics.idleRpm * Math.PI) / 30,
+  };
+  let minRpm = Infinity;
+  let maxRpm = -Infinity;
+  for (let tick = 0; tick < 240; tick += 1) {
+    rx7State = stepSimulation(rx7State, { ...running, rotaryLope: true }, rx7);
+    if (tick >= 60) {
+      const currentRpm = rpmFromRadiansPerSecond(rx7State.engineAngularVelocity);
+      minRpm = Math.min(minRpm, currentRpm);
+      maxRpm = Math.max(maxRpm, currentRpm);
+    }
+  }
+  assert.ok(maxRpm - minRpm > 20, `expected audible/visible rotary lope RPM swing, got ${maxRpm - minRpm}`);
+});

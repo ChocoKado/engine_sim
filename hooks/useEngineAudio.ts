@@ -215,10 +215,12 @@ export function useEngineAudio(vehicle: Vehicle, tuning: TuningProfile, showExha
       tracker.pendingCount = 0;
       if (poweredCut && !tracker.wasPoweredCut) {
         const strength = tracker.charge * voicing;
-        if (strength > 0.20 && Math.random() < Math.min(0.82, 0.18 + 0.66 * strength)) {
+        if (strength > 0.20 && Math.random() < Math.min(0.86, 0.18 + 0.66 * strength)) {
           const impulse = Math.min(0.96, (0.42 + strength * 0.50) * (0.72 + Math.random() * 0.28));
           triggerFlame(impulse, Math.round(31 + 22 * impulse));
         }
+      } else if (state.limiterCut && latestVoicing.current.harmonics > 1.2 && Math.random() < 0.12) {
+        triggerFlame(0.78 + Math.random() * 0.18, 52);
       }
       const heat = Math.min(1, Math.max(0, (rpm - 2600) / 5000)) * Math.min(1, Math.max(0, (state.throttle - 0.12) / 0.5));
       const target = heat * (0.64 + 0.23 * Math.sqrt(combustion) + 0.13 * load);
@@ -284,7 +286,8 @@ export function useEngineAudio(vehicle: Vehicle, tuning: TuningProfile, showExha
       turboBoostBar: state.turboBoostBar,
       turboRelease: state.turboRelease,
       revMatchThrottle: state.revMatchThrottle,
-      vtecEngagement: state.vtecEngagement,
+      vtecEngagement: Math.max(state.vtecEngagement, state.vvaEngagement * 0.72),
+      limiterCut: state.limiterCut,
       starter: state.starter,
       motorAngularVelocity: state.motorAngularVelocity,
       motorLoad: state.motorLoad,

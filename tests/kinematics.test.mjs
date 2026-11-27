@@ -34,7 +34,14 @@ test("720-degree cycle, cylinder offset and indicative valves use the firing pha
   assert.equal(second.intakeLiftM, 0);
   assert.ok(first.exhaustLiftM > 0);
   assert.ok(getEnginePose(r15, 2.5 * Math.PI).cylinders[0].intakeLiftM > 0);
-  assert.equal(getEnginePose(r15, 2.5 * Math.PI, 9500).vvaMode, "unknown");
+  assert.equal(getEnginePose(r15, 2.5 * Math.PI, 6500).vvaMode, "low");
+  assert.equal(getEnginePose(r15, 2.5 * Math.PI, 9500).vvaMode, "high");
+  assert.ok(
+    getEnginePose(r15, 2.5 * Math.PI, 9500).cylinders[0].intakeLiftM
+      > getEnginePose(r15, 2.5 * Math.PI, 6500).cylinders[0].intakeLiftM,
+  );
+  const unknownVva = { ...r15, geometry: { ...r15.geometry, vva: { switchRpm: null, highIntakeLiftM: 0.0076 } } };
+  assert.equal(getEnginePose(unknownVva, 2.5 * Math.PI, 9500).vvaMode, "unknown");
   assert.equal(getEnginePose(r3, 2.5 * Math.PI).vvaMode, null);
 });
 
