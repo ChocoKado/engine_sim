@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { EngineView } from "../components/EngineView";
+import { LiveDynoChart } from "../components/LiveDynoChart";
 import { RecordingComparison } from "../components/RecordingComparison";
 import { RidingControls, ShiftModeControls } from "../components/RidingControls";
 import { cars } from "../data/cars";
@@ -15,7 +16,8 @@ import { vehicles } from "../data/vehicles";
 import type { Vehicle } from "../data/vehicles";
 import { useEngineAudio } from "../hooks/useEngineAudio";
 import { useSimulation } from "../hooks/useSimulation";
-import { PIT_ENTRY_LENGTH_M, PIT_EXIT_LENGTH_M, PIT_SPEED_LIMIT_KMH, rpmFromRadiansPerSecond } from "../lib/simulation";
+import { PIT_ENTRY_LENGTH_M, PIT_EXIT_LENGTH_M, PIT_SPEED_LIMIT_KMH, rpmFromRadiansPerSecond, targetLaunchRpm } from "../lib/simulation";
+import { resolveTransmissionType, TRANSMISSION_LABELS } from "../lib/transmission";
 
 const simulationModes = {
   motorcycle: { label: "機車", heading: "騎乘控制台" },
@@ -63,11 +65,15 @@ function Tachometer({ rpm, referenceRpm, isCar }: { rpm: number; referenceRpm: n
 
 function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
   const [showEngine, setShowEngine] = useState(false);
+  const [showDyno, setShowDyno] = useState(false);
   const [tuning, setTuning] = useState<TuningProfile>(tuningProfiles[0]);
   const [turboFlutterEnabled, setTurboFlutterEnabled] = useState(false);
   const [rotaryPortEnabled, setRotaryPortEnabled] = useState(false);
+  const [launchControlEnabled, setLaunchControlEnabled] = useState(false);
   const canToggleRotaryPort = Boolean(vehicle.geometry.rotary);
   const canToggleTurboFlutter = Boolean(vehicle.turbocharger && (vehicle.kind === "car" || vehicle.turbocharger.releaseStyle !== "subtle"));
+  const txType = resolveTransmissionType(vehicle);
+  const launchRpm = targetLaunchRpm(vehicle);
 
   useEffect(() => {
     if (!canToggleRotaryPort && rotaryPortEnabled) setRotaryPortEnabled(false);
@@ -90,19 +96,21 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
     snapshot, readState, pedalReset, setPedal, shift, setShiftMode, setRoadSpeedLimitDisabled,
     toggleEngine, requestPitReturn, resetSimulation,
     replayStatus, activeRecordedRun, toggleRunRecording, toggleRunReplay,
-  } = useSimulation(vehicle, sendAudioState, canToggleRotaryPort && rotaryPortEnabled);
+  } = useSimulation(vehicle, sendAudioState, canToggleRotaryPort && rotaryPortEnabled, launchControlEnabled);
   const { engineAngularVelocity, vehicleSpeed, gear, powerOn, enginePhase, engineWarmth, shiftMode, shift: pendingShift, lastShift, engineFailed,
     roadSpeedLimitDisabled, hybridEnergyKj, hybridPowerKw, electricEnergyKj, electricPowerKw, turboBoostBar } = snapshot;
   const isRace = vehicle.kind === "formula1" || vehicle.kind === "endurance";
   const hybrid = vehicle.physics.hybridAssist;
   const electric = vehicle.physics.electricDrive;
   const speedKmh = vehicleSpeed * 3.6;
-  const { pitZone, pitDistanceM, vtecEngagement, vvaEngagement, superchargerAngularVelocity } = snapshot;
+  const { pitZone, pitDistanceM, vtecEngagement, vvaEngagement, superchargerAngularVelocity, launchActive, perfTimer } = snapshot;
   const vva = vehicle.geometry.vva;
+  const currentRpm = rpmFromRadiansPerSecond(engineAngularVelocity);
   const impellerRpm = Math.round(rpmFromRadiansPerSecond(superchargerAngularVelocity));
 
   const ignitionLabel = enginePhase === "electric" ? (vehicleSpeed > 0.3 ? "電力出站" : "電力待命")
     : enginePhase === "cranking" ? "啟動中"
+    : launchActive ? (vehicle.turbocharger ? "偏時彈射待命" : "彈射起步待命")
     : enginePhase === "running" ? (engineWarmth < 0.9 && gear === 0 && snapshot.throttle === 0 ? "暖車中" : "引擎運轉")
     : "動力關閉";
   const gears = vehicle.kind ? Array.from({ length: vehicle.gears + 1 }, (_, index) => index)
@@ -131,6 +139,11 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
           <h2 id="dashboard-title">{showEngine ? "引擎內構" : "儀表"}</h2>
           <div className="dashboard-actions">
             <ShiftModeControls mode={shiftMode} onModeChange={setShiftMode} />
+            {!showEngine && (
+              <button type="button" className="mode-button" aria-pressed={showDyno} onClick={() => setShowDyno((prev) => !prev)}>
+                馬力圖
+              </button>
+            )}
             <button type="button" className="mode-button engine-view-toggle" onClick={toggleEngineView}>
               {showEngine ? "返回儀表" : "3D 內構"}
             </button>
@@ -139,7 +152,7 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
         {showEngine ? <EngineView vehicle={vehicle} snapshot={snapshot} readState={readState} readExhaustFlame={readExhaustFlame} /> : (
           <>
             <div className="readouts">
-              <Tachometer rpm={rpmFromRadiansPerSecond(engineAngularVelocity)} referenceRpm={vehicle.physics.referenceRpm}
+              <Tachometer rpm={currentRpm} referenceRpm={vehicle.physics.referenceRpm}
                 isCar={vehicle.kind === "car" || vehicle.kind === "endurance"} />
               <div className="speed-readout">
                 <span className="readout-label">車速</span>
@@ -158,22 +171,52 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
                 </li>
               ))}
             </ol>
-            {(electric || hybrid || vehicle.turbocharger || vehicle.supercharger || vehicle.geometry.vtec || vva) && (
-              <dl className="drive-readout">
-                {vehicle.geometry.vtec && <div><dt>VTEC</dt><dd>{vtecEngagement >= 0.6 ? "高角度凸輪" : "低角度凸輪"}</dd></div>}
-                {vva && <div><dt>VVA</dt><dd>{vva.switchRpm === null ? "待考" : vvaEngagement >= 0.5 ? "高揚程凸輪" : "低揚程凸輪"}</dd></div>}
-                {vehicle.supercharger && <div><dt>增壓葉輪</dt><dd>{impellerRpm.toLocaleString("zh-TW")} RPM</dd></div>}
-                {vehicle.turbocharger && <div><dt>渦輪增壓</dt><dd>{turboBoostBar.toFixed(2)} bar</dd></div>}
-                {hybrid && <>
-                  <div><dt>ERS 電量</dt><dd>{Math.round(100 * hybridEnergyKj / hybrid.capacityKj)}%</dd></div>
-                  <div><dt>{hybridLabel}</dt><dd>{Math.round(Math.abs(hybridPowerKw))} kW</dd></div>
-                </>}
-                {electric && <>
-                  <div><dt>電量</dt><dd>{Math.round(100 * electricEnergyKj / (3600 * electric.batteryCapacityKwh))}%</dd></div>
-                  <div><dt>{electricLabel}</dt><dd>{Math.round(Math.abs(electricPowerKw))} kW</dd></div>
-                </>}
-              </dl>
-            )}
+            {showDyno && <LiveDynoChart vehicle={vehicle} snapshot={snapshot} />}
+            <dl className="drive-readout">
+              <div><dt>變速箱</dt><dd>{TRANSMISSION_LABELS[txType]}</dd></div>
+              {vehicle.twoStroke && (
+                <div><dt>膨脹室</dt><dd>{currentRpm >= vehicle.twoStroke.powerbandStartRpm ? "開閥共振區" : `${vehicle.twoStroke.powerbandStartRpm} RPM 起`}</dd></div>
+              )}
+              {vehicle.geometry.vtec && <div><dt>VTEC</dt><dd>{vtecEngagement >= 0.6 ? "高角度凸輪" : "低角度凸輪"}</dd></div>}
+              {vva && <div><dt>VVA</dt><dd>{vva.switchRpm === null ? "待考" : vvaEngagement >= 0.5 ? "高揚程凸輪" : "低揚程凸輪"}</dd></div>}
+              {vehicle.supercharger && (
+                <div>
+                  <dt>{vehicle.supercharger.whineStyle === "roots" ? "魯式增壓" : "增壓葉輪"}</dt>
+                  <dd>{impellerRpm.toLocaleString("zh-TW")} RPM</dd>
+                </div>
+              )}
+              {vehicle.turbocharger && <div><dt>渦輪增壓</dt><dd>{turboBoostBar.toFixed(2)} bar</dd></div>}
+              {hybrid && <>
+                <div><dt>ERS 電量</dt><dd>{Math.round(100 * hybridEnergyKj / hybrid.capacityKj)}%</dd></div>
+                <div><dt>{hybridLabel}</dt><dd>{Math.round(Math.abs(hybridPowerKw))} kW</dd></div>
+              </>}
+              {electric && <>
+                <div><dt>電量</dt><dd>{Math.round(100 * electricEnergyKj / (3600 * electric.batteryCapacityKwh))}%</dd></div>
+                <div><dt>{electricLabel}</dt><dd>{Math.round(Math.abs(electricPowerKw))} kW</dd></div>
+              </>}
+              {(perfTimer.running || perfTimer.zeroTo100Seconds !== null || perfTimer.quarterMileSeconds !== null) && (
+                <>
+                  <div>
+                    <dt>0–100 km/h</dt>
+                    <dd>{perfTimer.zeroTo100Seconds !== null ? `${perfTimer.zeroTo100Seconds.toFixed(2)} s` : `${perfTimer.elapsedSeconds.toFixed(1)} s…`}</dd>
+                  </div>
+                  {(perfTimer.zeroTo200Seconds !== null || speedKmh >= 100) && (
+                    <div>
+                      <dt>0–200 km/h</dt>
+                      <dd>{perfTimer.zeroTo200Seconds !== null ? `${perfTimer.zeroTo200Seconds.toFixed(2)} s` : `${perfTimer.elapsedSeconds.toFixed(1)} s…`}</dd>
+                    </div>
+                  )}
+                  <div>
+                    <dt>0–400 m</dt>
+                    <dd>
+                      {perfTimer.quarterMileSeconds !== null
+                        ? `${perfTimer.quarterMileSeconds.toFixed(2)} s @ ${Math.round(perfTimer.quarterMileSpeedKmh ?? 0)} km/h`
+                        : `${Math.round(perfTimer.distanceM)} m`}
+                    </dd>
+                  </div>
+                </>
+              )}
+            </dl>
             <p className="dashboard-note">傳動採近似模型，{vehicle.kind ? "輪胎" : "後輪"}假定純滾動，計入滾阻與風阻。物理聲學合成示意。</p>
             {((canToggleTurboFlutter && turboFlutterEnabled) || (canToggleRotaryPort && rotaryPortEnabled)) && (
               <p className="dashboard-note audio-voicing-note">
@@ -248,6 +291,9 @@ function DrivingConsole({ vehicle }: { vehicle: Vehicle }) {
         canToggleTurboFlutter={canToggleTurboFlutter}
         turboFlutterEnabled={turboFlutterEnabled}
         onToggleTurboFlutter={() => setTurboFlutterEnabled((prev) => !prev)}
+        launchControlEnabled={launchControlEnabled}
+        launchRpm={launchRpm}
+        onToggleLaunchControl={() => setLaunchControlEnabled((prev) => !prev)}
         onShift={shift}
         onPedalChange={setPedal}
         resetKey={pedalReset}

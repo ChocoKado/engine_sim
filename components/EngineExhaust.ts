@@ -214,9 +214,27 @@ export function buildExhaust(vehicle: Vehicle, banks: readonly ExhaustPort[][], 
     }
     const pathEnd = trunkStart.clone().add(new THREE.Vector3(scale * (race ? 0.77 : 1.13), -scale * 0.16, 0));
     const lip = pathEnd.clone().addScaledVector(xAxis, scale * 0.28);
-    const outletRadius = radius * (race ? 1.58 : 1.68);
-    run([trunkStart, trunkStart.clone().lerp(pathEnd, 0.38), pathEnd, lip], outletRadius, steel);
-    if (!race) sleeve(pathEnd.clone().addScaledVector(xAxis, -scale * 0.31), xAxis, outletRadius * 1.85, scale * 0.56, cast);
+    const outletRadius = radius * (race ? 1.58 : vehicle.twoStroke ? 1.05 : 1.68);
+    if (vehicle.twoStroke) {
+      // Hydroformed 2-stroke expansion chamber: divergent cone -> fat belly -> convergent baffle cone -> thin stinger.
+      const bellyStart = trunkStart.clone().lerp(pathEnd, 0.18);
+      const bellyMid = trunkStart.clone().lerp(pathEnd, 0.50).add(new THREE.Vector3(0, -scale * 0.06, side * scale * 0.05));
+      const baffleEnd = trunkStart.clone().lerp(pathEnd, 0.80);
+      const coneA = new THREE.Mesh(new THREE.CylinderGeometry(radius * 2.65, radius * 1.32, bellyStart.distanceTo(bellyMid), 16), manifold);
+      coneA.quaternion.setFromUnitVectors(yAxis, bellyMid.clone().sub(bellyStart).normalize());
+      coneA.position.copy(bellyStart).lerp(bellyMid, 0.5);
+      group.add(coneA);
+      const coneB = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.86, radius * 2.65, bellyMid.distanceTo(baffleEnd), 16), manifold);
+      coneB.quaternion.setFromUnitVectors(yAxis, baffleEnd.clone().sub(bellyMid).normalize());
+      coneB.position.copy(bellyMid).lerp(baffleEnd, 0.5);
+      group.add(coneB);
+      run([trunkStart, bellyStart], radius * 1.32, manifold);
+      run([baffleEnd, pathEnd, lip], outletRadius, steel);
+      sleeve(pathEnd.clone().addScaledVector(xAxis, -scale * 0.18), xAxis, outletRadius * 1.65, scale * 0.42, cast);
+    } else {
+      run([trunkStart, trunkStart.clone().lerp(pathEnd, 0.38), pathEnd, lip], outletRadius, steel);
+      if (!race) sleeve(pathEnd.clone().addScaledVector(xAxis, -scale * 0.31), xAxis, outletRadius * 1.85, scale * 0.56, cast);
+    }
     const ring = new THREE.Mesh(new THREE.TorusGeometry(outletRadius, radius * 0.18, 8, 18), steel);
     ring.rotation.y = Math.PI / 2;
     ring.position.copy(lip);

@@ -20,6 +20,28 @@ const SPEED_LIMIT_WINDOW_KMH = 0.5;
 export type EnginePhase = "off" | "electric" | "cranking" | "running";
 export type PitZone = "box" | "exit" | "track" | "entry" | null;
 
+export interface PerformanceTimer {
+  readonly armed: boolean;
+  readonly running: boolean;
+  readonly elapsedSeconds: number;
+  readonly distanceM: number;
+  readonly zeroTo100Seconds: number | null;
+  readonly zeroTo200Seconds: number | null;
+  readonly quarterMileSeconds: number | null;
+  readonly quarterMileSpeedKmh: number | null;
+}
+
+export const INITIAL_PERFORMANCE_TIMER: PerformanceTimer = {
+  armed: true,
+  running: false,
+  elapsedSeconds: 0,
+  distanceM: 0,
+  zeroTo100Seconds: null,
+  zeroTo200Seconds: null,
+  quarterMileSeconds: null,
+  quarterMileSpeedKmh: null,
+};
+
 export interface SimulationInput {
   readonly engineOn: boolean;
   readonly shiftMode: ShiftMode;
@@ -28,6 +50,7 @@ export interface SimulationInput {
   readonly roadSpeedLimitDisabled: boolean;
   readonly pitReturn?: boolean;
   readonly rotaryLope?: boolean;
+  readonly launchControl?: boolean;
 }
 
 export interface SimulationState extends SimulationInput, TransmissionState {
@@ -63,7 +86,9 @@ export interface SimulationState extends SimulationInput, TransmissionState {
   readonly vtecEngagement: number;
   readonly vvaEngagement: number;
   readonly limiterCut: boolean;
+  readonly launchActive: boolean;
   readonly lopePhaseRad: number;
+  readonly perfTimer: PerformanceTimer;
   readonly drivetrainTorqueNm: number;
   readonly clutchSlipRadPerSecond: number;
   readonly mechanicalOverRev: boolean;
@@ -118,7 +143,9 @@ export function createSimulationState(vehicle: Vehicle): SimulationState {
     vtecEngagement: 0,
     vvaEngagement: 0,
     limiterCut: false,
+    launchActive: false,
     lopePhaseRad: 0,
+    perfTimer: INITIAL_PERFORMANCE_TIMER,
     drivetrainTorqueNm: 0,
     clutchSlipRadPerSecond: 0,
     mechanicalOverRev: false,
@@ -204,19 +231,31 @@ function advanceElectricDrive(
     motorLoad: force * wheelRadius / electric.launchTorqueNm };
 }
 
+export function targetLaunchRpm(vehicle: Vehicle): number {
+  const { idleRpm, peakTorqueRpm, referenceRpm } = vehicle.physics;
+  if (vehicle.kind === "formula1") return Math.round(Math.min(referenceRpm * 0.72, Math.max(8500, peakTorqueRpm * 0.86)));
+  if (vehicle.kind === "endurance") return Math.round(Math.min(referenceRpm * 0.64, Math.max(4500, peakTorqueRpm * 0.78)));
+  if (vehicle.kind === "car") return Math.round(Math.min(referenceRpm * 0.62, Math.max(idleRpm + 2900, Math.min(5400, peakTorqueRpm * 0.92))));
+  if (vehicle.twoStroke) return Math.round(Math.max(7200, vehicle.twoStroke.powerbandStartRpm));
+  return Math.round(Math.min(referenceRpm * 0.64, Math.max(5800, peakTorqueRpm * 0.76)));
+}
+
 function advanceTurbo(
-  state: SimulationState, vehicle: Vehicle, rpm: number, throttle: number, shiftCut: number, inGear: boolean,
+  state: SimulationState, vehicle: Vehicle, rpm: number, throttle: number, shiftCut: number, inGear: boolean, antiLagActive: boolean,
 ) {
   const turbo = vehicle.turbocharger;
   if (!turbo) return { turboBoostBar: 0, turboRelease: 0 };
   const spoolStartRpm = turbo.spoolStartRpm ?? vehicle.physics.idleRpm + 500;
   const fullBoostRpm = Math.max(spoolStartRpm + 850, vehicle.physics.peakTorqueRpm);
-  const flow = unitInterval((rpm - spoolStartRpm) / (fullBoostRpm - spoolStartRpm));
-  const opening = throttle * (1 - shiftCut);
-  const target = turbo.maxBoostBar * flow * opening ** 1.4 * (inGear ? 1 : 0.44);
+  const flow = antiLagActive
+    ? unitInterval((rpm - spoolStartRpm * 0.75) / Math.max(800, (fullBoostRpm - spoolStartRpm) * 0.65))
+    : unitInterval((rpm - spoolStartRpm) / (fullBoostRpm - spoolStartRpm));
+  const opening = antiLagActive ? Math.max(throttle, 0.92) : throttle * (1 - shiftCut);
+  const loadFactor = antiLagActive ? 0.94 : inGear ? 1 : 0.44;
+  const target = turbo.maxBoostBar * flow * opening ** 1.4 * loadFactor;
   const pressure = state.turboBoostBar;
-  const releaseStarts = state.throttle * (1 - state.shiftCut) >= 0.48 && opening < 0.48 && pressure >= 0.12;
-  const spoolTau = inGear ? 0.24 : 0.16;
+  const releaseStarts = !antiLagActive && state.throttle * (1 - state.shiftCut) >= 0.48 && opening < 0.48 && pressure >= 0.12;
+  const spoolTau = antiLagActive ? 0.11 : inGear ? 0.24 : 0.16;
   const decay = target > pressure ? spoolTau : opening < 0.45 ? 0.070 : 0.18;
   const fullReleasePressure = Math.max(0.28, Math.min(0.78, turbo.maxBoostBar * 0.58));
   return {
@@ -227,25 +266,42 @@ function advanceTurbo(
   };
 }
 
-function fullThrottleTorqueNm(rpm: number, physics: Vehicle["physics"]): number {
+export function engineFullThrottleTorqueAtRpm(rpm: number, vehicle: Vehicle): number {
+  const { physics, geometry, twoStroke } = vehicle;
+  let baseTorque: number;
   if (rpm <= physics.peakTorqueRpm) {
     const lowRpmRatio = physics.lowRpmTorqueRatio ?? 0.44;
-    const progress = rpm / physics.peakTorqueRpm;
-    return physics.peakTorqueNm * (lowRpmRatio + (1 - lowRpmRatio) * progress ** 1.4);
+    const progress = Math.max(0, rpm / physics.peakTorqueRpm);
+    baseTorque = physics.peakTorqueNm * (lowRpmRatio + (1 - lowRpmRatio) * progress ** 1.4);
+  } else {
+    const torqueAtPeakPower = physics.peakPowerPs * WATTS_PER_METRIC_HP
+      / radiansPerSecondFromRpm(physics.peakPowerRpm);
+    const peakTorqueEndRpm = physics.peakTorqueEndRpm ?? physics.peakTorqueRpm;
+    if (rpm <= peakTorqueEndRpm) {
+      baseTorque = physics.peakTorqueNm;
+    } else if (rpm > physics.peakPowerRpm) {
+      const overPeak = unitInterval((rpm - physics.peakPowerRpm) / Math.max(200, physics.fuelCutRpm - physics.peakPowerRpm));
+      baseTorque = torqueAtPeakPower * (physics.peakPowerRpm / rpm) * (1 - 0.12 * overPeak ** 2);
+    } else {
+      const progress = unitInterval((rpm - peakTorqueEndRpm) / Math.max(100, physics.peakPowerRpm - peakTorqueEndRpm));
+      baseTorque = physics.peakTorqueNm + (torqueAtPeakPower - physics.peakTorqueNm) * progress;
+    }
   }
 
-  const torqueAtPeakPower = physics.peakPowerPs * WATTS_PER_METRIC_HP
-    / radiansPerSecondFromRpm(physics.peakPowerRpm);
-  const peakTorqueEndRpm = physics.peakTorqueEndRpm ?? physics.peakTorqueRpm;
-  if (rpm <= peakTorqueEndRpm) return physics.peakTorqueNm;
-  if (rpm > physics.peakPowerRpm) {
-    const overPeak = unitInterval((rpm - physics.peakPowerRpm) / (physics.fuelCutRpm - physics.peakPowerRpm));
-    // Power falls gradually past its rated peak. The rev limiter acts on fuel separately.
-    return torqueAtPeakPower * (physics.peakPowerRpm / rpm) * (1 - 0.12 * overPeak ** 2);
+  // Two-stroke expansion-chamber scavenging: docile below the pipe, steep resonant surge into the powerband.
+  if (twoStroke) {
+    const pipeProgress = unitInterval((rpm - twoStroke.powerbandStartRpm + 900) / Math.max(900, twoStroke.powerbandPeakRpm - twoStroke.powerbandStartRpm + 900));
+    const smoothPipe = pipeProgress * pipeProgress * (3 - 2 * pipeProgress);
+    baseTorque *= 0.56 + 0.44 * smoothPipe;
   }
 
-  const progress = unitInterval((rpm - peakTorqueEndRpm) / (physics.peakPowerRpm - peakTorqueEndRpm));
-  return physics.peakTorqueNm + (torqueAtPeakPower - physics.peakTorqueNm) * progress;
+  const vtec = geometry.vtec;
+  if (vtec) {
+    const highCam = unitInterval((rpm - vtec.switchRpm + 80) / 160);
+    const lowCamDip = physics.peakTorqueRpm < vtec.switchRpm ? unitInterval((rpm - vtec.switchRpm + 80) / 320) : 1;
+    baseTorque *= 1 - 0.10 * lowCamDip * (1 - highCam);
+  }
+  return baseTorque;
 }
 
 export function stepSimulation(state: SimulationState, input: SimulationInput, vehicle: Vehicle): SimulationState {
@@ -266,15 +322,22 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
   else if (pitZone === "track" && input.pitReturn && roadSpeedKmh <= PIT_SPEED_LIMIT_KMH) pitZone = "entry";
   const hotIdleSpeed = radiansPerSecondFromRpm(physics.idleRpm);
   const idleSpeed = radiansPerSecondFromRpm(ignition.idleTargetRpm);
-  const { transmission, clutchScale, combustionScale, revMatchRpm } = advanceTransmission(state, {
+  // Launch Control (2-Step): holds engine at optimal launch RPM when stationary in Neutral or Brake+Throttle in 1st.
+  const launchHold = Boolean(
+    input.launchControl && engineOn && throttle >= 0.45 && roadSpeed < 0.65
+      && (state.gear === 0 || (state.gear === 1 && brake >= 0.25)),
+  );
+  const transmissionBrake = launchHold && input.shiftMode === "AT" && state.gear === 0 && brake >= 0.25 ? 0 : brake;
+  const { transmission, clutchScale: rawClutchScale, combustionScale, revMatchRpm } = advanceTransmission(state, {
     engineOn: physics.electricDrive ? powerOn : engineOn,
     shiftMode: input.shiftMode,
     throttle,
-    brake,
+    brake: transmissionBrake,
     engineRpm: rpm,
     wheelAngularVelocity: wheelSpeed,
     vehicleSpeed: roadSpeed,
   }, vehicle, dt);
+  const clutchScale = launchHold && brake >= 0.25 ? 0 : rawClutchScale;
   const { gear } = transmission;
   const ratio = getOverallRatio(vehicle, gear);
   const mass = physics.curbMassKg + OPERATOR_MASS_KG;
@@ -294,9 +357,10 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
   const unloadedDrag = 4 * pumping * closedThrottle * neutralOverrun;
   const engineLoss = friction + pumping + unloadedDrag;
   const gearFuelCutRpm = physics.gearFuelCutRpm?.[gear];
-  const fuelCutRpm = gearFuelCutRpm ?? physics.fuelCutRpm;
-  const allowLimiterBounce = engineOn && throttle > 0.35 && (gear === 0 || input.shiftMode === "MT" || gear <= 3);
-  const limiterBandRpm = Math.min(330, Math.max(175, fuelCutRpm * 0.023));
+  const launchCeilingRpm = targetLaunchRpm(vehicle);
+  const fuelCutRpm = launchHold ? launchCeilingRpm : (gearFuelCutRpm ?? physics.fuelCutRpm);
+  const allowLimiterBounce = engineOn && throttle > 0.35 && (launchHold || gear === 0 || input.shiftMode === "MT" || gear <= 3);
+  const limiterBandRpm = launchHold ? 155 : Math.min(330, Math.max(175, fuelCutRpm * 0.023));
   const limiterCut = allowLimiterBounce
     ? (rpm >= fuelCutRpm - 18 || (state.limiterCut && rpm > fuelCutRpm - limiterBandRpm))
     : false;
@@ -311,11 +375,18 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
   const vvaHigh = vva && vva.switchRpm !== null && engineOn ? unitInterval((rpm - vva.switchRpm + 90) / 180) : 0;
   const highCam = vtec && engineOn ? unitInterval((rpm - vtec.switchRpm + 80) / 160)
     * unitInterval((throttle - 0.2) / 0.28) * unitInterval((ignition.engineWarmth - 0.08) / 0.20) : 0;
+  const rawWotTorque = engineFullThrottleTorqueAtRpm(rpm, vehicle);
   const lowCamDip = vtec
     ? (physics.peakTorqueRpm < vtec.switchRpm ? unitInterval((rpm - vtec.switchRpm + 80) / 320) : 1)
     : 0;
-  const camTorque = vtec ? 1 - 0.10 * lowCamDip * (1 - highCam) : 1;
-  const availableCombustion = (camTorque * fullThrottleTorqueNm(rpm, physics) + friction) * Math.min(revFuel, roadFuel);
+  const steadyHighCam = vtec ? unitInterval((rpm - vtec.switchRpm + 80) / 160) : 0;
+  const vtecWarmAdjust = vtec && highCam !== steadyHighCam
+    ? (1 - 0.10 * lowCamDip * (1 - highCam)) / Math.max(0.5, 1 - 0.10 * lowCamDip * (1 - steadyHighCam))
+    : 1;
+  const antiLagBonus = input.launchControl && vehicle.turbocharger && vehicle.turbocharger.maxBoostBar > 0 && roadSpeed < 20
+    ? 1 + 0.10 * Math.min(1, state.turboBoostBar / vehicle.turbocharger.maxBoostBar)
+    : 1;
+  const availableCombustion = (rawWotTorque * vtecWarmAdjust * antiLagBonus + friction) * Math.min(revFuel, roadFuel);
   const lopeActive = Boolean(input.rotaryLope && vehicle.geometry.rotary && engineOn && throttle < 0.12 && gear === 0);
   const nextLopePhase = lopeActive ? (state.lopePhaseRad + RAD_PER_REVOLUTION * 5.0 * dt) % RAD_PER_REVOLUTION : 0;
   const lopeKick = Math.max(0, Math.sin(nextLopePhase)) ** 2.4;
@@ -404,6 +475,7 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
   }
   const nextWheelSpeed = Math.max(0, freelyBrakedWheelSpeed + dt * drivetrainTorque / effectiveWheelInertia);
   const nextRoadSpeed = nextWheelSpeed * radius;
+  const nextRoadSpeedKmh = nextRoadSpeed * 3.6;
   let pitDistanceM = 0;
   let parked = false;
   if (pitZone === "exit" || pitZone === "entry") {
@@ -415,11 +487,58 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
       parked = true;
     } else pitDistanceM = pitZone === "entry" ? Math.min(PIT_ENTRY_LENGTH_M, distance) : distance;
   }
+  let perfTimer = state.perfTimer;
+  if (!engineOn || state.engineFailed || parked) {
+    perfTimer = INITIAL_PERFORMANCE_TIMER;
+  } else if (nextRoadSpeed <= 0.08 && roadSpeed <= 0.08) {
+    perfTimer = perfTimer.zeroTo100Seconds !== null || perfTimer.quarterMileSeconds !== null
+      ? { ...perfTimer, armed: true, running: false, elapsedSeconds: 0, distanceM: 0 }
+      : INITIAL_PERFORMANCE_TIMER;
+  } else if (perfTimer.armed && !perfTimer.running && roadSpeed <= 0.25 && nextRoadSpeed > 0.08 && throttle > 0.15 && brake < 0.25) {
+    const stepDist = (roadSpeed + nextRoadSpeed) * 0.5 * dt;
+    perfTimer = {
+      armed: false,
+      running: true,
+      elapsedSeconds: dt,
+      distanceM: stepDist,
+      zeroTo100Seconds: nextRoadSpeedKmh >= 100 ? dt : null,
+      zeroTo200Seconds: nextRoadSpeedKmh >= 200 ? dt : null,
+      quarterMileSeconds: stepDist >= 400 ? dt : null,
+      quarterMileSpeedKmh: stepDist >= 400 ? nextRoadSpeedKmh : null,
+    };
+  } else if (perfTimer.running) {
+    const prevElapsed = perfTimer.elapsedSeconds;
+    const prevDist = perfTimer.distanceM;
+    const nextElapsed = prevElapsed + dt;
+    const stepDist = (roadSpeed + nextRoadSpeed) * 0.5 * dt;
+    const nextDist = prevDist + stepDist;
+    const speedDelta = Math.max(1e-6, nextRoadSpeedKmh - roadSpeedKmh);
+    const zeroTo100Seconds = perfTimer.zeroTo100Seconds ?? (nextRoadSpeedKmh >= 100
+      ? prevElapsed + dt * unitInterval((100 - roadSpeedKmh) / speedDelta) : null);
+    const zeroTo200Seconds = perfTimer.zeroTo200Seconds ?? (nextRoadSpeedKmh >= 200
+      ? prevElapsed + dt * unitInterval((200 - roadSpeedKmh) / speedDelta) : null);
+    const quarterFraction = stepDist > 1e-6 ? unitInterval((400 - prevDist) / stepDist) : 1;
+    const quarterMileSeconds = perfTimer.quarterMileSeconds ?? (nextDist >= 400
+      ? prevElapsed + dt * quarterFraction : null);
+    const quarterMileSpeedKmh = perfTimer.quarterMileSpeedKmh ?? (nextDist >= 400
+      ? roadSpeedKmh + (nextRoadSpeedKmh - roadSpeedKmh) * quarterFraction : null);
+    const finishedAll = zeroTo100Seconds !== null && zeroTo200Seconds !== null && quarterMileSeconds !== null;
+    perfTimer = {
+      armed: false,
+      running: !finishedAll && nextElapsed < 90,
+      elapsedSeconds: nextElapsed,
+      distanceM: nextDist,
+      zeroTo100Seconds,
+      zeroTo200Seconds,
+      quarterMileSeconds,
+      quarterMileSpeedKmh,
+    };
+  }
   const nextEngineSpeed = Math.max(0, freeEngineSpeed - dt * clutchTorque / physics.engineInertiaKgM2);
   const crankAdvance = dt * (engineSpeed + nextEngineSpeed) / 2;
   const superchargerRatio = vehicle.supercharger?.driveRatio ?? 0;
   const nextRpm = rpmFromRadiansPerSecond(nextEngineSpeed);
-  const overRevThresholdRpm = Math.max(physics.referenceRpm, fuelCutRpm);
+  const overRevThresholdRpm = Math.max(physics.referenceRpm, gearFuelCutRpm ?? physics.fuelCutRpm);
   const mechanicalOverRev = nextRpm > overRevThresholdRpm && (clutchTorque < 0 || (state.mechanicalOverRev && gear > 0));
   const newOverRev = mechanicalOverRev && !state.mechanicalOverRev;
   // An illustrative accumulated severity, with no prediction of a real engine's failure limit.
@@ -461,7 +580,7 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
     crankAngleRad: (state.crankAngleRad + crankAdvance) % RAD_PER_ENGINE_CYCLE,
     superchargerAngularVelocity: nextEngineSpeed * superchargerRatio,
     superchargerAngleRad: (state.superchargerAngleRad + crankAdvance * superchargerRatio) % RAD_PER_REVOLUTION,
-    ...(running ? advanceTurbo(state, vehicle, rpm, throttle, shiftCut, gear > 0)
+    ...(running ? advanceTurbo(state, vehicle, rpm, throttle, shiftCut, gear > 0, launchHold)
       : { turboBoostBar: 0, turboRelease: 0 }),
     hybridEnergyKj: Math.max(0, Math.min(hybrid?.capacityKj ?? 0, state.hybridEnergyKj - hybridPowerKw * dt)),
     hybridPowerKw: engineFailed ? 0 : hybridPowerKw,
@@ -472,7 +591,9 @@ export function stepSimulation(state: SimulationState, input: SimulationInput, v
     vtecEngagement: running ? highCam : 0,
     vvaEngagement: running ? vvaHigh : 0,
     limiterCut: running ? limiterCut : false,
+    launchActive: running ? launchHold : false,
     lopePhaseRad: running ? nextLopePhase : 0,
+    perfTimer,
     drivetrainTorqueNm: drivetrainTorque,
     clutchSlipRadPerSecond: gear === 0 || !engineOn ? 0 : nextEngineSpeed - nextWheelSpeed * ratio,
     mechanicalOverRev,

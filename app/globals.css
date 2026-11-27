@@ -573,6 +573,29 @@ button { font: inherit; }
 
 .mod-effect-label { margin-inline-end: .2rem; }
 
+.dyno-panel {
+  margin-top: .55rem;
+  padding: .55rem .65rem;
+  border: 1px solid #3c3f35;
+  border-radius: .45rem;
+  background: #141612;
+}
+.dyno-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: .35rem .8rem;
+  margin-bottom: .35rem;
+  color: var(--muted);
+  font-size: .78rem;
+}
+.dyno-legend { display: inline-flex; align-items: center; gap: .3rem; }
+.dyno-legend strong { color: var(--text); font-family: var(--mono); }
+.dyno-swatch { width: .55rem; height: .55rem; border-radius: 50%; display: inline-block; }
+.dyno-power-swatch { background: #f0b64d; }
+.dyno-torque-swatch { background: #64e6bc; }
+.dyno-svg { display: block; width: 100%; height: auto; max-height: 9.5rem; }
+
 .tuning-select-wrap { position: relative; }
 
 .tuning-select-wrap::after {

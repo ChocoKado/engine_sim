@@ -5,6 +5,8 @@ import { kawasakiVehicles } from "./kawasaki.ts";
 import { defineTrim } from "./motorcycle.ts";
 import { suzukiVehicles } from "./suzuki.ts";
 
+export type TransmissionType = "manual" | "quickshifter" | "dct" | "asg" | "seamless";
+
 export interface Vehicle {
   readonly kind?: "car" | "formula1" | "endurance";
   readonly id: string;
@@ -14,10 +16,16 @@ export interface Vehicle {
   readonly displacementCc: number;
   readonly engine: string;
   readonly gears: number;
+  readonly transmissionType?: TransmissionType;
+  readonly twoStroke?: {
+    readonly powerbandStartRpm: number;
+    readonly powerbandPeakRpm: number;
+  };
   readonly source: string;
   readonly supercharger?: {
     readonly driveRatio: number;
     readonly audioGain: number;
+    readonly whineStyle?: "centrifugal" | "roots";
   };
   readonly turbocharger?: {
     readonly maxBoostBar: number;

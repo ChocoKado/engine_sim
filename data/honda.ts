@@ -121,4 +121,17 @@ export const hondaVehicles = [
     peakTorqueNm: 103, peakTorqueRpm: 8000, peakPowerPs: 136, peakPowerRpm: 9500,
     referenceRpm: 10000, fuelCutRpm: 10400, rollingRadiusM: 0.316, dragAreaM2: 0.375, exhaustFrequencyHz: 94,
   }),
+  defineMotorcycle({
+    id: "honda-nsr250r-mc28", brand: "Honda", name: "NSR250R SE ’94", version: "1994 日規 MC28・二行程",
+    engine: "90° V2 二行程・RC-Valve",
+    source: "https://www.honda.co.jp/factbook/motor/NSR250R/19931000/",
+    displacementCc: 249, boreMm: 54.0, strokeMm: 54.5,
+    firingDegrees: [0, 90, 360, 450], cylinderFiringDegrees: [0, 90], bankAngleDegrees: 90,
+    twoStroke: { powerbandStartRpm: 7400, powerbandPeakRpm: 9200 },
+    curbMassKg: 154,
+    gearRatios: [2.846, 2.000, 1.578, 1.300, 1.130, 1.000], primaryRatio: 60 / 24, finalDriveRatio: 44 / 15,
+    peakTorqueNm: 3.3 * 9.80665, peakTorqueRpm: 8500, peakPowerPs: 40, peakPowerRpm: 9000,
+    idleRpm: 1300, referenceRpm: 11500, fuelCutRpm: 12000, speedLimitKmh: 180,
+    rollingRadiusM: 0.302, dragAreaM2: 0.34, exhaustFrequencyHz: 210,
+  }),
 ];

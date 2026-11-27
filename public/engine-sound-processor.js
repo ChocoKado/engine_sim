@@ -116,9 +116,10 @@ class ExhaustCollectorBody {
 }
 
 class SuperchargerWhine {
-  constructor({ driveRatio, audioGain }) {
+  constructor({ driveRatio, audioGain, whineStyle = "centrifugal" }) {
     this.driveRatio = driveRatio;
-    this.gain = clamp(audioGain, 0, 0.36);
+    this.roots = whineStyle === "roots";
+    this.gain = clamp(audioGain, 0, 0.38);
     this.maximumAngularVelocity = REVOLUTION_RAD * sampleRate * 0.2;
     this.smoothing = smoothingFactor(0.012);
     this.angularVelocity = 0;
@@ -148,6 +149,27 @@ class SuperchargerWhine {
     this.phase += this.angularVelocity / sampleRate;
     if (this.phase >= REVOLUTION_RAD) this.phase -= REVOLUTION_RAD;
 
+    this.airLow += this.airLowRate * (noise - this.airLow);
+    this.airHigh += this.airHighRate * (noise - this.airHigh);
+    const compressedAir = this.airHigh - this.airLow;
+
+    if (this.roots) {
+      // Positive-displacement 4-lobe Roots / Twin-Screw blower ("Hellcat" scream):
+      // 4× and 8× lobe-pass frequencies scream immediately as the bypass valve shuts under throttle.
+      const rootsLevel = clamp(this.angularVelocity / (REVOLUTION_RAD * 290), 0, 1);
+      const lobe4Band = clamp(1 - 4 * this.angularVelocity / (REVOLUTION_RAD * sampleRate * 0.42), 0, 1);
+      const lobe8Band = clamp(1 - 8 * this.angularVelocity / (REVOLUTION_RAD * sampleRate * 0.40), 0, 1);
+      const bypassClosed = 0.14 + 0.74 * throttle ** 0.52 + 0.12 * load;
+      const lobeScream = (
+        0.22 * Math.sin(this.phase)
+        + 0.44 * Math.sin(2 * this.phase)
+        + 0.92 * lobe4Band * Math.sin(4 * this.phase)
+        + 0.36 * lobe8Band * Math.sin(8 * this.phase)
+      ) * bypassClosed;
+      const air = compressedAir * rootsLevel * (0.05 + 0.16 * throttle);
+      return { whine: this.gain * rootsLevel * (lobeScream + air), chirp: 0 };
+    }
+
     const speedLevel = clamp(this.angularVelocity / (REVOLUTION_RAD * 1650), 0, 1);
     // Planetary gear step-up + centrifugal impeller harmonics, band-limited below Nyquist.
     const harmonic2Band = clamp(1 - 2 * this.angularVelocity / (REVOLUTION_RAD * sampleRate * 0.42), 0, 1);
@@ -158,10 +180,6 @@ class SuperchargerWhine {
     const bladeTone = 0.11 * bladeBand * Math.sin(6 * this.phase);
     const whineTone = (Math.sin(this.phase) + 0.34 * harmonic2 + 0.14 * harmonic3 + bladeTone)
       * (0.30 + 0.53 * throttle + 0.17 * load);
-
-    this.airLow += this.airLowRate * (noise - this.airLow);
-    this.airHigh += this.airHighRate * (noise - this.airHigh);
-    const compressedAir = this.airHigh - this.airLow;
     const air = compressedAir * speedLevel * (0.065 + 0.17 * throttle + 0.06 * load);
 
     // Rapid throttle snap-shut at high impeller speed traps boost against the throttle butterflies,
@@ -221,7 +239,7 @@ class ExhaustAfterfire {
     this.count = 0;
   }
 
-  update({ throttle, angularVelocity, combustion, load, shiftCut, upshifting, revMatchThrottle = 0, limiterCut = false }, harmonics, seconds) {
+  update({ throttle, angularVelocity, combustion, load, shiftCut, upshifting, revMatchThrottle = 0, limiterCut = false, launchActive = false }, harmonics, seconds) {
     const rpm = angularVelocity * RADIANS_PER_SECOND_TO_RPM;
     const open = throttle > 0.08;
     const poweredCut = upshifting && throttle >= 0.60 && shiftCut >= 0.50 && rpm >= 5000;
@@ -234,7 +252,7 @@ class ExhaustAfterfire {
       this.count = 0;
       this.charge *= Math.exp(-seconds / 0.055);
     } else if (open) {
-      if (!this.armedFromUpshift && !limiterCut) this.count = 0;
+      if (!this.armedFromUpshift && !limiterCut && !launchActive) this.count = 0;
       if (poweredCut && !this.wasPoweredCut) {
         const strength = this.charge * voicing;
         if (strength > 0.20 && Math.random() < clamp((openPipe ? 0.28 : 0.18) + 0.68 * strength, 0, openPipe ? 0.90 : 0.82)) {
@@ -242,6 +260,13 @@ class ExhaustAfterfire {
           this.count = 1;
           this.delay = Math.round(sampleRate * (0.016 + Math.random() * 0.038));
           this.strength = strength * 0.96;
+        }
+      } else if (launchActive && limiterCut && !this.wasLimiterCut && this.count === 0) {
+        // 2-Step Anti-Lag Launch Control: frequent sharp exhaust bangs build boost at standstill.
+        if (Math.random() < 0.85) {
+          this.count = 1;
+          this.delay = Math.round(sampleRate * (0.004 + Math.random() * 0.014));
+          this.strength = 0.88;
         }
       } else if (openPipe && limiterCut && !this.wasLimiterCut && rpm >= 5500 && this.count === 0) {
         const strength = Math.max(0.62, this.charge * voicing);
@@ -486,7 +511,7 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
     const {
       firingAnglesRad, exhaustBanks, exhaustFrequencyHz, pulseDecayMs,
       exhaustOpeningRad = 0, exhaustReflectionMs, exhaustBody, brightnessStartRpm = 8000, brightnessMaxRpm,
-      supercharger, turbocharger, rotaryIdleRpm, electricStarter,
+      supercharger, turbocharger, twoStroke, transmissionType = "quickshifter", rotaryIdleRpm, electricStarter,
     } = processorOptions;
     const exhaustOffset = Number.isFinite(exhaustOpeningRad) ? exhaustOpeningRad : 0;
     this.exhaustOffset = exhaustOffset;
@@ -508,6 +533,16 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
       this.port.postMessage?.({ type: "afterfire", strength, durationMs });
     });
     this.turbo = turbocharger ? new TurboSound(turbocharger) : null;
+    this.transmissionType = transmissionType;
+    this.dctBarkBody = transmissionType === "dct" ? new ExhaustBodyMode(clamp(exhaustFrequencyHz * 1.35, 130, 290), 8.5) : null;
+    this.asgClack = transmissionType === "asg" ? new DampedResonator(1380, 2.2) : null;
+    this.wasShiftBark = false;
+    this.dctBarkEnv = 0;
+    this.dctBarkDecay = 1 - smoothingFactor(0.0085);
+    this.twoStroke = twoStroke && Number.isFinite(twoStroke.powerbandStartRpm) ? twoStroke : null;
+    this.chamberRingA = this.twoStroke ? new DampedResonator(1060, 5.4) : null;
+    this.chamberRingB = this.twoStroke ? new DampedResonator(2140, 3.3) : null;
+    this.chamberCone = this.twoStroke ? new ExhaustBodyMode(585, 6.0) : null;
     this.rotaryIdleRpm = Number.isFinite(rotaryIdleRpm) && rotaryIdleRpm > 0 ? rotaryIdleRpm : 0;
     this.rotaryIdleBody = this.rotaryIdleRpm ? new DampedResonator(124, 7.5) : null;
     this.rotaryBark = this.rotaryIdleRpm ? new ExhaustBodyMode(485, 5.0) : null;
@@ -639,6 +674,7 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
         revMatchThrottle: Number.isFinite(data.revMatchThrottle) ? clamp(data.revMatchThrottle, 0, 1) : 0,
         vtecEngagement: Number.isFinite(data.vtecEngagement) ? clamp(data.vtecEngagement, 0, 1) : 0,
         limiterCut: data.limiterCut === true,
+        launchActive: data.launchActive === true,
       });
       if (queue.length > 32) this.previousTelemetry = queue.shift();
     };
@@ -846,8 +882,21 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
       const deeperBody = this.tripleCollector ? this.tripleCollector.render(finitePulse) * (0.22 + 0.28 * this.load) : 0;
       const highCam = this.camEngagement * this.throttle;
       const blipAccent = revMatching ? 0.24 : 0;
-      const overtone = this.exhaustOvertone.render(pressure) * (0.34 + 0.13 * this.load + 0.44 * brightness + 0.17 * highCam + blipAccent);
-      const edge = this.exhaustEdge.render(pressure * (0.063 + 0.96 * brightness + 0.24 * highCam + 0.18 * blipAccent));
+      const pipeBand = this.twoStroke
+        ? clamp((rpm - this.twoStroke.powerbandStartRpm + 800) / Math.max(900, this.twoStroke.powerbandPeakRpm - this.twoStroke.powerbandStartRpm + 800), 0, 1)
+        : 0;
+      const overtone = this.exhaustOvertone.render(pressure) * (0.34 + 0.13 * this.load + 0.44 * brightness + 0.17 * highCam + blipAccent + 0.28 * pipeBand);
+      const edge = this.exhaustEdge.render(pressure * (0.063 + 0.96 * brightness + 0.24 * highCam + 0.18 * blipAccent + 0.34 * pipeBand));
+      let expansionChamber = 0;
+      if (this.twoStroke) {
+        // Sheet-metal hydroformed 2-stroke expansion chamber: crisp "ting-ting" ping at idle/overrun,
+        // locking into a nasal screaming GP250 powerband note on the pipe.
+        const offPipePing = (1 - 0.72 * pipeBand) * (0.55 + 0.45 * Math.abs(noise));
+        const chamberPing = (0.36 * this.chamberRingA.render(pressure * offPipePing)
+          + 0.22 * this.chamberRingB.render(pressure * offPipePing));
+        const chamberScream = (0.20 + 0.48 * pipeBand) * this.chamberCone.render(finitePulse);
+        expansionChamber = chamberPing + chamberScream;
+      }
 
       this.pressureNoiseBaseline += this.pressureNoiseBaselineSmoothing * (noise - this.pressureNoiseBaseline);
 
@@ -870,11 +919,27 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
       const mechAngle = this.mechPhase * REVOLUTION_RAD;
       const mechanicalWhir = brightness * (0.0042 + 0.003 * this.load) * Math.sin(11 * mechAngle);
 
-      // A firm cut darkens the exhaust briefly while the timed air pulses continue.
-      const cut = clamp((this.shiftCut - 0.18) / 0.72, 0, 1);
+      // Gearbox-specific shift cut character: DCT retard bark, ASG actuator slam, QS crisp cut, or soft manual lift.
+      const rawCut = clamp((this.shiftCut - 0.18) / 0.72, 0, 1);
+      const cutScale = this.transmissionType === "manual" ? 0.58 : this.transmissionType === "asg" ? 1.15 : 1;
+      const cut = clamp(rawCut * cutScale, 0, 1);
       const cutTone = cut * cut * (3 - 2 * cut);
+      const shiftBarkActive = running && telemetry.upshifting && shiftCut > 0.42 && throttle > 0.45;
+      let shiftTransient = 0;
+      if (shiftBarkActive && !this.wasShiftBark) {
+        if (this.dctBarkBody) this.dctBarkEnv = 0.55 + 0.35 * throttle;
+        if (this.asgClack) shiftTransient += this.asgClack.render(0.55);
+      } else if (this.asgClack) {
+        shiftTransient += this.asgClack.render(0);
+      }
+      this.wasShiftBark = shiftBarkActive;
+      if (this.dctBarkBody && this.dctBarkEnv > 0.001) {
+        this.dctBarkEnv *= this.dctBarkDecay;
+        shiftTransient += 0.52 * this.dctBarkBody.render(this.dctBarkEnv * (0.65 + 0.55 * noise));
+      }
+
       const exhaustBody = (body + deeperBody) * (1 - 0.06 * cutTone) * voicing.body;
-      const exhaustHarmonics = (overtone + edge) * (1 - 0.32 * cutTone) * voicing.harmonics;
+      const exhaustHarmonics = (overtone + edge + expansionChamber) * (1 - 0.32 * cutTone) * voicing.harmonics;
       const exhaust = ((exhaustBody + exhaustHarmonics) * 0.87 + blowdown * (1 - 0.25 * cutTone)) * staccatoEnvelope;
       const delayLen = this.exhaustDelay.length;
       const primaryTap = this.exhaustDelay[(this.exhaustDelayIndex + delayLen - this.tapPrimaryOffset) % delayLen];
@@ -915,7 +980,7 @@ class EngineSoundProcessor extends AudioWorkletProcessor {
       }
       if (afterfireDuck > 0) normalized *= 1 - 0.78 * afterfireDuck;
       // Keep afterfire detonation, turbo blow-off/flutter, and supercharger surge chirp out of exhaust saturation.
-      const transient = afterfire + release + scChirp;
+      const transient = afterfire + release + scChirp + shiftTransient;
       if (transient !== 0) {
         const direction = transient < 0 ? -1 : 1;
         const headroom = 0.985 - direction * normalized;

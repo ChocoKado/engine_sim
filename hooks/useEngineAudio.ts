@@ -6,7 +6,7 @@ import { rpmFromRadiansPerSecond } from "../lib/simulation";
 import { VALVE_EVENTS } from "../lib/kinematics";
 import { RecordedEngineMixer } from "../lib/recorded-engine";
 import type { RecordingKind } from "../lib/recorded-engine";
-import { getOverallRatio } from "../lib/transmission";
+import { getOverallRatio, resolveTransmissionType } from "../lib/transmission";
 
 export type AudioStatus = "muted" | "starting" | "enabled" | "paused" | "unavailable";
 
@@ -38,6 +38,8 @@ function buildProcessorOptions(vehicle: Vehicle) {
       ?? (vehicle.geometry.rotary ? 130 : VALVE_EVENTS.exhaust.opensDegrees) * Math.PI / 180,
     supercharger: vehicle.supercharger,
     turbocharger: vehicle.turbocharger,
+    twoStroke: vehicle.twoStroke,
+    transmissionType: resolveTransmissionType(vehicle),
     rotaryIdleRpm: vehicle.geometry.rotary ? vehicle.physics.idleRpm : undefined,
     electricStarter: Boolean(vehicle.physics.electricDrive),
   };
@@ -219,8 +221,9 @@ export function useEngineAudio(vehicle: Vehicle, tuning: TuningProfile, showExha
           const impulse = Math.min(0.96, (0.42 + strength * 0.50) * (0.72 + Math.random() * 0.28));
           triggerFlame(impulse, Math.round(31 + 22 * impulse));
         }
-      } else if (state.limiterCut && latestVoicing.current.harmonics > 1.2 && Math.random() < 0.12) {
-        triggerFlame(0.78 + Math.random() * 0.18, 52);
+      } else if ((state.launchActive && latestVehicle.current.turbocharger && Math.random() < 0.22)
+        || (state.limiterCut && latestVoicing.current.harmonics > 1.2 && Math.random() < 0.12)) {
+        triggerFlame(0.82 + Math.random() * 0.14, 54);
       }
       const heat = Math.min(1, Math.max(0, (rpm - 2600) / 5000)) * Math.min(1, Math.max(0, (state.throttle - 0.12) / 0.5));
       const target = heat * (0.64 + 0.23 * Math.sqrt(combustion) + 0.13 * load);
@@ -288,6 +291,7 @@ export function useEngineAudio(vehicle: Vehicle, tuning: TuningProfile, showExha
       revMatchThrottle: state.revMatchThrottle,
       vtecEngagement: Math.max(state.vtecEngagement, state.vvaEngagement * 0.72),
       limiterCut: state.limiterCut,
+      launchActive: state.launchActive,
       starter: state.starter,
       motorAngularVelocity: state.motorAngularVelocity,
       motorLoad: state.motorLoad,

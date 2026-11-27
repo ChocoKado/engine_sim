@@ -22,10 +22,11 @@ export function useSimulation(
   vehicle: Vehicle,
   onFrame: (state: SimulationState, timestampMs: number) => void,
   rotaryLope = false,
+  launchControl = false,
 ) {
   const [snapshot, setSnapshot] = useState(() => createSimulationState(vehicle));
   const state = useRef(snapshot);
-  const input = useRef<SimulationInput>({ ...INITIAL_SIMULATION_INPUT, shiftMode: snapshot.shiftMode, rotaryLope });
+  const input = useRef<SimulationInput>({ ...INITIAL_SIMULATION_INPUT, shiftMode: snapshot.shiftMode, rotaryLope, launchControl });
   const [pedalReset, setPedalReset] = useState(0);
   const [replayStatus, setReplayStatus] = useState<ReplayStatus>("idle");
   const [recordedRuns, setRecordedRuns] = useState<Partial<Record<string, TelemetryRun>>>({});
@@ -40,15 +41,20 @@ export function useSimulation(
   }, []);
 
   useEffect(() => {
-    input.current = { ...input.current, rotaryLope };
-  }, [rotaryLope]);
+    input.current = { ...input.current, rotaryLope, launchControl };
+  }, [rotaryLope, launchControl]);
 
   useEffect(() => {
     if (state.current.vehicleId !== vehicle.id) {
       stopReplayOrRecording();
       const initial = createSimulationState(vehicle);
       state.current = initial;
-      input.current = { ...INITIAL_SIMULATION_INPUT, shiftMode: initial.shiftMode, rotaryLope: input.current.rotaryLope };
+      input.current = {
+        ...INITIAL_SIMULATION_INPUT,
+        shiftMode: initial.shiftMode,
+        rotaryLope: input.current.rotaryLope,
+        launchControl: input.current.launchControl,
+      };
       setSnapshot(initial);
       setPedalReset((version) => version + 1);
     }

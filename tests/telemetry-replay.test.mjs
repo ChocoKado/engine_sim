@@ -7,9 +7,17 @@ import { cars } from "../data/cars.ts";
 import { enduranceCars } from "../data/endurance-cars.ts";
 import { formulaOneCars } from "../data/formula-one.ts";
 import { vehicles } from "../data/vehicles.ts";
-import { createSimulationState, INITIAL_SIMULATION_INPUT, rpmFromRadiansPerSecond, stepSimulation } from "../lib/simulation.ts";
+import {
+  createSimulationState,
+  engineFullThrottleTorqueAtRpm,
+  INITIAL_SIMULATION_INPUT,
+  rpmFromRadiansPerSecond,
+  stepSimulation,
+  targetLaunchRpm,
+} from "../lib/simulation.ts";
+import { getEnginePose, getRotaryPose } from "../lib/kinematics.ts";
 import { formatTelemetryCsv, formatTelemetryJson, simulateReplayRun, TelemetryRecorder } from "../lib/telemetry-recorder.ts";
-import { enqueueShift } from "../lib/transmission.ts";
+import { enqueueShift, getOverallRatio, resolveTransmissionType } from "../lib/transmission.ts";
 
 const running = { ...INITIAL_SIMULATION_INPUT, engineOn: true };
 
@@ -329,4 +337,76 @@ test("ECU rev-limiter bounce, Yamaha R15 VVA engagement, and staccato RX-7 rotar
     }
   }
   assert.ok(maxRpm - minRpm > 20, `expected audible/visible rotary lope RPM swing, got ${maxRpm - minRpm}`);
+});
+
+test("M27 2-stroke GP250s, gearbox personalities, Anti-Lag Launch Control, 0-100/400m timer, 787B and Hellcat work end-to-end", () => {
+  // 1. Gearbox personality classification & DCT vs Manual car upshift speed difference.
+  const r35 = cars.find(({ id }) => id === "nissan-gtr-r35");
+  const a80 = cars.find(({ id }) => id === "toyota-supra-a80");
+  const lfa = cars.find(({ id }) => id === "lexus-lfa");
+  const rb19 = formulaOneCars.find(({ id }) => id === "red-bull-rb19");
+  const r1 = vehicles.find(({ id }) => id === "yamaha-r1");
+  const nsr = vehicles.find(({ id }) => id === "honda-nsr250r-mc28");
+  assert.equal(resolveTransmissionType(r35), "dct");
+  assert.equal(resolveTransmissionType(a80), "manual");
+  assert.equal(resolveTransmissionType(lfa), "asg");
+  assert.equal(resolveTransmissionType(rb19), "seamless");
+  assert.equal(resolveTransmissionType(r1), "quickshifter");
+  assert.equal(resolveTransmissionType(nsr), "manual");
+
+  function measureUpshiftTicks(car) {
+    const wheelOmega = (5800 * Math.PI) / 30 / getOverallRatio(car, 2);
+    let st = enqueueShift({
+      ...createSimulationState(car),
+      ...running,
+      powerOn: true,
+      enginePhase: "running",
+      gear: 2,
+      wheelAngularVelocity: wheelOmega,
+      vehicleSpeed: wheelOmega * car.physics.rollingRadiusM,
+      engineAngularVelocity: (5800 * Math.PI) / 30,
+    }, 1);
+    for (let tick = 1; tick <= 60; tick += 1) {
+      st = stepSimulation(st, { ...running, throttle: 1 }, car);
+      if (st.shift === null && st.gear === 3) return tick;
+    }
+    return 999;
+  }
+  const dctTicks = measureUpshiftTicks(r35);
+  const manualTicks = measureUpshiftTicks(a80);
+  assert.ok(dctTicks * 2 < manualTicks, `DCT (${dctTicks}) should shift >2x faster than H-pattern MT (${manualTicks})`);
+
+  // 2. Anti-Lag Launch Control locks stationary RPM at targetLaunchRpm, pre-spools boost, and records 0-100 & 0-400m.
+  const supra = cars.find(({ id }) => id === "toyota-gr-supra");
+  const launchTarget = targetLaunchRpm(supra);
+  let lcState = { ...createSimulationState(supra), ...running, shiftMode: "AT", powerOn: true, enginePhase: "running", engineWarmth: 1 };
+  for (let tick = 0; tick < 120; tick += 1) {
+    lcState = stepSimulation(lcState, { ...running, shiftMode: "AT", throttle: 1, brake: 1, launchControl: true }, supra);
+  }
+  assert.equal(lcState.launchActive, true);
+  assert.equal(lcState.vehicleSpeed, 0);
+  const heldRpm = rpmFromRadiansPerSecond(lcState.engineAngularVelocity);
+  assert.ok(Math.abs(heldRpm - launchTarget) < 260, `LC RPM ${heldRpm} should hold near ${launchTarget}`);
+  assert.ok(lcState.turboBoostBar > 0.78 * supra.turbocharger.maxBoostBar, `Anti-Lag boost too low: ${lcState.turboBoostBar}`);
+
+  for (let tick = 0; tick < 120 * 16; tick += 1) {
+    lcState = stepSimulation(lcState, { ...running, shiftMode: "AT", throttle: 1, brake: 0, launchControl: true }, supra);
+  }
+  assert.ok(lcState.perfTimer.zeroTo100Seconds !== null && lcState.perfTimer.zeroTo100Seconds > 2.5 && lcState.perfTimer.zeroTo100Seconds < 7.5,
+    `unexpected Supra 0-100s: ${lcState.perfTimer.zeroTo100Seconds}`);
+  assert.ok(lcState.perfTimer.quarterMileSeconds !== null && lcState.perfTimer.quarterMileSeconds > 10 && lcState.perfTimer.quarterMileSeconds < 16,
+    `unexpected Supra 400m: ${lcState.perfTimer.quarterMileSeconds}`);
+
+  // 3. 2-Stroke GP250 fires every 360° in kinematics and surges steeply onto the expansion-chamber powerband.
+  const rs250 = vehicles.find(({ id }) => id === "aprilia-rs250");
+  assert.equal(getEnginePose(rs250, 0).cylinders[0].ignitionGlow, 1);
+  assert.equal(getEnginePose(rs250, 2 * Math.PI).cylinders[0].ignitionGlow, 1);
+  assert.ok(engineFullThrottleTorqueAtRpm(10800, rs250) > engineFullThrottleTorqueAtRpm(5500, rs250) * 1.9);
+
+  // 4. Mazda 787B 4-rotor geometry & Dodge Challenger Hellcat Roots supercharger.
+  const mazda787b = enduranceCars.find(({ id }) => id === "mazda-787b");
+  const pose787b = getRotaryPose(mazda787b.geometry.rotary, 0.4);
+  assert.equal(pose787b.length, 4);
+  const hellcat = cars.find(({ id }) => id === "dodge-challenger-hellcat");
+  assert.equal(hellcat.supercharger.whineStyle, "roots");
 });

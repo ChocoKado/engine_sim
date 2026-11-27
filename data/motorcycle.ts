@@ -27,6 +27,8 @@ export interface MotorcycleSpec {
   readonly cylinderFiringDegrees?: readonly number[];
   readonly bankAngleDegrees?: number;
   readonly hasVva?: boolean;
+  readonly twoStroke?: Vehicle["twoStroke"];
+  readonly transmissionType?: Vehicle["transmissionType"];
   readonly curbMassKg: number;
   readonly gearRatios: readonly number[];
   readonly primaryRatio: number;
@@ -65,6 +67,8 @@ export function defineMotorcycle(spec: MotorcycleSpec): Vehicle {
     displacementCc: displacement,
     engine: spec.engine,
     gears: spec.gearRatios.length,
+    transmissionType: spec.transmissionType,
+    twoStroke: spec.twoStroke,
     source: spec.source,
     geometry: {
       boreM,

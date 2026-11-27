@@ -42,10 +42,28 @@ export function getEnginePose(vehicle: Vehicle, crankAngleRad: number, engineRpm
   const exhaustMaximum = vtec ? exhaustLiftM + (vtec.highExhaustLiftM - exhaustLiftM) * vtecEngagement : exhaustLiftM;
 
   const firingAngles = vehicle.geometry.cylinderFiringAnglesRad ?? vehicle.audio.firingAnglesRad;
+  const isTwoStroke = Boolean(vehicle.twoStroke);
   const cylinders = firingAngles.map((firingAngle) => {
     const localAngle = wrapCycle(angle - firingAngle);
     const crankPinYM = crankRadius * Math.cos(localAngle);
     const crankPinZM = crankRadius * Math.sin(localAngle);
+    if (isTwoStroke) {
+      const twoCycleAngle = localAngle % REVOLUTION_RAD;
+      const stroke: EngineStroke = twoCycleAngle < Math.PI * 0.62 ? "power"
+        : twoCycleAngle < Math.PI * 1.02 ? "exhaust"
+        : twoCycleAngle < Math.PI * 1.38 ? "intake"
+        : "compression";
+      return {
+        crankAngleRad: localAngle,
+        crankPinYM,
+        crankPinZM,
+        pistonYM: crankPinYM + Math.sqrt(rodLengthM ** 2 - crankPinZM ** 2),
+        intakeLiftM: twoCycleAngle >= Math.PI * 0.96 && twoCycleAngle <= Math.PI * 1.42 ? 0.002 : 0,
+        exhaustLiftM: twoCycleAngle >= Math.PI * 0.58 && twoCycleAngle <= Math.PI * 1.12 ? 0.002 : 0,
+        stroke,
+        ignitionGlow: Math.max(0, 1 - twoCycleAngle / (Math.PI / 8)),
+      };
+    }
     return {
       crankAngleRad: localAngle,
       crankPinYM,

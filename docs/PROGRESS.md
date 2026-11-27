@@ -221,4 +221,10 @@
 - **操作重播、手機體驗與車款擴充（M24–M26）**：新增 `lib/telemetry-recorder.ts` 支援 120 Hz 操作錄製、同軌重播與 CSV／JSON 匯出；補齊踏板 `buttonRef`、刻度、小橫屏雙欄、外部連結新分頁與 3D 畫質分級／慢速火焰定格；擴充 1199 Panigale、GSX-R1000 K5、VTR1000SP-1、Integra Type R DC2、GT-R R35、Lexus LFA 共 6 款車並更新 `SPEED_AUDIT.csv`，規劃後續 M27–M30。
 - **聲浪細節強化與移除一二級航天**：依需求移除航天分類中的 Falcon 9 一二級分級台架（保留 RS-25 與 RL10C-1 單機火箭台架）；將回火、渦輪洩壓／顫振與機械增壓收油啾聲獨立於排氣飽和壓縮之外以保留動態餘裕，回火補齊低頻尾管爆轟腔體共鳴、陡峭震波與雙層 3D 藍白核心＋橘紅火舌及尾管點光源照明；渦輪加入高頻吸氣嘶聲、氣動洩壓閥（BOV）與進氣管共鳴顫振（Stu-tu-tu），H2／H2R 提高行星齒輪／葉輪嘯叫增益並補上高轉收油離心喘振鳥鳴聲（Chirp）。
 - **現有內容深度打磨（斷油彈跳、高能量回火、斷續轉子 Brap、VVA／H2 儀表、3D 渦輪燒紅與鍵盤操控）**：新增 ECU 紅線斷火回彈與開放管斷油噴火；重製回火為有限寬度爆轟波驅動 `72–345 Hz` 腔體重低頻＋排氣瞬態讓位（Ducking）與環境尾韻，並依原廠／開放管分級；重寫轉子橋式汽口為「3～4 拍失火斷音 → 強燃爆發」掃氣循環與怠速轉速抖動，且改為與渦輪顫振可獨立複選（RX-7 可同時開啟）；主儀表補齊 R15 VVA 與 H2／H2R 葉輪轉速，3D 補上旋轉渦輪葉輪與頭段燒紅，並支援 `W/S`、`↑/↓`、`Q/E` 鍵盤操作。
-- **PASS（本機自動化）**：1,031 項單元測試、`npm run typecheck` 及 `npm run build` 全數通過。**PENDING（真機）**：iOS Safari／Android Chrome 實機手感與聽感待驗；下一里程碑為 **M27 二行程經典仿賽核心**。
+- **PASS（本機自動化）**：1,031 項單元測試、`npm run typecheck` 及 `npm run build` 全數通過。
+
+## 2026-11-27｜M27 二行程經典仿賽、變速箱性格、彈射計時、即時馬力圖與特殊神車
+
+- **換檔性格差異化、彈射起步／偏時點火與即時馬力圖**：`lib/transmission.ts` 與 `public/engine-sound-processor.js` 區分傳統手排（離合收放）、電控快排 QS、雙離合 DCT（閃電接合＋點火延遲排氣噗聲）、單離合序列 ASG（LFA 重頓挫）與賽車無縫序列；新增「彈射起步 LC」鎖定最佳起步轉速（渦輪車觸發 Anti-Lag 原地滿壓噴火），起步自動實測 `0–100 km/h`、`0–200 km/h` 與 `0–400 m`；新增 `components/LiveDynoChart.tsx` 即時顯示馬力／扭力曲線與動態轉速光點。
+- **二行程核心與六款經典神車擴充（陸上共 133 款）**：實作 `360°` 二行程運動學、無凸輪汽門 3D 結構、3D 膨脹室大肚管、Power-band 扭力湧現與金屬管壁敲擊／高頻共鳴，新增 **NSR250R SE ’94**、**TZR250R SP ’91**、**Aprilia RS 250 ’98**；同步擴充勒芒四轉子冠軍 **Mazda 787B ’91**、魯式雙螺旋增壓 **Dodge Challenger SRT Hellcat**（含 V 谷增壓器 3D 與正排量四葉轉子高頻貓叫聲）及 **Porsche Carrera GT** V10，更新 `MODEL_CATALOG.csv` 與 `SPEED_AUDIT.csv`。
+- **PASS（本機自動化）**：全套單元測試（`1,065 / 1,065`）、`npm run typecheck` 及 `npm run build` 全數通過。**PENDING（真機）**：iOS Safari／Android Chrome 實機手感與聽感待驗；下一里程碑為 **M28 排氣管幾何脈衝響應（IR）與空間視角音場**。

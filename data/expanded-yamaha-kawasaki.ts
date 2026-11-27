@@ -33,6 +33,19 @@ export const moreYamahaVehicles = [
     peakTorqueNm: 108.3, peakTorqueRpm: 8500, peakPowerPs: 150, peakPowerRpm: 10000,
     referenceRpm: 11750, fuelCutRpm: 12000, rollingRadiusM: 0.309, dragAreaM2: 0.37, exhaustFrequencyHz: 137,
   }),
+  defineMotorcycle({
+    id: "yamaha-tzr250r-3xv", brand: "Yamaha", name: "TZR250R SP ’91", version: "1991 日規 3XV・二行程",
+    engine: "90° V2 二行程・YPVS",
+    source: "https://global.yamaha-motor.com/showroom/cp/collection/tzr250/",
+    displacementCc: 249, boreMm: 56.0, strokeMm: 50.7,
+    firingDegrees: [0, 90, 360, 450], cylinderFiringDegrees: [0, 90], bankAngleDegrees: 90,
+    twoStroke: { powerbandStartRpm: 7600, powerbandPeakRpm: 10200 },
+    curbMassKg: 146,
+    gearRatios: [38 / 15, 29 / 16, 29 / 20, 26 / 21, 23 / 21, 22 / 22], primaryRatio: 62 / 24, finalDriveRatio: 37 / 14,
+    peakTorqueNm: 36.3, peakTorqueRpm: 8500, peakPowerPs: 45, peakPowerRpm: 9500,
+    idleRpm: 1350, referenceRpm: 11500, fuelCutRpm: 12000, speedLimitKmh: 180,
+    rollingRadiusM: 0.302, dragAreaM2: 0.34, exhaustFrequencyHz: 215,
+  }),
 ];
 
 export const moreKawasakiVehicles = [

@@ -435,6 +435,17 @@ GR Supra 車型基準採較柔和的卸壓聲。選「進氣・渦輪顫振」�
   - **Nissan GT-R R35（2017 日規 Pure・6DCT）**：3,799 cc VR38DETT 60° 雙渦輪 V6（`95.5 × 88.4 mm`），570 PS／6,800 RPM、637 Nm／3,300–5,800 RPM，GR6 六速雙離合 `4.056..0.796`、終傳 `3.700`，車重 1,760 kg。[Nissan Global Newsroom](https://global.nissannews.com/en/releases/2017-nissan-gt-r-makes-world-debut-at-new-york-international-auto-show)
   - **Lexus LFA（2010 日規・6ASG）**：4,805 cc 1LR-GUE 72° 等間隔 V10（`88.0 × 79.0 mm`），560 PS／8,700 RPM、480 Nm／6,800 RPM、9,000 RPM 紅線，六速 ASG `3.231..0.795` 搭配前副軸 `1.259` 與終傳 `3.417`，車重 1,480 kg，原廠極速 325 km/h。[Toyota 75 年車系檔案](https://www.toyota.co.jp/jpn/company/history/75years/vehicle_lineage/car/id60016301/)
 
+## M27 二行程經典仿賽、換檔性格、彈射計時與特殊引擎車款（2026-11-27）
+
+- **二行程 `360°` 循環與膨脹室模型**：每轉一循環點火、省略頂置凸輪與菌狀汽門並加上 3D 液壓成形膨脹室大肚管；怠速與收油具金屬管壁「叮叮」敲擊聲，進入開閥共振區後扭力與高頻共鳴陡升：
+  - **Honda NSR250R SE ’94（MC28）**：249 cc 90° V2 二行程（`54.0 × 54.5 mm`），日規自主規制 40 PS／9,000 RPM、3.3 kgf·m／8,500 RPM，乾式離合器六速卡式齒比 `2.846..1.000`、初級 `60/24`、終傳 `44/15`。[Honda Fact Book](https://www.honda.co.jp/factbook/motor/NSR250R/19931000/)
+  - **Yamaha TZR250R SP ’91（3XV）**：249 cc 90° V2 二行程（`56.0 × 50.7 mm`・YPVS），SP 密齒比六速 `38/15..22/22`、初級 `62/24`、終傳 `37/14`，日規 45 PS／9,500 RPM、180 km/h 限速。[Yamaha Collection Hall](https://global.yamaha-motor.com/showroom/cp/collection/tzr250/)
+  - **Aprilia RS 250 ’98（歐規全馬力）**：249 cc 90° V2 二行程（`56.0 × 50.6 mm`），歐規無封印 70 PS／11,900 RPM、40 Nm／10,750 RPM，六速 `27/11..21/25`、初級 `59/23`、終傳 `42/14`。[Aprilia History](https://www.aprilia.com/en_EN/aprilia-world/history/)
+- **特殊引擎神車擴充**：
+  - **Mazda 787B ’91（Group C・Le Mans 冠軍）**：2,616 cc（`654 cc × 4`）R26B 自然進氣周邊汽口四轉子（90° 相位差），700 PS／9,000 RPM、608 Nm／6,500 RPM，車重 830 kg，五速序列／手排齒比依利曼長直線基準近似。[Mazda Museum](https://www.mazda.com/en/experience/museum/exhibits/motorsports/)
+  - **Dodge Challenger SRT Hellcat（2016 美規・6MT）**：6,166 cc 6.2 HEMI V8（`103.9 × 90.9 mm`）搭配 IHI 2.4L 魯式／雙螺旋機械增壓（正排量四葉轉子高頻嘯叫），707 hp／6,000 RPM、650 lb-ft／4,000 RPM，TR-6060 六速手排 `2.97..0.50`、終傳 `3.90`。[Dodge Factory Spec](https://s3.amazonaws.com/chryslermedia.iconicweb.com/mediasite/specs/2016_DG_Challenger_SP.pdf)
+  - **Porsche Carrera GT（2004 歐規 Type 980・6MT）**：5,733 cc M80/01 68° 自然進氣 V10（`98.0 × 76.0 mm`），612 PS／8,000 RPM、590 Nm／5,750 RPM，DIN 車重 1,380 kg，六速手排 `3.20..0.75`、終傳 `4.44`，原廠極速 330 km/h。[Porsche Newsroom](https://newsroom.porsche.com/en/2020/history/porsche-carrera-gt-20-years-anniversary-paris-22455.html)
+
 ## 4. 開發者引用習慣
 
 每新增或修改一筆真實規格，請保存來源 URL、核對日、年式/地區/型號、原始值、單位、證據等級（A/B/C/D），以及對應的設定檔/測試；找不到資料就填 `unknown` 而不是猜。

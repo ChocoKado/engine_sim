@@ -69,6 +69,11 @@ export function EngineView({ vehicle, snapshot, readState, readExhaustFlame }: {
               {vehicle.geometry.vva.switchRpm === null ? "待考" : snapshot.vvaEngagement >= 0.5 ? "高揚程" : "低揚程"}
             </span></div>
           )}
+          {vehicle.twoStroke && (
+            <div>二行程 Powerband <span className="impeller-rpm">
+              {rpm >= vehicle.twoStroke.powerbandStartRpm ? "膨脹室共振區" : `${vehicle.twoStroke.powerbandStartRpm} RPM 開閥`}
+            </span></div>
+          )}
         </div>
         <div className="engine-view-actions">
           <button type="button" className="mode-button cutaway-toggle" aria-pressed={cutaway} onClick={() => setCutaway(!cutaway)}>

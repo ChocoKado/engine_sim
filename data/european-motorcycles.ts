@@ -70,6 +70,19 @@ export const apriliaVehicles = [
     curbMassKg: 204,
   }),
   mille,
+  defineMotorcycle({
+    id: "aprilia-rs250", brand: "Aprilia", name: "RS 250 ’98", version: "1998 歐規全馬力・二行程",
+    engine: "90° V2 二行程・排氣閥",
+    source: "https://www.aprilia.com/en_EN/aprilia-world/history/",
+    displacementCc: 249, boreMm: 56.0, strokeMm: 50.6,
+    firingDegrees: [0, 90, 360, 450], cylinderFiringDegrees: [0, 90], bankAngleDegrees: 90,
+    twoStroke: { powerbandStartRpm: 8100, powerbandPeakRpm: 11200 },
+    curbMassKg: 162,
+    gearRatios: [27 / 11, 26 / 16, 21 / 17, 23 / 22, 22 / 24, 21 / 25], primaryRatio: 59 / 23, finalDriveRatio: 42 / 14,
+    peakTorqueNm: 40.0, peakTorqueRpm: 10750, peakPowerPs: 70, peakPowerRpm: 11900,
+    idleRpm: 1400, referenceRpm: 12200, fuelCutRpm: 12600,
+    rollingRadiusM: 0.306, dragAreaM2: 0.335, exhaustFrequencyHz: 228,
+  }),
 ];
 
 const ducatiBase = [

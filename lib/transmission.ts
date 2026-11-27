@@ -1,8 +1,37 @@
-import type { Vehicle } from "../data/vehicles";
+import type { TransmissionType, Vehicle } from "../data/vehicles";
 
 export type ShiftMode = "MT" | "AT";
 export type ShiftDirection = -1 | 1;
 export type ShiftPhase = "unload" | "disengage" | "recouple";
+
+export function resolveTransmissionType(vehicle: Vehicle): TransmissionType {
+  if (vehicle.transmissionType) return vehicle.transmissionType;
+  const ver = vehicle.version;
+  if (ver.includes("DCT") || vehicle.id === "kawasaki-ninja7-hybrid") return "dct";
+  if (ver.includes("ASG")) return "asg";
+  if (vehicle.kind === "formula1") {
+    return vehicle.id === "ferrari-312t" || vehicle.id === "mclaren-mp4-4" || vehicle.id === "mclaren-mp4-6"
+      ? "manual" : "seamless";
+  }
+  if (vehicle.kind === "endurance") {
+    return vehicle.id === "mazda-787b" ? "manual" : "seamless";
+  }
+  if (vehicle.kind === "car") return "manual";
+  // Motorcycles: modern sportbikes & flagships use electronic quickshifter; classics/small bikes use manual clutch.
+  if (vehicle.twoStroke || ver.includes("198") || ver.includes("199") || ver.includes("’8") || ver.includes("’9") || ver.includes("’00") || ver.includes("’05")
+    || (vehicle.displacementCc <= 350 && !vehicle.id.includes("zx25") && !vehicle.id.includes("r15m"))) {
+    return "manual";
+  }
+  return "quickshifter";
+}
+
+export const TRANSMISSION_LABELS: Record<TransmissionType, string> = {
+  manual: "傳統手排",
+  quickshifter: "電控快排 QS",
+  dct: "雙離合 DCT",
+  asg: "單離合序列 ASG",
+  seamless: "賽車序列無縫",
+};
 
 export interface ShiftState {
   readonly phase: ShiftPhase;
@@ -190,14 +219,53 @@ export function advanceTransmission(
 
   const elapsedSeconds = shift.elapsedSeconds + stepSeconds;
   let { targetGear } = shift;
+  const txType = resolveTransmissionType(vehicle);
+  const isCarLike = Boolean(vehicle.kind);
   const positiveUpshift = targetGear > shift.fromGear && shift.fromGear > 0;
-  const raceDownshift = isRace && targetGear > 0 && targetGear < shift.fromGear;
-  const unloadAt = raceDownshift ? RACE_UNLOAD_SECONDS : UNLOAD_SECONDS;
+  const raceDownshift = (isRace || txType === "dct" || txType === "seamless") && targetGear > 0 && targetGear < shift.fromGear;
+
+  let unloadAt = raceDownshift ? RACE_UNLOAD_SECONDS : UNLOAD_SECONDS;
+  let upshiftRatioAt = UPSHIFT_RATIO_CHANGE_SECONDS;
+  let upshiftEngageSeconds = UPSHIFT_CLUTCH_ENGAGEMENT_SECONDS;
+  let upshiftRecoverySeconds = UPSHIFT_POWER_RECOVERY_SECONDS;
+
+  if (isCarLike) {
+    if (txType === "dct") {
+      unloadAt = positiveUpshift ? 0.008 : 0.012;
+      upshiftRatioAt = 0.028;
+      upshiftEngageSeconds = 0.016;
+      upshiftRecoverySeconds = 0.012;
+    } else if (txType === "seamless") {
+      unloadAt = positiveUpshift ? 0.006 : RACE_UNLOAD_SECONDS;
+      upshiftRatioAt = 0.022;
+      upshiftEngageSeconds = 0.014;
+      upshiftRecoverySeconds = 0.010;
+    } else if (txType === "asg") {
+      // Single-clutch automated sequential (e.g. Lexus LFA): pronounced torque gap followed by fierce slam engagement.
+      unloadAt = positiveUpshift ? 0.020 : 0.022;
+      upshiftRatioAt = 0.105;
+      upshiftEngageSeconds = 0.018;
+      upshiftRecoverySeconds = 0.014;
+    } else {
+      // Classic H-pattern foot-clutch manual car.
+      unloadAt = positiveUpshift ? 0.036 : 0.034;
+      upshiftRatioAt = 0.132;
+      upshiftEngageSeconds = 0.052;
+      upshiftRecoverySeconds = 0.042;
+    }
+  } else if (txType === "manual") {
+    // Cable-clutch manual motorcycle: slightly longer hand-clutch throw while keeping >=7 disengage ticks.
+    unloadAt = 0.025;
+    upshiftRatioAt = 0.092;
+    upshiftEngageSeconds = 0.034;
+    upshiftRecoverySeconds = 0.028;
+  }
+
   const standingLaunch = input.engineOn && input.shiftMode === "MT" && shift.fromGear === 0 && targetGear === 1
     && shift.startRpm >= vehicle.physics.referenceRpm * 0.36
     && (shift.phase === "recouple" || input.vehicleSpeed < NEUTRAL_MAX_SPEED_MPS);
-  const ratioChangeAt = positiveUpshift ? UPSHIFT_RATIO_CHANGE_SECONDS
-    : raceDownshift ? RACE_RATIO_CHANGE_SECONDS : RATIO_CHANGE_SECONDS;
+  const ratioChangeAt = positiveUpshift ? upshiftRatioAt
+    : raceDownshift ? RACE_RATIO_CHANGE_SECONDS : (isCarLike && txType === "manual" ? 0.115 : RATIO_CHANGE_SECONDS);
   let targetRpm = matchedRpm(vehicle, targetGear, input.wheelAngularVelocity);
   const phase = elapsedSeconds < unloadAt ? "unload" : elapsedSeconds < ratioChangeAt ? "disengage" : "recouple";
   let { gear } = transmission;
@@ -211,8 +279,8 @@ export function advanceTransmission(
     gear = targetGear;
   }
 
-  const downshiftEndAt = raceDownshift ? RACE_SHIFT_END_SECONDS : SHIFT_END_SECONDS;
-  const recoupleDuration = positiveUpshift ? UPSHIFT_CLUTCH_ENGAGEMENT_SECONDS
+  const downshiftEndAt = raceDownshift ? RACE_SHIFT_END_SECONDS : (isCarLike && txType === "manual" ? 0.24 : SHIFT_END_SECONDS);
+  const recoupleDuration = positiveUpshift ? upshiftEngageSeconds
     : standingLaunch ? 0.29 : downshiftEndAt - ratioChangeAt;
   const clutchScale = phase === "unload" ? 1 - smoothProgress(elapsedSeconds / unloadAt)
     : smoothProgress((elapsedSeconds - ratioChangeAt) / recoupleDuration);
@@ -224,7 +292,7 @@ export function advanceTransmission(
 
   // Cut immediately on an upshift, then restore combustion at the new ratio once RPM has caught up.
   const upshiftRecovery = powerRecoveryStartedAtSeconds === null ? 0
-    : smoothProgress((elapsedSeconds - powerRecoveryStartedAtSeconds) / UPSHIFT_POWER_RECOVERY_SECONDS);
+    : smoothProgress((elapsedSeconds - powerRecoveryStartedAtSeconds) / upshiftRecoverySeconds);
   const recovery = positiveUpshift ? upshiftRecovery : clutchScale;
   const complete = positiveUpshift ? upshiftRecovery === 1 : elapsedSeconds >= ratioChangeAt + recoupleDuration;
   if (complete) {

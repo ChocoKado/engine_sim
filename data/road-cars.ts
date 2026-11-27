@@ -269,4 +269,33 @@ export const expandedRoadCars = [
       engineInertiaKgM2: 0.165, wheelInertiaKgM2: 5.5, rollingRadiusM: 0.338, dragAreaM2: 0.66, maxDriveAccelerationG: 0.92,
     },
   }),
+  defineCar({
+    id: "dodge-challenger-hellcat", brand: "Dodge", name: "Challenger SRT Hellcat", version: "2016 美規・6MT",
+    engine: "6.2 HEMI 魯式雙螺旋機械增壓 V8", displacementCc: 6166,
+    source: "https://s3.amazonaws.com/chryslermedia.iconicweb.com/mediasite/specs/2016_DG_Challenger_SP.pdf",
+    supercharger: { driveRatio: 3.25, audioGain: 0.28, whineStyle: "roots" },
+    cylinderDimensionsMm: [103.9, 90.9, 155], bankAngleDegrees: 90, firingDegrees: evenEight,
+    cylinderFiringDegrees: [0, 630, 450, 180, 270, 540, 360, 90], exhaustBanks: [0, 1, 0, 1, 1, 0, 1, 0],
+    exhaustFrequencyHz: 84, pulseDecayMs: 11.2,
+    physics: {
+      curbMassKg: 2018, gearRatios: [2.97, 2.10, 1.46, 1.00, 0.74, 0.50], finalDriveRatio: 3.90,
+      peakTorqueNm: 650 * poundFeetToNm, peakTorqueRpm: 4000, peakPowerPs: 707 * hpToPs, peakPowerRpm: 6000,
+      idleRpm: 720, referenceRpm: 6200, fuelCutRpm: 6400, lowRpmTorqueRatio: 0.68,
+      engineInertiaKgM2: 0.35, wheelInertiaKgM2: 6.4, rollingRadiusM: 0.348, dragAreaM2: 0.86, maxDriveAccelerationG: 0.78,
+    },
+  }),
+  defineCar({
+    id: "porsche-carrera-gt", brand: "Porsche", name: "Carrera GT", version: "2004 歐規 Type 980・6MT",
+    engine: "M80/01 68° 自然進氣 V10", displacementCc: 5733,
+    source: "https://newsroom.porsche.com/en/2020/history/porsche-carrera-gt-20-years-anniversary-paris-22455.html",
+    cylinderDimensionsMm: [98.0, 76.0, 148], bankAngleDegrees: 68,
+    firingDegrees: [0, 68, 144, 212, 288, 356, 432, 500, 576, 644],
+    exhaustBanks: alternatingTen, exhaustFrequencyHz: 188, pulseDecayMs: 5.1,
+    physics: {
+      curbMassKg: 1380, gearRatios: [3.20, 1.87, 1.36, 1.07, 0.90, 0.75], finalDriveRatio: 4.44,
+      peakTorqueNm: 590, peakTorqueRpm: 5750, peakPowerPs: 612, peakPowerRpm: 8000,
+      idleRpm: 850, referenceRpm: 8400, fuelCutRpm: 8550, lowRpmTorqueRatio: 0.49,
+      engineInertiaKgM2: 0.145, wheelInertiaKgM2: 5.4, rollingRadiusM: 0.338, dragAreaM2: 0.67, maxDriveAccelerationG: 0.95,
+    },
+  }),
 ];

@@ -18,6 +18,7 @@ const evidence = {
   "ford-mustang-gt": [249, "same-generation test", "2024 6MT at 155 mph governor", "https://www.caranddriver.com/reviews/a44892132/2024-ford-mustang-gt-test/"],
   "porsche-911-gt3-992": [313, "manufacturer claim", "992.2 6MT claimed maximum", "https://pnr-prd2-pub2.newsroom.porsche.com/dam/jcr%3A46cb0e24-ad5a-489c-a404-52c678071d03/pag-911-gt3-mt-en.pdf"],
   "lexus-lfa": [325, "manufacturer claim", "factory rated maximum speed", "https://www.toyota.co.jp/jpn/company/history/75years/vehicle_lineage/car/id60016301/"],
+  "porsche-carrera-gt": [330, "manufacturer claim", "factory rated maximum speed", "https://newsroom.porsche.com/en/2020/history/porsche-carrera-gt-20-years-anniversary-paris-22455.html"],
   "nissan-gtr-r35": [315, "manufacturer claim", "R35 570 PS European press specification", "https://global.nissannews.com/en/releases/2017-nissan-gt-r-makes-world-debut-at-new-york-international-auto-show"],
   "red-bull-rb19": [354.3, "F1 event speed trap", "2023 Monza race, Sergio Perez",
     "https://www.fia.com/events/fia-formula-one-world-championship/season-2023/italian-grand-prix/race-classification"],

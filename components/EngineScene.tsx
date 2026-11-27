@@ -296,7 +296,8 @@ function buildEngine(vehicle: Vehicle) {
     bearing.rotation.z = Math.PI / 2;
   }
 
-  const camTracks = !isVEngine && bankSize === 1 ? [0] : [-bore * 0.23, bore * 0.23];
+  const isTwoStroke = Boolean(vehicle.twoStroke);
+  const camTracks = isTwoStroke ? [] : (!isVEngine && bankSize === 1 ? [0] : [-bore * 0.23, bore * 0.23]);
 
   function makeCam(bank: THREE.Group, bankFiringAngles: readonly number[], z: number, intakeSide: number) {
     const cam = new THREE.Group();
@@ -423,8 +424,8 @@ function buildEngine(vehicle: Vehicle) {
     const intakeSide = -exhaustSide;
     return {
       x, crank, piston, rod, charge, spark, annotations, intakePacket, exhaustPacket, intakeSide, exhaustSide,
-      intake: makeValve(bank, x - bore * 0.2, intakeSide * bore * 0.18, intakeMetal),
-      exhaust: makeValve(bank, x + bore * 0.2, exhaustSide * bore * 0.18, exhaustMetal),
+      intake: isTwoStroke ? null : makeValve(bank, x - bore * 0.2, intakeSide * bore * 0.18, intakeMetal),
+      exhaust: isTwoStroke ? null : makeValve(bank, x + bore * 0.2, exhaustSide * bore * 0.18, exhaustMetal),
     };
   }
 
@@ -460,6 +461,30 @@ function buildEngine(vehicle: Vehicle) {
   group.add(exhaust.group);
 
   function addSupercharger() {
+    if (vehicle.supercharger?.whineStyle === "roots") {
+      // Positive-displacement V-valley Roots / Twin-Screw blower housing + front drive pulley.
+      const blower = new THREE.Group();
+      const blowerY = seatY + bore * 0.38;
+      blower.position.set(0, blowerY, 0);
+      group.add(blower);
+      box(blower, width * 0.88, bore * 0.42, bore * 0.78, frame, 0, 0, 0);
+      for (let fin = -3; fin <= 3; fin += 1) {
+        box(blower, width * 0.84, bore * 0.045, bore * 0.055, ribs, 0, bore * 0.23, fin * bore * 0.10);
+      }
+      const snout = cylinder(blower, bore * 0.11, width * 0.26, frame, width * 0.52, -bore * 0.04, 0);
+      snout.rotation.z = Math.PI / 2;
+      const pulley = new THREE.Group();
+      pulley.position.set(width * 0.66, -bore * 0.04, 0);
+      pulley.rotation.y = Math.PI / 2;
+      blower.add(pulley);
+      const wheel = cylinder(pulley, bore * 0.20, bore * 0.09, rodMetal, 0, 0, 0);
+      wheel.rotation.x = Math.PI / 2;
+      for (let spoke = 0; spoke < 4; spoke += 1) {
+        const bar = box(pulley, bore * 0.34, bore * 0.045, bore * 0.10, intakeMetal, 0, 0, 0);
+        bar.rotation.z = (spoke * Math.PI) / 4;
+      }
+      return pulley;
+    }
     // Scale reference: Kawasaki 2015 Ninja H2 press kit, p. 4. Housing and vane shape are schematic.
     const impellerRadius = 0.069 * metresToScene / 2;
     const caseRadius = impellerRadius * 1.2;
@@ -507,8 +532,8 @@ function buildEngine(vehicle: Vehicle) {
       parts.rod.position.set(parts.x, (crankY + pistonY) / 2, crankZ / 2);
       rodDirection.set(0, pistonY - crankY, -crankZ).normalize();
       parts.rod.quaternion.setFromUnitVectors(verticalAxis, rodDirection);
-      parts.intake.position.y = seatY - cylinder.intakeLiftM * metresToScene;
-      parts.exhaust.position.y = seatY - cylinder.exhaustLiftM * metresToScene;
+      if (parts.intake) parts.intake.position.y = seatY - cylinder.intakeLiftM * metresToScene;
+      if (parts.exhaust) parts.exhaust.position.y = seatY - cylinder.exhaustLiftM * metresToScene;
       const chargeHeight = Math.max(0.003, seatY - pistonY - bore * 0.17);
       parts.charge.position.y = seatY - chargeHeight * 0.5;
       parts.charge.scale.y = chargeHeight;

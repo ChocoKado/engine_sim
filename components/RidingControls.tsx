@@ -29,6 +29,9 @@ interface RidingControlsProps {
   canToggleTurboFlutter?: boolean;
   turboFlutterEnabled?: boolean;
   onToggleTurboFlutter?: () => void;
+  launchControlEnabled?: boolean;
+  launchRpm?: number;
+  onToggleLaunchControl?: () => void;
   onToggleAudio: () => void;
   onShift: (direction: -1 | 1) => void;
   onPedalChange: (pedal: Pedal, opening: number) => void;
@@ -295,6 +298,7 @@ export function RidingControls({
   volume, onVolumeChange, tuning, onTuningChange, availableTunings,
   canToggleRotaryPort = false, rotaryPortEnabled = false, onToggleRotaryPort,
   canToggleTurboFlutter = false, turboFlutterEnabled = false, onToggleTurboFlutter,
+  launchControlEnabled = false, launchRpm, onToggleLaunchControl,
   onShift, onPedalChange, resetKey, recordingComparison,
 }: RidingControlsProps) {
   useEffect(() => {
@@ -380,31 +384,39 @@ export function RidingControls({
           </select>
         </div>
       </div>
-      {(canToggleRotaryPort || canToggleTurboFlutter) && (
-        <div className="mod-effect-toggles" role="group" aria-label="改裝聲浪特效（可複選）">
-          <span className="mod-effect-label">改裝特效</span>
-          {canToggleRotaryPort && onToggleRotaryPort && (
-            <button
-              type="button"
-              className="mode-button"
-              aria-pressed={rotaryPortEnabled}
-              onClick={onToggleRotaryPort}
-            >
-              轉子・橋式汽口 (Brap)
-            </button>
-          )}
-          {canToggleTurboFlutter && onToggleTurboFlutter && (
-            <button
-              type="button"
-              className="mode-button"
-              aria-pressed={turboFlutterEnabled}
-              onClick={onToggleTurboFlutter}
-            >
-              進氣・渦輪顫振 (Stu-tu-tu)
-            </button>
-          )}
-        </div>
-      )}
+      <div className="mod-effect-toggles" role="group" aria-label="電控與改裝聲浪特效（可複選）">
+        <span className="mod-effect-label">電控／改裝</span>
+        {onToggleLaunchControl && (
+          <button
+            type="button"
+            className="mode-button"
+            aria-pressed={launchControlEnabled}
+            onClick={onToggleLaunchControl}
+          >
+            彈射起步 LC{launchRpm ? ` (${launchRpm})` : ""}
+          </button>
+        )}
+        {canToggleRotaryPort && onToggleRotaryPort && (
+          <button
+            type="button"
+            className="mode-button"
+            aria-pressed={rotaryPortEnabled}
+            onClick={onToggleRotaryPort}
+          >
+            轉子・橋式汽口 (Brap)
+          </button>
+        )}
+        {canToggleTurboFlutter && onToggleTurboFlutter && (
+          <button
+            type="button"
+            className="mode-button"
+            aria-pressed={turboFlutterEnabled}
+            onClick={onToggleTurboFlutter}
+          >
+            進氣・渦輪顫振 (Stu-tu-tu)
+          </button>
+        )}
+      </div>
       {recordingComparison}
     </section>
   );

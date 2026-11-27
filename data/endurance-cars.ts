@@ -78,4 +78,20 @@ export const enduranceCars: readonly Vehicle[] = [
     },
   }),
   ...leMansHypercars,
+  defineCar({
+    kind: "endurance", id: "mazda-787b", brand: "Mazda", name: "787B ’91", version: "1991 Le Mans 冠軍・Group C・5MT",
+    transmissionType: "manual",
+    engine: "R26B 自然進氣周邊汽口四轉子", displacementCc: 2616,
+    source: "https://www.mazda.com/en/experience/museum/exhibits/motorsports/",
+    rotary: { rotors: 4, eccentricityM: 0.015, rotorRadiusM: 0.105, rotorWidthM: 0.080 },
+    firingDegrees: evenV8, cylinderFiringDegrees: [],
+    exhaustFrequencyHz: 232, pulseDecayMs: 4.3,
+    physics: {
+      curbMassKg: 830, gearRatios: [3.140, 2.256, 1.682, 1.320, 1.045], finalDriveRatio: 3.08,
+      peakTorqueNm: 608, peakTorqueRpm: 6500, peakPowerPs: 700, peakPowerRpm: 9000,
+      idleRpm: 1650, referenceRpm: 9000, fuelCutRpm: 9300, lowRpmTorqueRatio: 0.41,
+      engineInertiaKgM2: 0.145, wheelInertiaKgM2: 5.6, rollingRadiusM: 0.335, dragAreaM2: 0.78,
+      downforceAreaM2: 2.65, maxDriveAccelerationG: 1.20, maxBrakeAccelerationG: 1.42, drivelineEfficiency: 0.92,
+    },
+  }),
 ];

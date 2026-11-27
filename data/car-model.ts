@@ -8,6 +8,8 @@ type PublishedAndCalibratedPhysics = Omit<Vehicle["physics"],
 
 export interface CarSpec extends Pick<Vehicle, "id" | "brand" | "name" | "version" | "source" | "engine" | "displacementCc"> {
   readonly kind?: Vehicle["kind"];
+  readonly transmissionType?: Vehicle["transmissionType"];
+  readonly supercharger?: Vehicle["supercharger"];
   readonly turbocharger?: Vehicle["turbocharger"];
   readonly cylinderDimensionsMm?: readonly [bore: number, stroke: number, rodLength: number];
   readonly cylinderFiringDegrees?: readonly number[];
@@ -35,6 +37,8 @@ export function defineCar(spec: CarSpec): Vehicle {
   return {
     id, brand, name, version, source, engine, displacementCc,
     kind: spec.kind ?? "car",
+    transmissionType: spec.transmissionType,
+    supercharger: spec.supercharger,
     turbocharger: spec.turbocharger,
     gears: physics.gearRatios.length,
     geometry: {
